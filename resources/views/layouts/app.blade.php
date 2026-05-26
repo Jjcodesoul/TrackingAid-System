@@ -2,255 +2,400 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>TrackingAid</title>
-
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    {{-- BOOTSTRAP --}}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@yield('title', 'TrackingAid')</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-
-    {{-- FONT AWESOME --}}
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-
     <style>
-
-        body{
-            margin:0;
-            font-family:Inter,sans-serif;
-            background:#F8FAFC;
+        :root {
+            --sidebar: #0f1a2e;
+            --sidebar-muted: #9fb1c8;
+            --accent: #16bf86;
+            --page: #f4f7fb;
+            --line: #dce4ef;
+            --text: #06142b;
         }
 
-        /* SIDEBAR */
-        .sidebar{
-            width:250px;
-            height:100vh;
-            background:#0F172A;
-            position:fixed;
-            padding:20px;
-            color:white;
+        * {
+            box-sizing: border-box;
         }
 
-        .sidebar h2{
-            color:#10B981;
-            margin-bottom:30px;
-            font-size:24px;
-            font-weight:700;
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--page);
+            color: var(--text);
+            font-family: Arial, Helvetica, sans-serif;
         }
 
-        .sidebar a{
-            display:flex;
-            align-items:center;
-            gap:10px;
-            color:#CBD5E1;
-            text-decoration:none;
-            padding:12px 15px;
-            margin-bottom:10px;
-            border-radius:12px;
-            transition:0.2s;
+        .app-shell {
+            min-height: 100vh;
+            display: flex;
         }
 
-        .sidebar a:hover{
-            background:#1E293B;
-            color:white;
+        .sidebar {
+            width: 320px;
+            min-height: 100vh;
+            background: var(--sidebar);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            inset: 0 auto 0 0;
         }
 
-        .sidebar .active{
-            background:#10B981;
-            color:white;
+        .brand {
+            padding: 30px 30px 28px;
+            border-bottom: 1px solid rgba(255, 255, 255, .08);
         }
 
-        /* MAIN */
-        .main{
-            margin-left:270px;
-            padding:25px;
+        .brand h1 {
+            font-size: 26px;
+            margin: 0 0 6px;
+            font-weight: 700;
         }
 
-        /* CARD */
-        .card-ui{
-            background:white;
-            border-radius:16px;
-            padding:20px;
-            box-shadow:0 2px 10px rgba(0,0,0,0.05);
-            border:none;
+        .brand span {
+            color: var(--sidebar-muted);
+            font-size: 14px;
         }
 
-        /* GRID */
-        .grid{
-            display:grid;
-            grid-template-columns:repeat(3,1fr);
-            gap:15px;
+        .nav-menu {
+            padding: 26px 0;
         }
 
-        /* BUTTON */
-        .btn-main{
-            background:#10B981;
-            color:white;
-            border:none;
-            padding:10px 18px;
-            border-radius:10px;
+        .nav-menu a {
+            min-height: 56px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 30px;
+            color: #a9bfd9;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 600;
         }
 
-        .btn-main:hover{
-            background:#059669;
+        .nav-menu a i {
+            width: 24px;
+            text-align: center;
+            font-size: 20px;
         }
 
-        .btn-danger-custom{
-            background:#E11D48;
-            color:white;
-            border:none;
-            padding:7px 12px;
-            border-radius:8px;
+        .nav-menu a:hover,
+        .nav-menu a.active {
+            background: var(--accent);
+            color: #fff;
         }
 
-        /* INPUT */
-        input,select{
-            width:100%;
-            padding:11px;
-            border:1px solid #E2E8F0;
-            border-radius:10px;
-            margin-bottom:15px;
+        .user-box {
+            margin-top: auto;
+            padding: 28px 30px;
+            border-top: 1px solid rgba(255, 255, 255, .08);
+            display: flex;
+            align-items: center;
+            gap: 14px;
         }
 
-        /* TABLE */
-        table{
-            width:100%;
-            border-collapse:collapse;
+        .avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #12c993;
+            display: grid;
+            place-items: center;
+            font-weight: 700;
         }
 
-        table th{
-            background:#0F172A;
-            color:white;
-            padding:14px;
+        .user-box strong {
+            display: block;
+            font-size: 16px;
         }
 
-        table td{
-            padding:14px;
-            border-bottom:1px solid #E2E8F0;
+        .user-box span {
+            color: var(--sidebar-muted);
+            font-size: 14px;
         }
 
-        /* BADGES */
-        .badge-success{
-            background:#DCFCE7;
-            color:#166534;
-            padding:6px 10px;
-            border-radius:20px;
+        .main {
+            width: calc(100% - 320px);
+            margin-left: 320px;
+            padding: 38px 40px;
         }
 
-        .badge-warning{
-            background:#FEF3C7;
-            color:#92400E;
-            padding:6px 10px;
-            border-radius:20px;
+        .page-title {
+            font-size: 30px;
+            margin: 0 0 12px;
+            font-weight: 700;
         }
 
-        .badge-danger{
-            background:#FEE2E2;
-            color:#991B1B;
-            padding:6px 10px;
-            border-radius:20px;
+        .page-subtitle {
+            color: #5d708b;
+            font-size: 20px;
+            margin-bottom: 32px;
         }
 
-        /* MODAL */
-        .modal-content{
-            border-radius:18px;
-            border:none;
+        .panel,
+        .card-ui {
+            background: #fff;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            box-shadow: 0 2px 6px rgba(15, 26, 46, .10);
+            padding: 30px;
         }
 
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 15px;
+        }
+
+        .form-label {
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .form-control,
+        .form-select,
+        input,
+        select {
+            min-height: 48px;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 10px 14px;
+        }
+
+        textarea.form-control {
+            min-height: 148px;
+            resize: vertical;
+        }
+
+        .btn-main {
+            background: var(--accent);
+            border: 0;
+            color: #fff;
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 10px 18px;
+            font-weight: 700;
+        }
+
+        .btn-main:hover {
+            background: #0fae78;
+            color: #fff;
+        }
+
+        .btn-soft {
+            background: #fff;
+            border: 2px solid var(--line);
+            color: var(--text);
+            border-radius: 12px;
+            min-height: 44px;
+            padding: 10px 18px;
+            font-weight: 700;
+        }
+
+        .btn-danger-custom {
+            background: #e11d48;
+            color: white;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        table th {
+            background: var(--sidebar);
+            color: white;
+            padding: 14px;
+        }
+
+        table td {
+            padding: 14px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .table {
+            margin-bottom: 0;
+        }
+
+        .table th {
+            color: #566986;
+            background: transparent;
+            font-size: 16px;
+            padding: 18px 20px;
+            white-space: nowrap;
+        }
+
+        .table td {
+            padding: 20px;
+            vertical-align: middle;
+            font-size: 16px;
+        }
+
+        .badge-pill,
+        .badge-success,
+        .badge-warning,
+        .badge-danger {
+            border-radius: 999px;
+            padding: 8px 16px;
+            font-weight: 500;
+        }
+
+        .badge-success,
+        .status-approved,
+        .status-released {
+            background: #d9f8e8;
+            color: #087a45;
+        }
+
+        .badge-warning,
+        .priority-medium {
+            background: #fff4bf;
+            color: #9a6a00;
+        }
+
+        .badge-danger,
+        .priority-high,
+        .status-rejected {
+            background: #ffe0e4;
+            color: #c01732;
+        }
+
+        .priority-low {
+            background: #dcecff;
+            color: #18529c;
+        }
+
+        .status-pending {
+            background: #f0f2f5;
+            color: #172033;
+        }
+
+        .note {
+            border: 1px solid #f3d96b;
+            background: #fffbe5;
+            color: #9a5b00;
+            border-radius: 18px;
+            padding: 20px;
+        }
+
+        .modal-content {
+            border-radius: 18px;
+            border: none;
+        }
+
+        @media (max-width: 1100px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 900px) {
+            .sidebar {
+                position: static;
+                width: 100%;
+                min-height: auto;
+            }
+
+            .app-shell {
+                display: block;
+            }
+
+            .main {
+                width: 100%;
+                margin-left: 0;
+                padding: 24px;
+            }
+        }
     </style>
 </head>
 <body>
-
-{{-- SIDEBAR --}}
-<div class="sidebar">
-
-    <h2>TrackingAid</h2>
-
-    <a href="/inventory" class="active">
-        <i class="fa fa-box"></i>
-        Inventory
-    </a>
-
-    <a href="/stock-in">
-        <i class="fa fa-warehouse"></i>
-        Stock In
-    </a>
-
-    <a href="#">
-        <i class="fa fa-inbox"></i>
-        Requests
-    </a>
-
-    <a href="#">
-        <i class="fa fa-truck"></i>
-        Borrow / Release
-    </a>
-
-    <a href="#">
-        <i class="fa fa-chart-line"></i>
-        Reports
-    </a>
-
-</div>
-
-{{-- MAIN --}}
-<div class="main">
-
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <h1>TrackingAid</h1>
+            <span>Disaster Logistics System</span>
         </div>
-    @endif
 
-    @yield('content')
+        <nav class="nav-menu">
+            <a href="#" class="{{ request()->is('dashboard') ? 'active' : '' }}"><i class="fa-solid fa-table-cells-large"></i>Dashboard</a>
+            <a href="/inventory" class="{{ request()->is('inventory*') ? 'active' : '' }}"><i class="fa-solid fa-cube"></i>Inventory</a>
+            <a href="/stock-in" class="{{ request()->is('stock-in*') ? 'active' : '' }}"><i class="fa-solid fa-arrow-down"></i>Stock In</a>
+            <a href="{{ route('requests.index') }}" class="{{ request()->routeIs('requests.*') ? 'active' : '' }}"><i class="fa-regular fa-clipboard"></i>Requests</a>
+            <a href="{{ route('borrow-release.create') }}" class="{{ request()->routeIs('borrow-release.*') ? 'active' : '' }}"><i class="fa-solid fa-arrow-right-arrow-left"></i>Borrow / Release</a>
+            <a href="{{ route('returns.create') }}" class="{{ request()->routeIs('returns.*') ? 'active' : '' }}"><i class="fa-solid fa-rotate-left"></i>Return Management</a>
+            <a href="#"><i class="fa-regular fa-file-lines"></i>Reports</a>
+            <a href="#"><i class="fa-regular fa-bell"></i>Notifications</a>
+            <a href="#"><i class="fa-solid fa-users"></i>Users & Roles</a>
+        </nav>
 
+        <div class="user-box">
+            <div class="avatar">AD</div>
+            <div>
+                <strong>Admin User</strong>
+                <span>admin@trackingaid.org</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main">
+        @if(session('success'))
+            <div class="alert alert-success">{{ session('success') }}</div>
+        @endif
+
+        @if(session('error'))
+            <div class="alert alert-danger">{{ session('error') }}</div>
+        @endif
+
+        @if($errors->any())
+            <div class="alert alert-danger">
+                <strong>Please fix the highlighted fields.</strong>
+                <ul class="mb-0">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        @yield('content')
+    </main>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-
 function generateSKU() {
+    const category = document.getElementById('category')?.value || '';
+    let name = document.getElementById('name')?.value || '';
+    const unit = document.getElementById('unit_type')?.value || '';
+    let size = document.getElementById('size_weight')?.value || '';
+    const target = document.getElementById('target_beneficiary')?.value || '';
+    let variant = document.getElementById('variant')?.value || '';
+    const skuPreview = document.getElementById('skuPreview');
+    const skuInput = document.getElementById('sku');
 
-    let category =
-        document.getElementById('category')?.value || '';
+    if (!skuPreview || !skuInput) {
+        return;
+    }
 
-    let name =
-        document.getElementById('name')?.value || '';
-
-    let unit =
-        document.getElementById('unit_type')?.value || '';
-
-    let size =
-        document.getElementById('size_weight')?.value || '';
-
-    let target =
-        document.getElementById('target_beneficiary')?.value || '';
-
-    let variant =
-        document.getElementById('variant')?.value || '';
-
-    // FORMAT
     name = name.replace(/\s+/g, '-').toUpperCase();
-
     size = size.replace(/\s+/g, '').toUpperCase();
-
     variant = variant.replace(/\s+/g, '-').toUpperCase();
 
-    let sku =
-        `${category}-${name}-${unit}-${size}-${target}-${variant}`;
+    const sku = `${category}-${name}-${unit}-${size}-${target}-${variant}`.replace(/--+/g, '-');
 
-    sku = sku.replace(/--+/g, '-');
-
-    // PREVIEW
-    document.getElementById('skuPreview').innerText = sku;
-
-    // HIDDEN INPUT
-    document.getElementById('sku').value = sku;
+    skuPreview.innerText = sku;
+    skuInput.value = sku;
 }
 
-// AUTO UPDATE
 document.addEventListener('input', generateSKU);
 document.addEventListener('change', generateSKU);
-
 </script>
+@stack('scripts')
 </body>
 </html>
