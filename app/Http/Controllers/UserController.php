@@ -32,11 +32,17 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Enforce admin permission check for storing records too
+        if (Auth::user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,user',
+            // FIXED: Added 'staff' to match your front-end dropdown configuration choice
+            'role' => 'required|string|in:admin,user,staff', 
         ]);
 
         User::create([
@@ -50,17 +56,22 @@ class UserController extends Controller
     }
 
     /**
-     * The missing function that fixes the error.
+     * Remove the specified user from storage (Disable/Delete).
      */
     public function destroy(User $user): RedirectResponse
     {
-        // Prevent deleting yourself
+        // Safety: Restrict destructive actions to administrators only
+        if (Auth::user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Safety: Prevent deleting your own logged-in session account
         if (Auth::id() === $user->id) {
-            return back()->with('error', 'Action denied.');
+            return back()->with('error', 'Action denied. You cannot revoke your own access privileges.');
         }
 
         $user->delete();
 
-        return redirect()->route('users.index')->with('success', 'User access revoked.');
+        return redirect()->route('users.index')->with('success', 'User access revoked successfully.');
     }
 }

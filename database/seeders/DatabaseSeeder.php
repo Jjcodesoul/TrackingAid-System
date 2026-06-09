@@ -2,26 +2,6 @@
 
 namespace Database\Seeders;
 
-<<<<<<< HEAD
-use App\Models\User;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Hash;
-
-class DatabaseSeeder extends Seeder
-{
-    public function run(): void
-    {
-        User::updateOrCreate(
-            ['email' => 'admin@trackingaid.org'],
-            [
-                'name' => 'Admin User',
-                'password' => Hash::make('password123'),
-                'role' => 'admin',
-            ]
-        );
-    }
-}
-=======
 use App\Models\Inventory;
 use App\Models\Request as SupplyRequest;
 use App\Models\User;
@@ -39,11 +19,22 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
+        // Standard Test User
         User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
                 'name' => 'Test User',
                 'password' => bcrypt('password'),
+            ]
+        );
+
+        // System Admin User Account
+        User::firstOrCreate(
+            ['email' => 'admin@trackingaid.org'],
+            [
+                'name' => 'Admin User',
+                'password' => bcrypt('password'),
+                'role' => 'admin', // Grants access to the admin side / Users & Roles
             ]
         );
 
@@ -117,4 +108,3 @@ class DatabaseSeeder extends Seeder
         }
     }
 }
->>>>>>> db5ef8e73ac4431ebbfc800ae78adb114a103e05
