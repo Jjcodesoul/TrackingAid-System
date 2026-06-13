@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Request;
+use App\Models\Request as SupplyRequest;
+use Illuminate\Http\Request;
 
 class RequestController extends Controller
 {
     public function index()
     {
-        $requests = Request::with('inventory')->latest()->get();
-
+        $requests = SupplyRequest::with('inventory')->latest()->get();
         return view('requests.index', compact('requests'));
     }
 
-    public function approve(Request $request)
+    public function approve(SupplyRequest $request)
     {
         $request->status = 'Approved';
         $request->notification_status = 'Responder notified: request approved';
@@ -21,10 +21,10 @@ class RequestController extends Controller
         $request->rejected_at = null;
         $request->save();
 
-        return back()->with('success', 'Request approved and responder notification recorded.');
+        return back()->with('success', 'Request approved.');
     }
 
-    public function reject(Request $request)
+    public function reject(SupplyRequest $request)
     {
         $request->status = 'Rejected';
         $request->notification_status = 'Responder notified: request rejected';
@@ -32,6 +32,6 @@ class RequestController extends Controller
         $request->approved_at = null;
         $request->save();
 
-        return back()->with('success', 'Request rejected and responder notification recorded.');
+        return back()->with('success', 'Request rejected.');
     }
 }

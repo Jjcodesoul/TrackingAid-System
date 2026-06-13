@@ -2,474 +2,168 @@
 
 @section('content')
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-
+{{-- HEADER --}}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
     <div>
-        <h2 style="font-weight:700;">Inventory Dashboard</h2>
-
-        <p style="color:#64748B;">
-            Manage rescue and relief inventory
-        </p>
+        <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Inventory</h2>
+        <p style="color:#64748B; font-size:13px; margin:4px 0 0;">All registered items and current stock levels</p>
     </div>
-
-    <button
-        class="btn-main"
-        data-bs-toggle="modal"
-        data-bs-target="#addModal">
-
-        + Add Item
-
-    </button>
-
+    <a href="{{ route('inventory.create') }}" class="btn-main">+ Add Item (SKU)</a>
 </div>
 
-{{-- KPI --}}
-<div class="grid mb-4">
-
-    <div class="card-ui">
-        <h5>Total Items</h5>
-        <h2>{{ $items->count() }}</h2>
+{{-- ALERTS --}}
+@if(session('success'))
+    <div style="background:#ECFDF5; border:1px solid #A7F3D0; color:#166534; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+        {{ session('success') }}
     </div>
-
-    <div class="card-ui">
-        <h5>Low Stock</h5>
-
-        <h2>
-            {{ $items->filter(fn($i) => $i->total_stock < 10)->count() }}
-        </h2>
+@endif
+@if(session('error'))
+    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+        {{ session('error') }}
     </div>
-
-    <div class="card-ui">
-        <h5>Out of Stock</h5>
-
-        <h2>
-            {{ $items->filter(fn($i) => $i->total_stock <= 0)->count() }}
-        </h2>
-    </div>
-
-</div>
-
-{{-- TABLE --}}
-<div class="card-ui">
-
-    <div style="overflow-x:auto;">
-
-        <table>
-
-            <thead>
-
-                <tr>
-                    <th>Item</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Stock</th>
-                    <th>Status</th>
-                    <th>Location</th>
-                    <th width="180">Actions</th>
-                </tr>
-
-            </thead>
-
-            <tbody>
-
-            @forelse($items as $item)
-
-                <tr>
-
-                    <td>{{ $item->name }}</td>
-
-                    <td>
-
-                        <small style="font-weight:600;">
-                            {{ $item->sku }}
-                        </small>
-
-                    </td>
-
-                    <td>{{ $item->category }}</td>
-
-                    <td>{{ $item->total_stock }}</td>
-
-                    <td>
-
-                        @if($item->total_stock <= 0)
-
-                            <span class="badge-danger">
-                                Out of Stock
-                            </span>
-
-                        @elseif($item->total_stock < 10)
-
-                            <span class="badge-warning">
-                                Low Stock
-                            </span>
-
-                        @else
-
-                            <span class="badge-success">
-                                In Stock
-                            </span>
-
-                        @endif
-
-                    </td>
-
-                    <td>{{ $item->storage_location }}</td>
-
-                    <td>
-
-                        <div style="display:flex;gap:10px;">
-
-                            <a
-                                href="/inventory/edit/{{ $item->id }}"
-                                class="btn-edit">
-
-                                Edit
-
-                            </a>
-
-                            <form
-                                method="POST"
-                                action="/inventory/delete/{{ $item->id }}"
-                                onsubmit="return confirm('Delete this item?')">
-
-                                @csrf
-
-                                <button
-                                    type="submit"
-                                    class="btn-danger-custom">
-
-                                    Delete
-
-                                </button>
-
-                            </form>
-
-                        </div>
-
-                    </td>
-
-                </tr>
-
-            @empty
-
-                <tr>
-
-                    <td colspan="7"
-                        style="
-                            text-align:center;
-                            padding:30px;
-                            color:#64748B;
-                        ">
-
-                        No inventory items found.
-
-                    </td>
-
-                </tr>
-
-            @endforelse
-
-            </tbody>
-
-        </table>
-
-    </div>
-
-</div>
-
-{{-- ADD ITEM MODAL --}}
-<div class="modal fade" id="addModal" tabindex="-1">
-
-    <div class="modal-dialog modal-lg">
-
-        <div class="modal-content">
-
-            <form method="POST" action="/inventory/store">
-
-                @csrf
-
-                <div class="modal-header">
-
-                    <h4 style="font-weight:700;">
-                        Add Item (SKU Generator)
-                    </h4>
-
-                    <button
-                        type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                    </button>
-
-                </div>
-
-                <div class="modal-body">
-
-                    <div style="
-                        display:grid;
-                        grid-template-columns:1fr 1fr;
-                        gap:20px;
-                    ">
-
-                        {{-- LEFT --}}
-                        <div>
-
-                            <label>Item Name</label>
-
-                            <input
-                                type="text"
-                                id="name"
-                                name="name"
-                                onkeyup="generateSKU()"
-                                required
-                            >
-
-                            <label>Category</label>
-
-                            <select
-                                id="category"
-                                name="category"
-                                onchange="generateSKU()"
-                                required>
-
-                                <option value="">
-                                    Select
-                                </option>
-
-                                <option value="FOOD">
-                                    FOOD
-                                </option>
-
-                                <option value="MEDICAL">
-                                    MEDICAL
-                                </option>
-
-                                <option value="RESCUE">
-                                    RESCUE
-                                </option>
-
-                                <option value="RELIEF">
-                                    RELIEF
-                                </option>
-
-                            </select>
-
-                            <label>Unit Type</label>
-
-                            <select
-                                id="unit_type"
-                                name="unit_type"
-                                onchange="generateSKU()"
-                                required>
-
-                                <option value="">
-                                    Select
-                                </option>
-
-                                <option value="BOX">
-                                    BOX
-                                </option>
-
-                                <option value="PACK">
-                                    PACK
-                                </option>
-
-                                <option value="PCS">
-                                    PCS
-                                </option>
-
-                                <option value="SACK">
-                                    SACK
-                                </option>
-
-                                <option value="BOTTLE">
-                                    BOTTLE
-                                </option>
-
-                            </select>
-
-                            <label>Size / Weight</label>
-
-                            <input
-                                type="text"
-                                id="size_weight"
-                                name="size_weight"
-                                placeholder="50KG / 500ML / SMALL"
-                                onkeyup="generateSKU()"
-                            >
-
-                        </div>
-
-                        {{-- RIGHT --}}
-                        <div>
-
-                            <label>Target Beneficiary</label>
-
-                            <select
-                                id="target_beneficiary"
-                                name="target_beneficiary"
-                                onchange="generateSKU()"
-                                required>
-
-                                <option value="">
-                                    Select
-                                </option>
-
-                                <option value="ADULT">
-                                    ADULT
-                                </option>
-
-                                <option value="CHILD">
-                                    CHILD
-                                </option>
-
-                                <option value="ALL">
-                                    ALL
-                                </option>
-
-                            </select>
-
-                            <label>Variant</label>
-
-                            <input
-                                type="text"
-                                id="variant"
-                                name="variant"
-                                placeholder="REGULAR / SPICY / NONE"
-                                onkeyup="generateSKU()"
-                            >
-
-                            <label>Item Type</label>
-
-                            <select name="type" required>
-
-                                <option value="consumable">
-                                    Consumable
-                                </option>
-
-                                <option value="returnable">
-                                    Returnable
-                                </option>
-
-                            </select>
-
-                            <label>Storage Location</label>
-
-                            <input
-                                type="text"
-                                name="storage_location"
-                                placeholder="Warehouse A"
-                                required
-                            >
-
-                        </div>
-
-                    </div>
-
-                    <hr>
-
-                    {{-- SKU PREVIEW --}}
-                    <div class="card-ui"
-                        style="
-                            background:#ECFDF5;
-                            border:1px solid #A7F3D0;
-                        ">
-
-                        <small style="color:#166534;">
-                            Auto Generated SKU
-                        </small>
-
-                        <h3
-                            id="skuPreview"
-                            style="
-                                color:#10B981;
-                                margin-top:10px;
-                                font-weight:700;
-                                word-break:break-word;
-                            ">
-
-                            CATEGORY-ITEM-UNIT-SIZE-TARGET-VARIANT
-
-                        </h3>
-
-                    </div>
-
-                    {{-- HIDDEN SKU --}}
-                    <input
-                        type="hidden"
-                        name="sku"
-                        id="sku"
-                    >
-
-                </div>
-
-                <div class="modal-footer">
-
-                    <button
-                        type="submit"
-                        class="btn-main">
-
-                        Save Item
-
-                    </button>
-
-                </div>
-
-            </form>
-
+@endif
+
+{{-- TABLE CARD --}}
+<div class="card-ui" style="padding:0; overflow:hidden;">
+
+    {{-- SEARCH / FILTER --}}
+    <div style="padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:12px;">
+        <div style="position:relative; flex:1; max-width:320px;">
+            <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
+            <input type="text" id="searchInput" placeholder="Search items..." onkeyup="filterTable()"
+                style="width:100%; padding:8px 12px 8px 36px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
         </div>
-
+        <select id="categoryFilter" onchange="filterTable()"
+            style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#374151; outline:none; background:#fff;">
+            <option value="">All</option>
+            <option value="FOOD">Food</option>
+            <option value="MEDICAL">Medical</option>
+            <option value="RESCUE">Rescue</option>
+            <option value="RELIEF">Relief</option>
+        </select>
     </div>
 
+    {{-- TABLE --}}
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse;">
+            <thead>
+                <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">SKU</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Name</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Category</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Stock</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Unit</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Type</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Flags</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Location</th>
+                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
+                </tr>
+            </thead>
+            <tbody id="inventoryTable">
+            @forelse($items as $item)
+                <tr style="border-bottom:1px solid #f1f5f9;" class="table-row" data-category="{{ strtoupper($item->category) }}">
+
+                    <td style="padding:14px 16px;">
+                        <span style="font-size:11px; font-weight:600; color:#64748b; font-family:monospace;">{{ $item->sku }}</span>
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        <span style="font-weight:600; color:#1a202c; font-size:14px;">{{ $item->name }}</span>
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        @php
+                            $catColors = [
+                                'FOOD'    => ['bg'=>'#F0FFF4','color'=>'#276749'],
+                                'MEDICAL' => ['bg'=>'#EBF8FF','color'=>'#2B6CB0'],
+                                'RESCUE'  => ['bg'=>'#FFF5F5','color'=>'#C53030'],
+                                'RELIEF'  => ['bg'=>'#FFFAF0','color'=>'#C05621'],
+                            ];
+                            $cat = strtoupper($item->category);
+                            $cc = $catColors[$cat] ?? ['bg'=>'#F7FAFC','color'=>'#4A5568'];
+                        @endphp
+                        <span style="background:{{ $cc['bg'] }}; color:{{ $cc['color'] }}; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">
+                            {{ ucfirst(strtolower($item->category)) }}
+                        </span>
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        <span style="font-weight:700; font-size:15px; color:{{ $item->total_stock <= 0 ? '#dc2626' : ($item->total_stock < 10 ? '#d97706' : '#1a202c') }};">
+                            {{ number_format($item->total_stock) }}
+                        </span>
+                    </td>
+
+                    <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                        {{ $item->unit_type ?? '—' }}
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        @if(strtolower($item->type) === 'consumable')
+                            <span style="background:#EBF8FF; color:#2B6CB0; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Consumable</span>
+                        @else
+                            <span style="background:#FAF5FF; color:#6B46C1; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Returnable</span>
+                        @endif
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        @if($item->total_stock <= 0)
+                            <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Out of Stock</span>
+                        @elseif($item->total_stock < 10)
+                            <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Low Stock</span>
+                        @elseif($item->expiration_date && \Carbon\Carbon::parse($item->expiration_date)->diffInDays(now()) <= 30)
+                            <span style="background:#FFFBEB; color:#D97706; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Expiring</span>
+                        @else
+                            <span style="color:#94a3b8; font-size:13px;">—</span>
+                        @endif
+                    </td>
+
+                    <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                        {{ $item->storage_location ?? '—' }}
+                    </td>
+
+                    <td style="padding:14px 16px;">
+                        <div style="display:flex; gap:8px;">
+                            <a href="/inventory/edit/{{ $item->id }}"
+                                style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
+                                Edit
+                            </a>
+                            <form method="POST" action="/inventory/delete/{{ $item->id }}"
+                                onsubmit="return confirm('Delete this item?')" style="margin:0;">
+                                @csrf
+                                <button type="submit"
+                                    style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                                    Delete
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="9" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+                        No inventory items found.
+                    </td>
+                </tr>
+            @endforelse
+            </tbody>
+        </table>
+    </div>
 </div>
 
-{{-- SKU GENERATOR --}}
 <script>
-
-function generateSKU() {
-
-    let category =
-        document.getElementById('category').value;
-
-    let name =
-        document.getElementById('name').value;
-
-    let unit =
-        document.getElementById('unit_type').value;
-
-    let size =
-        document.getElementById('size_weight').value;
-
-    let target =
-        document.getElementById('target_beneficiary').value;
-
-    let variant =
-        document.getElementById('variant').value;
-
-    // FORMAT VALUES
-    name = name.replace(/\s+/g, '-').toUpperCase();
-
-    size = size.replace(/\s+/g, '').toUpperCase();
-
-    variant = variant.replace(/\s+/g, '-').toUpperCase();
-
-    // GENERATE SKU
-    let sku =
-        `${category}-${name}-${unit}-${size}-${target}-${variant}`;
-
-    // REMOVE DOUBLE DASH
-    sku = sku.replace(/--+/g, '-');
-
-    // REMOVE ENDING DASH
-    sku = sku.replace(/-$/, '');
-
-    // SHOW SKU
-    document.getElementById('skuPreview').innerText = sku;
-
-    // SAVE TO HIDDEN INPUT
-    document.getElementById('sku').value = sku;
+function filterTable() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const category = document.getElementById('categoryFilter').value.toUpperCase();
+    const rows = document.querySelectorAll('.table-row');
+    rows.forEach(row => {
+        const text = row.innerText.toLowerCase();
+        const rowCat = row.getAttribute('data-category');
+        const matchSearch = text.includes(search);
+        const matchCat = category === '' || rowCat === category;
+        row.style.display = matchSearch && matchCat ? '' : 'none';
+    });
 }
-
 </script>
 
 @endsection
