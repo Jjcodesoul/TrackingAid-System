@@ -149,6 +149,19 @@
                     <a href="{{ route('returns.create') }}" class="{{ request()->routeIs('returns.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-rotate-left"></i>Return Management
                     </a>
+<a href="/notifications" class="{{ request()->is('notifications*') ? 'active' : '' }}" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+    <div style="display: flex; align-items: center; gap: 12px;">
+        <i class="fa-regular fa-bell"></i>Notifications
+    </div>
+    
+    @php
+        $unreadCount = isset($notifications) ? $notifications->where('read', false)->count() : 0;
+    @endphp
+    
+    <span style="background-color: {{ $unreadCount > 0 ? '#e53e3e' : '#a0aec0' }}; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-right: 24px;">
+        {{ $unreadCount }}
+    </span>
+</a>
                     <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-users"></i>Users & Roles
                     </a>
