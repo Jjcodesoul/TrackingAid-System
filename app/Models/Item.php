@@ -18,7 +18,8 @@ class Item extends Model
         'variant',
         'type',
         'storage_location',
-        'sku'
+        'expiration_date',
+        'sku',
     ];
 
     public function stockBatches()
@@ -26,19 +27,16 @@ class Item extends Model
         return $this->hasMany(StockBatch::class);
     }
 
-    // TOTAL STOCK
     public function getTotalStockAttribute()
     {
         return $this->stockBatches->sum('quantity');
     }
 
-    // STOCK STATUS
     public function getStockStatusAttribute()
     {
-        $total = $this->total_stock;
-
-        if ($total <= 0) return 'OUT OF STOCK';
-        if ($total < 10) return 'LOW STOCK';
+        $stock = $this->total_stock;
+        if ($stock <= 0) return 'OUT OF STOCK';
+        if ($stock < 10) return 'LOW STOCK';
         return 'IN STOCK';
     }
 }

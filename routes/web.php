@@ -1,38 +1,46 @@
 <?php
 
 use App\Http\Controllers\BorrowReleaseController;
-use App\Http\Controllers\DashboardController; 
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\StockController;
-use App\Http\Controllers\UserController;      
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Root route - redirect to dashboard if authenticated, login otherwise
 Route::get('/', function () {
     if (auth()->check()) {
-        return redirect()->route('dashboard');
+        $route = auth()->user()->role === 'admin' ? 'admin.dashboard' : 'dashboard';
+        return redirect()->route($route);
     }
-    // Using a clear literal string route redirect if standard login names conflict
     return redirect('/login');
 });
 
-// Protected Routes - Require Authentication
 Route::middleware('auth')->group(function () {
-    // Dashboard
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Dashboard — auto redirect admin to admin.dashboard
+    Route::get('/dashboard', function () {
+        if (auth()->user()->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
+        return app(DashboardController::class)->index();
+    })->name('dashboard');
+
+    // Admin Dashboard
+    Route::get('/admin/dashboard', [DashboardController::class, 'adminIndex'])->name('admin.dashboard');
 
     // Inventory
-    Route::get('/inventory', [InventoryController::class, 'index']);
-    Route::post('/inventory/store', [InventoryController::class, 'store']);
+    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+    Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
     Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit']);
     Route::post('/inventory/update/{id}', [InventoryController::class, 'update']);
     Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete']);
 
     // Stock In
-    Route::get('/stock-in', [StockController::class, 'create']);
-    Route::post('/stock-in/store', [StockController::class, 'store']);
+    Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
+    Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
 
     // Requests
     Route::get('/requests', [RequestController::class, 'index'])->name('requests.index');
@@ -47,7 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
     Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
 
-    // Users & Roles Management (Added resource endpoints to handle user creation & actions)
+    // Users
     Route::get('/users', [UserController::class, 'index'])->name('users.index');
     Route::post('/users', [UserController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
@@ -55,5 +63,4 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', function () { return view('notifications');  })->name('notifications.index');
 });
 
-// Authentication Routes
 require __DIR__.'/auth.php';

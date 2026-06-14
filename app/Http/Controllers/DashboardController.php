@@ -2,21 +2,51 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Models\Item;
+use App\Models\Request as SupplyRequest;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
-   public function index()
-{
-    $stats = [
-        'total_stock'          => 0,
-        'active_requests'      => 0,
-        'low_stock'            => 0,
-        'expiring_items'       => 0,
-        'completed_deliveries' => 0,
-    ];
+    public function index()
+    {
+        return view('dashboard');
+    }
 
-    // Change 'admin.dashboard' to 'dashboard' right here:
-    return view('dashboard', compact('stats'));
-}
+    public function adminIndex()
+    {
+        // KPI Stats
+        $totalStock       = DB::table('stock_batches')->sum('quantity');
+        $activeRequests   = SupplyRequest::where('status', 'Pending')->count();
+        $approvedRequests = SupplyRequest::where('status', 'Approved')->count();
+        $rejectedRequests = SupplyRequest::where('status', 'Rejected')->count();
+        $lowStockAlerts   = Item::with('stockBatches')
+                                ->get()
+                                ->filter(fn($i) => $i->total_stock > 0 && $i->total_stock < 10)
+                                ->count();
+        $expiringItems    = Item::whereNotNull('expiration_date')
+                                ->where('expiration_date', '<=', Carbon::now()->addDays(7))
+                                ->count();
+
+        // Activity Feed — recent requests
+        $activities = SupplyRequest::with('inventory')
+                        ->latest()
+                        ->take(6)
+                        ->get();
+
+        // Request Status Overview
+        $totalRequests = SupplyRequest::count();
+
+        return view('admin.dashboard', compact(
+            'totalStock',
+            'activeRequests',
+            'approvedRequests',
+            'rejectedRequests',
+            'lowStockAlerts',
+            'expiringItems',
+            'activities',
+            'totalRequests'
+        ));
+    }
 }

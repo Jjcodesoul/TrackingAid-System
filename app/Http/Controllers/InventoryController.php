@@ -13,74 +13,48 @@ class InventoryController extends Controller
         return view('inventory.index', compact('items'));
     }
 
-   public function store(Request $request)
-{
-    // AUTO GENERATE SKU AGAIN (BACKEND SAFE)
-
-    $sku =
-        strtoupper($request->category) . '-' .
-        strtoupper(str_replace(' ', '-', $request->name)) . '-' .
-        strtoupper($request->unit_type);
-
-    if ($request->size_weight) {
-
-        $sku .= '-' .
-            strtoupper(str_replace(' ', '', $request->size_weight));
+    public function create()
+    {
+        return view('inventory.create');
     }
 
-    if ($request->target_beneficiary) {
+    public function store(Request $request)
+    {
+        $sku = strtoupper($request->category) . '-' .
+               strtoupper(str_replace(' ', '-', $request->name)) . '-' .
+               strtoupper($request->unit_type);
 
-        $sku .= '-' .
-            strtoupper($request->target_beneficiary);
+        if ($request->size_weight) {
+            $sku .= '-' . strtoupper(str_replace(' ', '', $request->size_weight));
+        }
+
+        if ($request->target_beneficiary) {
+            $sku .= '-' . strtoupper($request->target_beneficiary);
+        }
+
+        if ($request->variant && $request->variant !== 'NONE') {
+            $sku .= '-' . strtoupper(str_replace(' ', '-', $request->variant));
+        }
+
+        if (Item::where('sku', $sku)->exists()) {
+            return back()->with('error', 'SKU already exists. Please change item details.');
+        }
+
+        Item::create([
+            'name'               => $request->name,
+            'category'           => $request->category,
+            'unit_type'          => $request->unit_type,
+            'size_weight'        => $request->size_weight,
+            'target_beneficiary' => $request->target_beneficiary,
+            'variant'            => $request->variant,
+            'type'               => strtolower($request->type),
+            'storage_location'   => $request->storage_location,
+            'expiration_date'    => $request->expiration_date,
+            'sku'                => $sku,
+        ]);
+
+        return redirect('/inventory')->with('success', 'Item added successfully.');
     }
-
-    if ($request->variant) {
-
-        $sku .= '-' .
-            strtoupper(str_replace(' ', '-', $request->variant));
-    }
-
-    // CHECK DUPLICATE SKU
-    if (Item::where('sku', $sku)->exists()) {
-
-        return back()->with(
-            'error',
-            'SKU already exists.'
-        );
-    }
-
-    // SAVE
-    Item::create([
-
-        'name' => $request->name,
-
-        'category' => $request->category,
-
-        'unit_type' => $request->unit_type,
-
-        'size_weight' => $request->size_weight,
-
-        'target_beneficiary' => $request->target_beneficiary,
-
-        'variant' => $request->variant,
-
-        // FORCE LOWERCASE
-        'type' => strtolower($request->type),
-
-        'storage_location' => $request->storage_location,
-
-        // USE GENERATED SKU
-        'sku' => $sku,
-
-        // DEFAULT STOCK
-        'total_stock' => 0,
-
-        'stock_status' => 'Out of Stock',
-    ]);
-
-    return redirect('/inventory')
-        ->with('success', 'Item added successfully.');
-}
 
     public function edit($id)
     {
@@ -91,16 +65,14 @@ class InventoryController extends Controller
     public function update(Request $request, $id)
     {
         $item = Item::findOrFail($id);
-
         $item->update($request->all());
-
-        return redirect('/inventory')->with('success', 'Item updated');
+        return redirect('/inventory')->with('success', 'Item updated successfully.');
     }
 
     public function delete($id)
     {
         $item = Item::findOrFail($id);
-        $item->delete(); // soft delete
-        return redirect('/inventory')->with('success', 'Item deleted');
+        $item->delete();
+        return redirect('/inventory')->with('success', 'Item deleted successfully.');
     }
 }

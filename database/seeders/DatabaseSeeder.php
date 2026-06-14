@@ -2,8 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\Inventory;
-use App\Models\Request as SupplyRequest;
+use App\Models\Item;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
@@ -12,98 +11,131 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        // Standard Test User
+        // ─── USERS ───────────────────────────────────────────
         User::firstOrCreate(
             ['email' => 'test@example.com'],
             [
-                'name' => 'Test User',
+                'name'     => 'Test User',
                 'password' => bcrypt('password'),
+                'role'     => 'staff',
             ]
         );
 
-        // System Admin User Account
         User::firstOrCreate(
             ['email' => 'admin@trackingaid.org'],
             [
-                'name' => 'Admin User',
+                'name'     => 'Admin User',
                 'password' => bcrypt('password'),
-                'role' => 'admin', // Grants access to the admin side / Users & Roles
+                'role'     => 'admin',
             ]
         );
 
-        $rice = Inventory::firstOrCreate(
-            ['sku' => 'FOOD-RICE-SACK-50KG-ALL'],
+        // ─── INVENTORY ITEMS ─────────────────────────────────
+        $items = [
             [
-                'name' => 'Rice Sack 50KG',
-                'category' => 'Food',
-                'type' => 'Consumable',
-                'quantity' => 1200,
-                'storage_location' => 'Warehouse A',
-            ]
-        );
-
-        $medkit = Inventory::firstOrCreate(
-            ['sku' => 'MED-MEDKIT-BOX-SMALL-ALL'],
+                'sku'                => 'FOOD-RICE-SACK-50KG-ALL',
+                'name'               => 'Rice (50kg)',
+                'category'           => 'FOOD',
+                'unit_type'          => 'Sack',
+                'size_weight'        => '50KG',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'consumable',
+                'storage_location'   => 'Warehouse A',
+                'expiration_date'    => '2026-12-31',
+            ],
             [
-                'name' => 'Small Medical Kit',
-                'category' => 'Medical',
-                'type' => 'Returnable',
-                'quantity' => 300,
-                'storage_location' => 'Warehouse B',
-            ]
-        );
-
-        $blanket = Inventory::firstOrCreate(
-            ['sku' => 'RELIEF-BLANKET-PCS-MEDIUM-ALL'],
+                'sku'                => 'MEDICAL-MEDKIT-BOX-SM-ALL',
+                'name'               => 'Medical Kit (Small)',
+                'category'           => 'MEDICAL',
+                'unit_type'          => 'Box',
+                'size_weight'        => 'SM',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'consumable',
+                'storage_location'   => 'Warehouse B',
+                'expiration_date'    => '2026-08-01',
+            ],
             [
-                'name' => 'Medium Relief Blanket',
-                'category' => 'Relief',
-                'type' => 'Returnable',
-                'quantity' => 900,
-                'storage_location' => 'Warehouse C',
-            ]
-        );
-
-        $noodles = Inventory::firstOrCreate(
-            ['sku' => 'FOOD-NOODLES-PACK-REG-ADULT'],
+                'sku'                => 'MEDICAL-N95MASK-PACK-REG-ALL',
+                'name'               => 'N95 Masks',
+                'category'           => 'MEDICAL',
+                'unit_type'          => 'Pack',
+                'size_weight'        => 'REG',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'consumable',
+                'storage_location'   => 'Warehouse B',
+                'expiration_date'    => '2026-07-15',
+            ],
             [
-                'name' => 'Regular Noodles Pack',
-                'category' => 'Food',
-                'type' => 'Consumable',
-                'quantity' => 700,
-                'storage_location' => 'Warehouse A',
-            ]
-        );
-
-        $requests = [
-            ['REQ-2024-001', $rice->id, 500, 'High', 'Pending', 'Emergency food distribution', 'responder1@resqoperation.org'],
-            ['REQ-2024-002', $medkit->id, 200, 'High', 'Pending', 'Medical response supply', 'responder2@resqoperation.org'],
-            ['REQ-2024-003', $blanket->id, 300, 'Medium', 'Approved', 'Evacuation center support', 'responder3@resqoperation.org'],
-            ['REQ-2024-004', $noodles->id, 100, 'Low', 'Rejected', 'Additional food buffer', 'responder4@resqoperation.org'],
+                'sku'                => 'RESCUE-LIFEVEST-PCS-MD-ADULT',
+                'name'               => 'Life Vest (Medium)',
+                'category'           => 'RESCUE',
+                'unit_type'          => 'PCS',
+                'size_weight'        => 'MD',
+                'target_beneficiary' => 'ADULT',
+                'variant'            => 'NONE',
+                'type'               => 'returnable',
+                'storage_location'   => 'Equipment Bay',
+                'expiration_date'    => null,
+            ],
+            [
+                'sku'                => 'FOOD-NOODLES-PACK-REG-ALL',
+                'name'               => 'Instant Noodles',
+                'category'           => 'FOOD',
+                'unit_type'          => 'Pack',
+                'size_weight'        => 'REG',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'consumable',
+                'storage_location'   => 'Warehouse A',
+                'expiration_date'    => '2026-07-20',
+            ],
+            [
+                'sku'                => 'RELIEF-BLANKET-PCS-REG-ALL',
+                'name'               => 'Blankets',
+                'category'           => 'RELIEF',
+                'unit_type'          => 'PCS',
+                'size_weight'        => 'REG',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'returnable',
+                'storage_location'   => 'Warehouse C',
+                'expiration_date'    => null,
+            ],
+            [
+                'sku'                => 'FOOD-WATER-BTL-500ML-ALL',
+                'name'               => 'Water (500ml)',
+                'category'           => 'FOOD',
+                'unit_type'          => 'Bottle',
+                'size_weight'        => '500ML',
+                'target_beneficiary' => 'ALL',
+                'variant'            => 'NONE',
+                'type'               => 'consumable',
+                'storage_location'   => 'Warehouse A',
+                'expiration_date'    => '2026-07-10',
+            ],
+            [
+                'sku'                => 'RESCUE-ROPE-PCS-LG-ADULT',
+                'name'               => 'Rescue Rope (Large)',
+                'category'           => 'RESCUE',
+                'unit_type'          => 'PCS',
+                'size_weight'        => 'LG',
+                'target_beneficiary' => 'ADULT',
+                'variant'            => 'NONE',
+                'type'               => 'returnable',
+                'storage_location'   => 'Equipment Bay',
+                'expiration_date'    => null,
+            ],
         ];
 
-        foreach ($requests as [$code, $inventoryId, $quantity, $priority, $status, $purpose, $email]) {
-            SupplyRequest::firstOrCreate(
-                ['request_code' => $code],
-                [
-                    'inventory_id' => $inventoryId,
-                    'source' => 'ResQOperation',
-                    'quantity' => $quantity,
-                    'priority' => $priority,
-                    'status' => $status,
-                    'purpose' => $purpose,
-                    'responder_email' => $email,
-                    'notification_status' => $status === 'Pending' ? null : "Responder notified: request {$status}",
-                    'approved_at' => $status === 'Approved' ? now() : null,
-                    'rejected_at' => $status === 'Rejected' ? now() : null,
-                ]
+        foreach ($items as $itemData) {
+            Item::firstOrCreate(
+                ['sku' => $itemData['sku']],
+                $itemData
             );
         }
     }
