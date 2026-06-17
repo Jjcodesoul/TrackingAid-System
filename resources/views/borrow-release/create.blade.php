@@ -6,6 +6,27 @@
     <h1 class="page-title">Borrow / Release</h1>
     <div class="page-subtitle">Release inventory items for field operations</div>
 
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="panel p-3">
+                <div class="text-muted small">Approved Requests</div>
+                <div class="display-6 fw-bold">{{ $approvedRequests->count() }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel p-3">
+                <div class="text-muted small">Available Items</div>
+                <div class="display-6 fw-bold">{{ $items->count() }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="panel p-3">
+                <div class="text-muted small">Recent Releases</div>
+                <div class="display-6 fw-bold">{{ $recentReleases->count() }}</div>
+            </div>
+        </div>
+    </div>
+
     <section class="panel">
         <form action="{{ route('borrow-release.store') }}" method="POST">
             @csrf
@@ -72,6 +93,42 @@
                 <button type="reset" class="btn btn-soft">Clear Form</button>
             </div>
         </form>
+    </section>
+
+    <section class="panel mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Recent Release Activity</h5>
+            <span class="text-muted small">Latest 5 transactions</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Request</th>
+                        <th>Item</th>
+                        <th>Quantity</th>
+                        <th>Location</th>
+                        <th>Released At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($recentReleases as $release)
+                        <tr>
+                            <td>{{ $release->request->request_code ?? 'N/A' }}</td>
+                            <td>{{ $release->inventory->sku ?? 'N/A' }}</td>
+                            <td>{{ number_format($release->quantity) }}</td>
+                            <td>{{ $release->location ?? '—' }}</td>
+                            <td>{{ $release->released_at?->format('M d, Y H:i') ?? '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">No recent releases recorded yet.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </section>
 @endsection
 

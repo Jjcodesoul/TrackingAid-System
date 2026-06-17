@@ -10,7 +10,14 @@ class RequestController extends Controller
     public function index()
     {
         $requests = SupplyRequest::with('inventory')->latest()->get();
-        return view('requests.index', compact('requests'));
+        $stats = [
+            'pending' => $requests->where('status', 'Pending')->count(),
+            'approved' => $requests->where('status', 'Approved')->count(),
+            'released' => $requests->where('status', 'Released')->count(),
+            'rejected' => $requests->where('status', 'Rejected')->count(),
+        ];
+
+        return view('requests.index', compact('requests', 'stats'));
     }
 
     public function approve(SupplyRequest $request)

@@ -12,8 +12,9 @@ class ReturnController extends Controller
     public function create()
     {
         $items = Inventory::where('type', 'Returnable')->orWhere('type', 'Consumable')->get();
+        $recentReturns = ReturnItem::with('inventory')->latest()->take(5)->get();
 
-        return view('returns.create', compact('items'));
+        return view('returns.create', compact('items', 'recentReturns'));
     }
 
     public function store(Request $request)

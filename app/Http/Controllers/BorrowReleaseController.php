@@ -17,8 +17,12 @@ class BorrowReleaseController extends Controller
             ->where('status', 'Approved')
             ->latest()
             ->get();
+        $recentReleases = BorrowRelease::with(['request', 'inventory'])
+            ->latest('released_at')
+            ->take(5)
+            ->get();
 
-        return view('borrow-release.create', compact('items', 'approvedRequests'));
+        return view('borrow-release.create', compact('items', 'approvedRequests', 'recentReleases'));
     }
 
     public function store(HttpRequest $request)
