@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\Request as SupplyRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class DashboardController extends Controller
 {
@@ -25,9 +26,17 @@ class DashboardController extends Controller
                                 ->get()
                                 ->filter(fn($i) => $i->total_stock > 0 && $i->total_stock < 10)
                                 ->count();
-        $expiringItems    = Item::whereNotNull('expiration_date')
-                                ->where('expiration_date', '<=', Carbon::now()->addDays(7))
-                                ->count();
+        $expiringItems    = 0;
+
+        if (Schema::hasColumn('items', 'expiration_date')) {
+            $expiringItems = Item::whereNotNull('expiration_date')
+                ->where('expiration_date', '<=', Carbon::now()->addDays(7))
+                ->count();
+        } elseif (Schema::hasColumn('items', 'expiration')) {
+            $expiringItems = Item::whereNotNull('expiration')
+                ->where('expiration', '<=', Carbon::now()->addDays(7))
+                ->count();
+        }
 
         // Activity Feed — recent requests
         $activities = SupplyRequest::with('inventory')
