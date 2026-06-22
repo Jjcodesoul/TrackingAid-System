@@ -338,6 +338,11 @@
                     </a>
                 </li>
                 <li>
+                    <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                        <i class="fa-solid fa-chart-column"></i> Reports
+                    </a>
+                </li>
+                <li>
                     <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-users"></i> Users & Roles
                     </a>

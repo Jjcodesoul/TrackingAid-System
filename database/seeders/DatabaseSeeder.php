@@ -138,5 +138,6 @@ class DatabaseSeeder extends Seeder
                 $itemData
             );
         }
+
     }
 }

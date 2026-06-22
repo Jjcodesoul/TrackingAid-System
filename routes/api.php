@@ -13,5 +13,5 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::middleware('api')->group(function (): void {
-    // API routes can be added here when needed.
+	// API routes can be added here when needed.
 });
