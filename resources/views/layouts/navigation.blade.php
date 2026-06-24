@@ -1,3 +1,7 @@
+@php
+    $unreadCount = isset($notifications) ? $notifications->where('read', false)->count() : 0;
+@endphp
+
 <nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
@@ -33,7 +37,17 @@
                         <x-nav-link :href="url('/return-management')" :active="request()->is('return-management*')">
                             {{ __('Return Management') }}
                         </x-nav-link>
+                    @endif
 
+                    <x-nav-link :href="url('/notifications')" :active="request()->is('notifications*')" class="inline-flex items-center gap-2">
+                        {{ __('Notifications') }}
+                        <span class="inline-flex items-center justify-center px-2 py-0.5 text-xs font-bold leading-none text-white rounded-full transition-colors duration-200" 
+                              style="background-color: {{ $unreadCount > 0 ? '#e53e3e' : '#a0aec0' }};">
+                            {{ $unreadCount }}
+                        </span>
+                    </x-nav-link>
+
+                    @if(Auth::check() && Auth::user()->role === 'admin')
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
                             {{ __('Users & Roles') }}
                         </x-nav-link>
@@ -115,7 +129,17 @@
                 <x-responsive-nav-link :href="url('/return-management')" :active="request()->is('return-management*')">
                     {{ __('Return Management') }}
                 </x-responsive-nav-link>
+            @endif
 
+            <x-responsive-nav-link :href="url('/notifications')" :active="request()->is('notifications*')" class="flex justify-between items-center">
+                <span>{{ __('Notifications') }}</span>
+                <span class="inline-flex items-center justify-center px-2.5 py-0.5 text-xs font-bold leading-none text-white rounded-full" 
+                      style="background-color: {{ $unreadCount > 0 ? '#e53e3e' : '#a0aec0' }}; margin-right: 16px;">
+                    {{ $unreadCount }}
+                </span>
+            </x-responsive-nav-link>
+
+            @if(Auth::check() && Auth::user()->role === 'admin')
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.index')">
                     {{ __('Users & Roles') }}
                 </x-responsive-nav-link>

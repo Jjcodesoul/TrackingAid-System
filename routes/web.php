@@ -75,3 +75,21 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+// ─── TEMPORARY ROUTE TO FORCE REGISTER ADMIN USER ────────────────────────────
+// Note: This sits outside the 'auth' middleware group so you can access it without logging in!
+Route::get('/force-register-admin', function () {
+    try {
+        $user = \App\Models\User::updateOrCreate(
+            ['email' => 'admin@trackingaid.org'],
+            [
+                'name' => 'Admin User',
+                'password' => hash('sha256', 'password') ? bcrypt('password') : password_hash('password', PASSWORD_BCRYPT),
+                'role' => 'admin'
+            ]
+        );
+        return "Success! Admin user has been forced into the database.";
+    } catch (\Exception $e) {
+        return "Error creating user: " . $e->getMessage();
+    }
+});

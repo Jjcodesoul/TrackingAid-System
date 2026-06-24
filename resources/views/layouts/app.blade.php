@@ -1,3 +1,8 @@
+@php
+    // Safe initialization to avoid 'Undefined variable' crashes across layout views
+    $unreadCount = isset($notifications) ? $notifications->where('read', false)->count() : 0;
+@endphp
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,7 +88,7 @@
         .nav-menu a {
             display: flex;
             align-items: center;
-            gap: 11px;
+            justify-content: space-between; /* Adjusted to separate text and badge */
             padding: 11px 14px;
             color: rgba(255,255,255,0.6);
             text-decoration: none;
@@ -93,6 +98,11 @@
             margin-bottom: 2px;
             transition: all 0.15s ease;
             letter-spacing: .01em;
+        }
+        .nav-menu .nav-left-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 11px;
         }
         .nav-menu a i {
             width: 18px;
@@ -112,6 +122,16 @@
             font-weight: 600;
         }
         .nav-menu a.active i { color: #2ecc71; }
+
+        /* SIDEBAR BADGE */
+        .sidebar-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 999px;
+            color: white;
+            transition: background-color 0.15s ease;
+        }
 
         /* MAIN */
         .main { flex: 1; margin-left: 260px; display: flex; flex-direction: column; }
@@ -201,31 +221,6 @@
         }
         .btn-main:hover { background: #27ae60; color: white; }
 
-        .btn-edit {
-            background: #EBF8FF;
-            color: #2B6CB0;
-            padding: 5px 13px;
-            border-radius: 7px;
-            font-size: 12.5px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: background 0.15s;
-        }
-        .btn-edit:hover { background: #BEE3F8; }
-
-        .btn-danger-custom {
-            background: #FEF2F2;
-            color: #DC2626;
-            border: none;
-            padding: 5px 13px;
-            border-radius: 7px;
-            font-size: 12.5px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.15s;
-        }
-        .btn-danger-custom:hover { background: #FECACA; }
-
         /* TABLES */
         table { width: 100%; border-collapse: collapse; }
         th {
@@ -246,46 +241,6 @@
             border-bottom: 1px solid #f1f5f9;
             vertical-align: middle;
         }
-        tr:last-child td { border-bottom: none; }
-        tr:hover td { background: #fafbfc; }
-
-        /* FORMS */
-        label {
-            display: block;
-            font-size: 12.5px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 6px;
-            letter-spacing: .01em;
-        }
-        input, select, textarea {
-            width: 100%;
-            padding: 9px 13px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 13.5px;
-            font-family: 'Inter', sans-serif;
-            color: var(--text-dark);
-            background: white;
-            outline: none;
-            transition: border-color .15s;
-            margin-bottom: 14px;
-        }
-        input:focus, select:focus, textarea:focus {
-            border-color: #2ecc71;
-            box-shadow: 0 0 0 3px rgba(46,204,113,0.1);
-        }
-
-        /* BADGES */
-        .badge-success { background: #ECFDF5; color: #059669; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-        .badge-warning { background: #FFFBEB; color: #D97706; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-        .badge-danger  { background: #FEF2F2; color: #DC2626; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-
-        /* SCROLLBARS */
-        .sidebar::-webkit-scrollbar { width: 5px; }
-        .sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-        .page-content::-webkit-scrollbar { width: 7px; }
-        .page-content::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 4px; }
 
         /* RESPONSIVE */
         @media (max-width: 900px) {
@@ -308,35 +263,59 @@
             <ul class="nav-menu">
                 <li>
                     <a href="{{ route('dashboard') }}" class="{{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') ? 'active' : '' }}">
-                        <i class="fa-solid fa-table-cells-large"></i> Dashboard
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-table-cells-large"></i> <span>Dashboard</span>
+                        </div>
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('requests.index') }}" class="{{ request()->routeIs('requests.*') ? 'active' : '' }}">
-                        <i class="fa-regular fa-clipboard"></i> Requests
+                        <div class="nav-left-wrapper">
+                            <i class="fa-regular fa-clipboard"></i> <span>Requests</span>
+                        </div>
                     </a>
                 </li>
                 <li>
                     <a href="/inventory" class="{{ request()->is('inventory*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-cube"></i> Inventory
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-cube"></i> <span>Inventory</span>
+                        </div>
                     </a>
                 </li>
                 @if(Auth::check() && Auth::user()->role === 'admin')
                 <li>
                     <a href="/stock-in" class="{{ request()->is('stock-in*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-arrow-down"></i> Stock In
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-arrow-down"></i> <span>Stock In</span>
+                        </div>
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('borrow-release.create') }}" class="{{ request()->routeIs('borrow-release.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-arrow-right-arrow-left"></i> Borrow / Release
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-arrow-right-arrow-left"></i> <span>Borrow / Release</span>
+                        </div>
                     </a>
                 </li>
                 <li>
                     <a href="{{ route('returns.create') }}" class="{{ request()->routeIs('returns.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-rotate-left"></i> Return Management
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-rotate-left"></i> <span>Return Management</span>
+                        </div>
                     </a>
                 </li>
+
+                <li>
+                    <a href="/notifications" class="{{ request()->is('notifications*') ? 'active' : '' }}">
+                        <div class="nav-left-wrapper">
+                            <i class="fa-regular fa-bell"></i> <span>Notifications</span>
+                        </div>
+                        <span class="sidebar-badge" style="background-color: {{ $unreadCount > 0 ? '#dc2626' : '#64748b' }};">
+                            {{ $unreadCount }}
+                        </span>
+                    </a>
+                </li>
+
                 <li>
                     <a href="{{ route('reports.index') }}" class="{{ request()->routeIs('reports.*') ? 'active' : '' }}">
                         <i class="fa-solid fa-chart-column"></i> Reports
@@ -344,7 +323,9 @@
                 </li>
                 <li>
                     <a href="{{ route('users.index') }}" class="{{ request()->routeIs('users.*') ? 'active' : '' }}">
-                        <i class="fa-solid fa-users"></i> Users & Roles
+                        <div class="nav-left-wrapper">
+                            <i class="fa-solid fa-users"></i> <span>Users & Roles</span>
+                        </div>
                     </a>
                 </li>
                 @endif
