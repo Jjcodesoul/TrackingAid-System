@@ -11,17 +11,20 @@ use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
+// 1. Landing Root Route
 Route::get('/', function () {
     if (auth()->check()) {
-        $route = auth()->user()->role === 'admin' ? 'admin.dashboard' : 'dashboard';
-        return redirect()->route($route);
+        return auth()->user()->role === 'admin' 
+            ? redirect()->route('admin.dashboard') 
+            : redirect()->route('dashboard');
     }
     return redirect('/login');
 });
 
+// All authenticated routes (Admin + User/Staff)
 Route::middleware('auth')->group(function () {
 
-    // Dashboard — auto redirect admin to admin.dashboard
+    // 2. Regular User Dashboard
     Route::get('/dashboard', function () {
         if (auth()->user()->role === 'admin') {
             return redirect()->route('admin.dashboard');
@@ -29,67 +32,70 @@ Route::middleware('auth')->group(function () {
         return app(DashboardController::class)->index();
     })->name('dashboard');
 
-    // Admin Dashboard
-    Route::get('/admin/dashboard', [DashboardController::class, 'adminIndex'])->name('admin.dashboard');
 
-    // Inventory
+    // 3. 🛑 ADMIN-ONLY CONTROL PANEL ROUTES
+    Route::group([], function () {
+        
+        Route::get('/admin/dashboard', function () {
+            if (auth()->user()->role !== 'admin') {
+                return redirect()->route('dashboard')->with('error', 'Access denied.');
+            }
+            return app(DashboardController::class)->adminIndex();
+        })->name('admin.dashboard');
+
+        // Admin Only Actions
+        Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+        Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
+        Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit'])->name('inventory.edit');
+        Route::post('/inventory/update/{id}', [InventoryController::class, 'update'])->name('inventory.update');
+        Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete'])->name('inventory.delete');
+
+        Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
+        Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
+
+        Route::post('/requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
+        Route::post('/requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
+
+        Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');
+
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+
+    // 4. SHARED FEATURES (Both Admin and Staff can open these routes)
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
-    Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
-    Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
-    Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit']);
-    Route::post('/inventory/update/{id}', [InventoryController::class, 'update']);
-    Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete']);
-
-    // Stock In
-    Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
-    Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
-
-    // Requests
     Route::get('/requests', [RequestController::class, 'index'])->name('requests.index');
-    Route::post('/requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
-    Route::post('/requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
-
-    // Borrow/Release
     Route::get('/borrow-release', [BorrowReleaseController::class, 'create'])->name('borrow-release.create');
     Route::post('/borrow-release', [BorrowReleaseController::class, 'store'])->name('borrow-release.store');
-
-    // Returns
     Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
     Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
 
-    // Reports
-    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
-    Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');
-
-    // Profile
+    // System Utilities
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
-
-    // Users & Roles Management (Added resource endpoints to handle user creation & actions)
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store');
-    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
-    Route::get('/notifications', function () { return view('notifications');  })->name('notifications.index');
+    Route::get('/notifications', function () { return view('notifications'); })->name('notifications.index');
 });
 
 require __DIR__.'/auth.php';
 
-// ─── TEMPORARY ROUTE TO FORCE REGISTER ADMIN USER ────────────────────────────
-// Note: This sits outside the 'auth' middleware group so you can access it without logging in!
+// ─── TEMPORARY REGISTRATION UTILITY ──────────────────────────────────────────
 Route::get('/force-register-admin', function () {
     try {
         $user = \App\Models\User::updateOrCreate(
             ['email' => 'admin@trackingaid.org'],
             [
                 'name' => 'Admin User',
-                'password' => hash('sha256', 'password') ? bcrypt('password') : password_hash('password', PASSWORD_BCRYPT),
+                'password' => bcrypt('password'),
                 'role' => 'admin'
             ]
         );
-        return "Success! Admin user has been forced into the database.";
+        return "Success! Admin user configuration injected.";
     } catch (\Exception $e) {
-        return "Error creating user: " . $e->getMessage();
+        return "Error: " . $e->getMessage();
     }
 });

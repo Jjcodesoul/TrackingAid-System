@@ -23,11 +23,12 @@ class AuthenticatedSessionController extends Controller
 
         $user = Auth::user();
 
+        // Strict role-based routing right after a successful login click
         if ($user->role === 'admin') {
-            return redirect()->intended(route('admin.dashboard'));
+            return redirect()->route('admin.dashboard');
         }
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->route('dashboard');
     }
 
     public function destroy(Request $request): RedirectResponse

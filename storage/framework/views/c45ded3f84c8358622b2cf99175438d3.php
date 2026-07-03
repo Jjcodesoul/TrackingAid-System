@@ -1,7 +1,16 @@
-<x-app-layout>
+<?php if (isset($component)) { $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54 = $attributes; } ?>
+<?php $component = App\View\Components\AppLayout::resolve([] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('app-layout'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\App\View\Components\AppLayout::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes([]); ?>
     <div class="p-8 bg-slate-50 min-h-screen text-left relative">
         
-        {{-- Header Bar --}}
+        
         <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-6 mb-6 gap-4">
             <div>
                 <h1 class="text-xl font-bold text-slate-900 tracking-wide m-0 p-0">Users & Roles</h1>
@@ -16,7 +25,7 @@
             </div>
         </div>
 
-        {{-- Main Users Output Table Section --}}
+        
         <div class="bg-white border border-slate-200 rounded-none p-6 shadow-sm">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left text-slate-600 border-collapse">
@@ -29,15 +38,16 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @isset($users)
-                            @foreach($users as $userItem)
+                        <?php if(isset($users)): ?>
+                            <?php $__currentLoopData = $users; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $userItem): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                                 <tr class="hover:bg-slate-50/70 transition-colors">
-                                    <td class="px-4 py-3.5 font-medium text-slate-900">{{ $userItem->name }}</td>
-                                    <td class="px-4 py-3.5">{{ $userItem->email }}</td>
+                                    <td class="px-4 py-3.5 font-medium text-slate-900"><?php echo e($userItem->name); ?></td>
+                                    <td class="px-4 py-3.5"><?php echo e($userItem->email); ?></td>
                                     <td class="px-4 py-3.5">
                                         <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-none uppercase
-                                            {{ $userItem->role === 'admin' ? 'bg-amber-50 text-amber-800 border border-amber-200' : ($userItem->role === 'staff' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700') }}">
-                                            {{ $userItem->role }}
+                                            <?php echo e($userItem->role === 'admin' ? 'bg-amber-50 text-amber-800 border border-amber-200' : ($userItem->role === 'staff' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700')); ?>">
+                                            <?php echo e($userItem->role); ?>
+
                                         </span>
                                     </td>
                                     <td class="px-4 py-3.5 text-right">
@@ -45,8 +55,8 @@
                                         <button class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
                                     </td>
                                 </tr>
-                            @endforeach
-                        @else
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        <?php else: ?>
                             <tr class="hover:bg-slate-50/70 transition-colors">
                                 <td class="px-4 py-3.5 font-medium text-slate-900">Test User</td>
                                 <td class="px-4 py-3.5">test@example.com</td>
@@ -69,13 +79,13 @@
                                     <button class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
                                 </td>
                             </tr>
-                        @endisset
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        {{-- Fixed Layout: Only 'hidden' is applied initially --}}
+        
         <div id="user-form-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm items-center justify-center p-4">
             
             <div class="bg-white border border-slate-200 rounded-none shadow-xl w-full max-w-2xl transform transition-all">
@@ -91,7 +101,7 @@
                 </div>
 
                 <form method="POST" action="/users" class="m-0 p-0">
-                    @csrf
+                    <?php echo csrf_field(); ?>
                     
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -162,4 +172,13 @@
             document.body.style.overflow = 'auto';
         }
     </script>
-</x-app-layout>
+ <?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $attributes = $__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__attributesOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54)): ?>
+<?php $component = $__componentOriginal9ac128a9029c0e4701924bd2d73d7f54; ?>
+<?php unset($__componentOriginal9ac128a9029c0e4701924bd2d73d7f54); ?>
+<?php endif; ?><?php /**PATH C:\Capstone\bag o\TrackingAid-System\resources\views/users/index.blade.php ENDPATH**/ ?>

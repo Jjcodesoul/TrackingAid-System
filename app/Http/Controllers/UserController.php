@@ -21,8 +21,8 @@ class UserController extends Controller
             abort(403, 'Unauthorized access to user registry.');
         }
 
-        // Fetch non-admin users for the table
-        $users = User::where('role', '!=', 'admin')->get();
+        // Fetch ALL users so everyone added displays in your dashboard management table
+        $users = User::all();
 
         return view('users.index', compact('users'));
     }
@@ -41,7 +41,6 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            // FIXED: Added 'staff' to match your front-end dropdown configuration choice
             'role' => 'required|string|in:admin,user,staff', 
         ]);
 
@@ -53,6 +52,35 @@ class UserController extends Controller
         ]);
 
         return redirect()->route('users.index')->with('success', 'Personnel authorized successfully.');
+    }
+
+    /**
+     * Update the specified user's information.
+     */
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
+            'password' => 'nullable|string|min:8',
+            'role' => 'required|string|in:admin,user,staff',
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+        $user->role = $validated['role'];
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        return redirect()->route('users.index')->with('success', 'User updated successfully.');
     }
 
     /**
