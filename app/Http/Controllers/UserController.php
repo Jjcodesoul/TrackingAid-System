@@ -55,13 +55,28 @@ class UserController extends Controller
     }
 
     /**
-     * Update the specified user's information.
+     * Render the individual user edit form view.
      */
-    public function update(Request $request, User $user): RedirectResponse
+    public function edit($id): View
     {
         if (Auth::user()->role !== 'admin') {
             abort(403, 'Unauthorized action.');
         }
+
+        $user = User::findOrFail($id);
+        return view('users.edit', compact('user'));
+    }
+
+    /**
+     * Update the specified user's information.
+     */
+    public function update(Request $request, $id): RedirectResponse
+    {
+        if (Auth::user()->role !== 'admin') {
+            abort(403, 'Unauthorized action.');
+        }
+
+        $user = User::findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -86,12 +101,14 @@ class UserController extends Controller
     /**
      * Remove the specified user from storage (Disable/Delete).
      */
-    public function destroy(User $user): RedirectResponse
+    public function destroy($id): RedirectResponse
     {
         // Safety: Restrict destructive actions to administrators only
         if (Auth::user()->role !== 'admin') {
             abort(403, 'Unauthorized action.');
         }
+
+        $user = User::findOrFail($id);
 
         // Safety: Prevent deleting your own logged-in session account
         if (Auth::id() === $user->id) {

@@ -43,7 +43,7 @@ Route::middleware('auth')->group(function () {
             return app(DashboardController::class)->adminIndex();
         })->name('admin.dashboard');
 
-        // Admin Only Actions
+        // Admin Only Inventory Actions
         Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
         Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
         Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit'])->name('inventory.edit');
@@ -59,10 +59,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');
 
+        // 👥 User Management Actions (Fixed to work perfectly with standard browser form submissions)
         Route::get('/users', [UserController::class, 'index'])->name('users.index');
         Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::get('/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
+        Route::post('/users/update/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::post('/users/delete/{id}', [UserController::class, 'destroy'])->name('users.destroy');
     });
 
 

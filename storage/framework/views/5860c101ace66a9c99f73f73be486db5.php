@@ -59,7 +59,9 @@
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Type</th>
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Flags</th>
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Location</th>
-                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
+                    <?php if(auth()->user()->role === 'admin'): ?>
+                        <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <tbody id="inventoryTable">
@@ -128,27 +130,29 @@
 
                     </td>
 
-                    <td style="padding:14px 16px;">
-                        <div style="display:flex; gap:8px;">
-                            <a href="/inventory/edit/<?php echo e($item->id); ?>"
-                                style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
-                                Edit
-                            </a>
-                            <form method="POST" action="/inventory/delete/<?php echo e($item->id); ?>"
-                                onsubmit="return confirm('Delete this item?')" style="margin:0;">
-                                <?php echo csrf_field(); ?>
-                                <button type="submit"
-                                    style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
-                                    Delete
-                                </button>
-                            </form>
-                        </div>
-                    </td>
+                    <?php if(auth()->user()->role === 'admin'): ?>
+                        <td style="padding:14px 16px; text-align:right;">
+                            <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                                <a href="<?php echo e(route('inventory.edit', $item->id)); ?>"
+                                    style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
+                                    Edit
+                                </a>
+                                <form method="POST" action="<?php echo e(route('inventory.delete', $item->id)); ?>"
+                                    onsubmit="return confirm('Delete this item?')" style="margin:0; padding:0; display:inline-block;">
+                                    <?php echo csrf_field(); ?>
+                                    <button type="submit"
+                                        style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    <?php endif; ?>
 
                 </tr>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <tr>
-                    <td colspan="9" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+                    <td colspan="<?php echo e(auth()->user()->role === 'admin' ? 9 : 8); ?>" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
                         No inventory items found.
                     </td>
                 </tr>
@@ -174,5 +178,4 @@ function filterTable() {
 </script>
 
 <?php $__env->stopSection(); ?>
-
 <?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Capstone\bag o\TrackingAid-System\resources\views/inventory/index.blade.php ENDPATH**/ ?>

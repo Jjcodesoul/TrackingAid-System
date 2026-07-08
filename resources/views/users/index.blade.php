@@ -41,8 +41,14 @@
                                         </span>
                                     </td>
                                     <td class="px-4 py-3.5 text-right">
-                                        <button class="text-slate-400 hover:text-slate-600 font-medium mr-3 bg-transparent border-none p-0 cursor-pointer text-xs">Edit</button>
-                                        <button class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
+                                        <div class="flex items-center justify-end gap-3">
+                                            <a href="{{ route('users.edit', $userItem->id) }}" class="text-slate-400 hover:text-slate-600 font-medium text-xs no-underline">Edit</a>
+                                            
+                                            <form action="{{ route('users.destroy', $userItem->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this user access?');" class="m-0 p-0 inline">
+                                                @csrf
+                                                <button type="submit" class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -54,8 +60,7 @@
                                     <span class="inline-flex px-2 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 rounded-none uppercase">Staff</span>
                                 </td>
                                 <td class="px-4 py-3.5 text-right">
-                                    <button class="text-slate-400 hover:text-slate-600 font-medium mr-3 bg-transparent border-none p-0 cursor-pointer text-xs">Edit</button>
-                                    <button class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
+                                    <span class="text-slate-300 text-xs italic">Static Mode</span>
                                 </td>
                             </tr>
                             <tr class="hover:bg-slate-50/70 transition-colors">
@@ -65,8 +70,7 @@
                                     <span class="inline-flex px-2 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-none uppercase">Admin</span>
                                 </td>
                                 <td class="px-4 py-3.5 text-right">
-                                    <button class="text-slate-400 hover:text-slate-600 font-medium mr-3 bg-transparent border-none p-0 cursor-pointer text-xs">Edit</button>
-                                    <button class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
+                                    <span class="text-slate-300 text-xs italic">Static Mode</span>
                                 </td>
                             </tr>
                         @endisset
@@ -117,6 +121,7 @@
                                         <option value="" disabled selected>Select option...</option>
                                         <option value="user">User</option>
                                         <option value="staff">Staff</option>
+                                        <option value="admin">Admin</option>
                                     </select>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
                                         <i class="fa-solid fa-chevron-down"></i>
@@ -137,7 +142,7 @@
                              Close
                         </button>
                         <button type="submit" class="px-4 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 border-none rounded-none cursor-pointer transition-colors shadow-sm uppercase tracking-wide">
-                            Save User Record
+                             Save User Record
                         </button>
                     </div>
                 </form>

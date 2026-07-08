@@ -59,7 +59,9 @@
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Type</th>
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Flags</th>
                     <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Location</th>
-                    <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
+                    @if(auth()->user()->role === 'admin')
+                        <th style="padding:12px 16px; text-align:right; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
+                    @endif
                 </tr>
             </thead>
             <tbody id="inventoryTable">
@@ -124,27 +126,29 @@
                         {{ $item->storage_location ?? '—' }}
                     </td>
 
-                    <td style="padding:14px 16px;">
-                        <div style="display:flex; gap:8px;">
-                            <a href="/inventory/edit/{{ $item->id }}"
-                                style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
-                                Edit
-                            </a>
-                            <form method="POST" action="/inventory/delete/{{ $item->id }}"
-                                onsubmit="return confirm('Delete this item?')" style="margin:0;">
-                                @csrf
-                                <button type="submit"
-                                    style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
-                                    Delete
-                                </button>
-                            </form>
-                        </div>
-                    </td>
+                    @if(auth()->user()->role === 'admin')
+                        <td style="padding:14px 16px; text-align:right;">
+                            <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                                <a href="{{ route('inventory.edit', $item->id) }}"
+                                    style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
+                                    Edit
+                                </a>
+                                <form method="POST" action="{{ route('inventory.delete', $item->id) }}"
+                                    onsubmit="return confirm('Delete this item?')" style="margin:0; padding:0; display:inline-block;">
+                                    @csrf
+                                    <button type="submit"
+                                        style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                                        Delete
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    @endif
 
                 </tr>
             @empty
                 <tr>
-                    <td colspan="9" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+                    <td colspan="{{ auth()->user()->role === 'admin' ? 9 : 8 }}" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
                         No inventory items found.
                     </td>
                 </tr>
