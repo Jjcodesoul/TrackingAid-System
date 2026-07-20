@@ -5,6 +5,35 @@
 @section('content')
     <div class="p-6 bg-[#f8fafc] min-h-screen text-left">
         
+        {{-- Flash Messages --}}
+        @if(session('success'))
+            <div class="mb-4 px-5 py-3 bg-[#f0fdf4] border border-[#86efac] text-[#166534] text-[13px] font-medium rounded-none shadow-sm flex items-center gap-3">
+                <i class="fa-solid fa-circle-check text-[#16a34a]"></i>
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-4 px-5 py-3 bg-[#fef2f2] border border-[#fca5a5] text-[#991b1b] text-[13px] font-medium rounded-none shadow-sm flex items-center gap-3">
+                <i class="fa-solid fa-circle-exclamation text-[#dc2626]"></i>
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if($errors->any())
+            <div class="mb-4 px-5 py-3 bg-[#fffbeb] border border-[#fde68a] text-[#92400e] text-[13px] font-medium rounded-none shadow-sm">
+                <div class="flex items-center gap-3 mb-1.5">
+                    <i class="fa-solid fa-triangle-exclamation text-[#d97706]"></i>
+                    <span>Please fix the following errors:</span>
+                </div>
+                <ul class="m-0 pl-5 text-[12px] space-y-0.5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
         {{-- Header Section --}}
         <div class="mb-6">
             <h1 class="text-[24px] font-semibold text-[#0f172a] tracking-tight m-0">Borrow / Release</h1>
@@ -151,6 +180,16 @@
             itemSelect.value = selected.dataset.inventoryId || '';
             quantityInput.value = selected.dataset.quantity || '';
             purposeInput.value = selected.dataset.purpose || '';
+        });
+
+        document.querySelector('form')?.addEventListener('submit', function (e) {
+            const submitBtn = this.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
+                submitBtn.classList.remove('bg-[#22c55e]', 'hover:bg-[#16a34a]');
+                submitBtn.classList.add('bg-[#94a3b8]', 'cursor-not-allowed');
+            }
         });
     </script>
 @endpush

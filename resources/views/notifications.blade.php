@@ -20,7 +20,7 @@
     .notif-title h2 {
         font-size: 24px;
         font-weight: 700;
-        color: var(--text-dark);
+        color: #0f172a;
     }
 
     .notif-title span {
@@ -31,10 +31,50 @@
     .notif-list {
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 12px;
     }
 
-    /* Beautiful empty-state design matching your application wrapper */
+    .notif-card {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+        padding: 16px 18px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .notif-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f0fdf4;
+        color: #16a34a;
+        flex-shrink: 0;
+    }
+
+    .notif-card h3 {
+        margin: 0 0 4px;
+        font-size: 15px;
+        font-weight: 700;
+        color: #0f172a;
+    }
+
+    .notif-card p {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: #475569;
+    }
+
+    .notif-card .meta {
+        font-size: 12px;
+        color: #64748b;
+    }
+
     .empty-notifications {
         display: flex;
         flex-direction: column;
@@ -62,22 +102,39 @@
 </style>
 
 <div class="notif-container">
-    @php
-        // Empty array because no real requests or stock drops have occurred yet
-        $systemNotifications = []; 
-        $unreadCount = count($systemNotifications);
-    @endphp
-
     <div class="notif-header">
         <div class="notif-title">
             <h2>Notifications</h2>
-            <span>{{ $unreadCount }} unread</span>
+            <span>{{ $notifications->count() }} total</span>
         </div>
+        <a href="{{ route('requests.index') }}" class="btn-soft">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            View requests
+        </a>
     </div>
 
     <div class="notif-list">
-        @forelse($systemNotifications as $notif)
-            @empty
+        @forelse($notifications as $notif)
+            <div class="notif-card {{ $notif->updated_at > session('notifications_last_viewed_at', now()->subYear()) ? 'ring-1 ring-emerald-200' : '' }}">
+                <div class="notif-icon">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="flex-1">
+                    <h3>{{ $notif->request_code ?? 'Request update' }}
+                        @if($notif->updated_at > session('notifications_last_viewed_at', now()->subYear()))
+                            <span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-emerald-500 rounded-none align-middle">NEW</span>
+                        @endif
+                    </h3>
+                    <p>{{ $notif->notification_status }}</p>
+                    <div class="meta">
+                        <span>{{ optional($notif->updated_at)->format('M d, Y H:i') }}</span>
+                        @if($notif->inventory)
+                            <span> • {{ $notif->inventory->name }}</span>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        @empty
             <div class="empty-notifications">
                 <i class="fa-regular fa-bell-slash"></i>
                 <div>

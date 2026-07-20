@@ -1,5 +1,4 @@
 @php
-    $unreadCount = isset($notifications) ? $notifications->where('read', false)->count() : 0;
     $requestsCount = isset($requestsCount) ? $requestsCount : 0;
 @endphp
 
@@ -12,10 +11,14 @@
     <title>TrackingAid - Disaster Logistics System</title>
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            corePlugins: {
+                preflight: false,   /* prevent conflict with Bootstrap resets */
+            },
             theme: {
                 extend: {
                     colors: {
@@ -33,6 +36,84 @@
             }
         }
     </script>
+
+    <style>
+        /* ── Shared custom components used across views ── */
+        .panel {
+            background: #ffffff;
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            padding: 24px;
+        }
+
+        .card-ui {
+            background: #ffffff;
+            border: 1px solid #edf2f7;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+
+        .btn-main {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            background: #1a202c;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+        .btn-main:hover {
+            background: #2d3748;
+            color: #fff;
+        }
+
+        .btn-soft {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            background: #f1f5f9;
+            color: #374151;
+            font-size: 13px;
+            font-weight: 600;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+        .btn-soft:hover {
+            background: #e2e8f0;
+        }
+
+        .page-title {
+            font-size: 22px;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 0;
+        }
+        .page-subtitle {
+            font-size: 13px;
+            color: #64748B;
+            margin: 4px 0 0;
+        }
+
+        .note {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            color: #92400E;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+    </style>
 </head>
 <body class="h-full font-sans antialiased bg-slate-50 text-slate-900 m-0 p-0">
 
@@ -158,12 +239,12 @@
 
                 <div class="flex items-center gap-6">
                     
-                    <button class="text-slate-400 hover:text-slate-600 relative border-none bg-transparent cursor-pointer p-1.5 flex items-center justify-center">
+                    <a href="{{ route('notifications.index') }}" class="text-slate-400 hover:text-slate-600 relative border-none bg-transparent cursor-pointer p-1.5 flex items-center justify-center" title="Notifications">
                         <i class="fa-regular fa-bell text-lg"></i>
                         @if($unreadCount > 0)
                             <span class="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
                         @endif
-                    </button>
+                    </a>
                     
                     <div class="flex items-center gap-3 min-w-0 border-l border-slate-200 pl-6">
                         <div class="w-9 h-9 bg-emerald-600 text-white font-bold text-sm flex items-center justify-center rounded-none shrink-0 shadow-sm">
@@ -197,5 +278,111 @@
 
     </div>
 
+    @stack('scripts')
+
+    {{-- ── Real-time notification polling ── --}}
+    <script>
+        (function() {
+            let previousCount = {{ $unreadCount }};
+            let notifiedHashes = new Set();
+
+            // Request permission for browser notifications on first visit
+            if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+
+            function updateBadge(count) {
+                // Sidebar count badge
+                const sidebarBadge = document.querySelector('a[href="/notifications"] .bg-rose-500');
+                const sidebarLink = document.querySelector('a[href="/notifications"]');
+
+                if (count > 0) {
+                    if (sidebarBadge) {
+                        sidebarBadge.textContent = count;
+                    } else if (sidebarLink) {
+                        const badge = document.createElement('span');
+                        badge.className = 'px-2 py-0.5 text-xs font-bold rounded-none bg-rose-500 text-white';
+                        badge.textContent = count;
+                        sidebarLink.appendChild(badge);
+                    }
+                } else {
+                    if (sidebarBadge) sidebarBadge.remove();
+                }
+
+                // Header bell red dot
+                const bellLink = document.querySelector('a[title="Notifications"]');
+                const existingDot = bellLink?.querySelector('.bell-dot');
+
+                if (count > 0) {
+                    if (!existingDot && bellLink) {
+                        const dot = document.createElement('span');
+                        dot.className = 'bell-dot absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full';
+                        bellLink.appendChild(dot);
+                    }
+                } else {
+                    if (existingDot) existingDot.remove();
+                }
+            }
+
+            function showDesktopAlert(notification) {
+                if (!('Notification' in window) || Notification.permission !== 'granted') return;
+                if (!notification) return;
+
+                // Avoid duplicate notifications for the same item
+                const hash = notification.request_code + notification.notification_status;
+                if (notifiedHashes.has(hash)) return;
+                notifiedHashes.add(hash);
+
+                const title = notification.item_name
+                    ? 'New Alert: ' + notification.item_name
+                    : 'New Notification';
+
+                const body = notification.notification_status || 'You have a new alert.';
+
+                try {
+                    const n = new Notification(title, {
+                        body: body,
+                        icon: '/favicon.ico',
+                        tag: 'trackingaid-notification',
+                    });
+
+                    n.onclick = function () {
+                        window.focus();
+                        window.location.href = '{{ route('notifications.index') }}';
+                        this.close();
+                    };
+                } catch (e) {
+                    // Silently fail if notification API throws
+                }
+            }
+
+            function poll() {
+                fetch('{{ route('notifications.unread-json') }}', {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    const count = data.unreadCount || 0;
+
+                    // If count increased, show an alert
+                    if (count > previousCount) {
+                        showDesktopAlert(data.latest);
+                    }
+
+                    previousCount = count;
+                    updateBadge(count);
+                })
+                .catch(function () {
+                    // Silently ignore polling errors (network down, etc.)
+                });
+            }
+
+            // Poll every 30 seconds
+            setInterval(poll, 30000);
+
+            // Also poll immediately on page load so the badge is fresh
+            poll();
+        })();
+    </script>
 </body>
 </html>

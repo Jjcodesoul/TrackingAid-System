@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
@@ -139,5 +140,29 @@ class DatabaseSeeder extends Seeder
             );
         }
 
+        // ─── INVENTORY TABLE (for FK relationships) ──────────
+        $inventoryRecords = [
+            ['name' => 'Rice (50kg)',            'category' => 'FOOD',    'sku' => 'FOOD-RICE-SACK-50KG-ALL',      'type' => 'Consumable',  'quantity' => 450, 'expiration' => '2026-12-31', 'storage_location' => 'Warehouse A'],
+            ['name' => 'Medical Kit (Small)',     'category' => 'MEDICAL', 'sku' => 'MEDICAL-MEDKIT-BOX-SM-ALL',    'type' => 'Consumable',  'quantity' => 8,   'expiration' => '2026-08-01', 'storage_location' => 'Warehouse B'],
+            ['name' => 'N95 Masks',              'category' => 'MEDICAL', 'sku' => 'MEDICAL-N95MASK-PACK-REG-ALL', 'type' => 'Consumable',  'quantity' => 1240,'expiration' => '2026-07-15', 'storage_location' => 'Warehouse B'],
+            ['name' => 'Life Vest (Medium)',     'category' => 'RESCUE',  'sku' => 'RESCUE-LIFEVEST-PCS-MD-ADULT', 'type' => 'Returnable',  'quantity' => 12,  'expiration' => null,          'storage_location' => 'Equipment Bay'],
+            ['name' => 'Instant Noodles',        'category' => 'FOOD',    'sku' => 'FOOD-NOODLES-PACK-REG-ALL',    'type' => 'Consumable',  'quantity' => 2340,'expiration' => '2026-07-20', 'storage_location' => 'Warehouse A'],
+            ['name' => 'Blankets',               'category' => 'RELIEF',  'sku' => 'RELIEF-BLANKET-PCS-REG-ALL',    'type' => 'Returnable',  'quantity' => 6,   'expiration' => null,          'storage_location' => 'Warehouse C'],
+            ['name' => 'Water (500ml)',          'category' => 'FOOD',    'sku' => 'FOOD-WATER-BTL-500ML-ALL',     'type' => 'Consumable',  'quantity' => 3600,'expiration' => '2026-07-10', 'storage_location' => 'Warehouse A'],
+            ['name' => 'Rescue Rope (Large)',    'category' => 'RESCUE',  'sku' => 'RESCUE-ROPE-PCS-LG-ADULT',    'type' => 'Returnable',  'quantity' => 24,  'expiration' => null,          'storage_location' => 'Equipment Bay'],
+        ];
+
+        foreach ($inventoryRecords as $invData) {
+            Inventory::firstOrCreate(
+                ['sku' => $invData['sku']],
+                $invData
+            );
+        }
+
+        // ─── SAMPLE REQUESTS & STOCK ────────────────────────
+        $this->call([
+            RequestSeeder::class,
+            StockBatchSeeder::class,
+        ]);
     }
 }

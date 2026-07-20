@@ -11,7 +11,7 @@ class StockBatchSeeder extends Seeder
     public function run(): void
     {
         $stocks = [
-            'FOOD-RICE-SACK-50KG-ALL'      => ['quantity' => 450, 'supplier' => 'DSWD',      'date_received' => '2026-01-10', 'expiration_date' => '2026-12-31'],
+            'FOOD-RICE-SACK-50KG-ALL'      => ['quantity' => 152, 'supplier' => 'DSWD',      'date_received' => '2026-01-10', 'expiration_date' => '2026-12-31'],
             'MEDICAL-MEDKIT-BOX-SM-ALL'    => ['quantity' => 8,   'supplier' => 'Red Cross',  'date_received' => '2026-02-15', 'expiration_date' => '2026-08-01'],
             'MEDICAL-N95MASK-PACK-REG-ALL' => ['quantity' => 1240,'supplier' => 'DOH',        'date_received' => '2026-01-20', 'expiration_date' => '2026-07-15'],
             'RESCUE-LIFEVEST-PCS-MD-ADULT' => ['quantity' => 12,  'supplier' => 'NDRRMC',     'date_received' => '2026-03-01', 'expiration_date' => null],

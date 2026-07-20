@@ -151,4 +151,36 @@ class WorkflowManagementTest extends TestCase
             return $returns->contains($return);
         });
     }
+
+    public function test_notifications_page_lists_request_status_updates(): void
+    {
+        $this->actingAs(User::factory()->create());
+
+        $inventory = Inventory::create([
+            'name' => 'Water Bottles',
+            'category' => 'Relief',
+            'sku' => 'WTR-101',
+            'type' => 'Consumable',
+            'quantity' => 50,
+            'expiration' => null,
+            'storage_location' => 'Warehouse A',
+        ]);
+
+        Request::create([
+            'request_code' => 'REQ-101',
+            'inventory_id' => $inventory->id,
+            'source' => 'ResQOperation',
+            'quantity' => 10,
+            'priority' => 'High',
+            'status' => 'Approved',
+            'purpose' => 'Emergency response',
+            'notification_status' => 'Responder notified: request approved',
+        ]);
+
+        $response = $this->get(route('notifications.index'));
+
+        $response->assertOk();
+        $response->assertSee('Responder notified: request approved');
+        $response->assertSee(route('requests.index'));
+    }
 }

@@ -28,3 +28,10 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+# Corrupted route-fragment files — safe to delete
+/index()
+/role
+/qc
+/name*
+/route*
+/with*
