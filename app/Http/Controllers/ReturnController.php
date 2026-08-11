@@ -4,20 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventory;
 use App\Models\ReturnItem;
+use App\Services\InventorySyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ReturnController extends Controller
 {
-    public function create()
+    public function create(InventorySyncService $inventorySync)
     {
+        $inventorySync->syncAllItems();
+
         $items = Inventory::where('type', 'Returnable')->orWhere('type', 'Consumable')->get();
         $recentReturns = ReturnItem::with('inventory')->latest()->take(5)->get();
 
         return view('returns.create', compact('items', 'recentReturns'));
     }
 
-    public function store(Request $request)
+    public function store(Request $request, InventorySyncService $inventorySync)
     {
         $validated = $request->validate([
             'inventory_id' => 'required|exists:inventory,id',
@@ -26,14 +29,15 @@ class ReturnController extends Controller
             'notes' => 'nullable|string'
         ]);
 
-        DB::transaction(function () use ($validated) {
+        DB::transaction(function () use ($validated, $inventorySync) {
             ReturnItem::create($validated);
 
             if ($validated['condition'] === 'Good') {
-                Inventory::whereKey($validated['inventory_id'])
+                $inventory = Inventory::whereKey($validated['inventory_id'])
                     ->lockForUpdate()
-                    ->firstOrFail()
-                    ->increment('quantity', $validated['quantity']);
+                    ->firstOrFail();
+
+                $inventorySync->receiveReturn($inventory, $validated['quantity']);
             }
         });
 

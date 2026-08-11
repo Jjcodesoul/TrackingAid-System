@@ -115,21 +115,21 @@
 
     <div class="notif-list">
         @forelse($notifications as $notif)
-            <div class="notif-card {{ $notif->updated_at > session('notifications_last_viewed_at', now()->subYear()) ? 'ring-1 ring-emerald-200' : '' }}">
+            <div class="notif-card {{ $notif['updated_at']->greaterThan(session('notifications_last_viewed_at', now()->subYear())) ? 'ring-1 ring-emerald-200' : '' }}">
                 <div class="notif-icon">
                     <i class="fa-solid fa-bell"></i>
                 </div>
                 <div class="flex-1">
-                    <h3>{{ $notif->request_code ?? 'Request update' }}
-                        @if($notif->updated_at > session('notifications_last_viewed_at', now()->subYear()))
+                    <h3>{{ $notif['request_code'] ?? $notif['title'] ?? 'Request update' }}
+                        @if($notif['updated_at']->greaterThan(session('notifications_last_viewed_at', now()->subYear())))
                             <span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-emerald-500 rounded-none align-middle">NEW</span>
                         @endif
                     </h3>
-                    <p>{{ $notif->notification_status }}</p>
+                    <p>{{ $notif['message'] }}</p>
                     <div class="meta">
-                        <span>{{ optional($notif->updated_at)->format('M d, Y H:i') }}</span>
-                        @if($notif->inventory)
-                            <span> • {{ $notif->inventory->name }}</span>
+                        <span>{{ $notif['updated_at']->format('M d, Y H:i') }}</span>
+                        @if($notif['item_name'])
+                            <span> • {{ $notif['item_name'] }}</span>
                         @endif
                     </div>
                 </div>

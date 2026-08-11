@@ -22,6 +22,10 @@ class Item extends Model
         'sku',
     ];
 
+    protected $casts = [
+        'expiration_date' => 'date',
+    ];
+
     public function stockBatches()
     {
         return $this->hasMany(StockBatch::class);
@@ -29,7 +33,26 @@ class Item extends Model
 
     public function getTotalStockAttribute()
     {
-        return $this->stockBatches->sum('quantity');
+        if ($this->relationLoaded('stockBatches')) {
+            return (int) $this->stockBatches->sum('quantity');
+        }
+
+        return (int) $this->stockBatches()->sum('quantity');
+    }
+
+    public function getNextExpirationDateAttribute()
+    {
+        $batches = $this->relationLoaded('stockBatches')
+            ? $this->stockBatches
+            : $this->stockBatches()->get();
+
+        $batchExpiration = $batches
+            ->filter(fn (StockBatch $batch): bool => (int) $batch->quantity > 0 && filled($batch->expiration_date))
+            ->map(fn (StockBatch $batch) => \Carbon\Carbon::parse($batch->expiration_date))
+            ->sort()
+            ->first();
+
+        return $batchExpiration ?: $this->expiration_date;
     }
 
     public function getStockStatusAttribute()

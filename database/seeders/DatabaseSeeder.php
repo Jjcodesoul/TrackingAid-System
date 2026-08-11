@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\User;
+use App\Services\InventorySyncService;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -164,5 +165,7 @@ class DatabaseSeeder extends Seeder
             RequestSeeder::class,
             StockBatchSeeder::class,
         ]);
+
+        app(InventorySyncService::class)->syncAllItems();
     }
 }

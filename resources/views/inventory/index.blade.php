@@ -66,6 +66,9 @@
             </thead>
             <tbody id="inventoryTable">
             @forelse($items as $item)
+                @php
+                    $nextExpirationDate = $item->next_expiration_date;
+                @endphp
                 <tr style="border-bottom:1px solid #f1f5f9;" class="table-row" data-category="{{ strtoupper($item->category) }}">
 
                     <td style="padding:14px 16px;">
@@ -115,7 +118,7 @@
                             <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Out of Stock</span>
                         @elseif($item->total_stock < 10)
                             <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Low Stock</span>
-                        @elseif($item->expiration_date && \Carbon\Carbon::parse($item->expiration_date)->diffInDays(now()) <= 30)
+                        @elseif($nextExpirationDate && \Carbon\Carbon::parse($nextExpirationDate)->lte(now()->addDays(30)))
                             <span style="background:#FFFBEB; color:#D97706; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Expiring</span>
                         @else
                             <span style="color:#94a3b8; font-size:13px;">—</span>

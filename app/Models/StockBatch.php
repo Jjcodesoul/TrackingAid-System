@@ -14,6 +14,11 @@ class StockBatch extends Model
         'expiration_date'
     ];
 
+    protected $casts = [
+        'date_received' => 'date',
+        'expiration_date' => 'date',
+    ];
+
     public function item()
     {
         return $this->belongsTo(Item::class);

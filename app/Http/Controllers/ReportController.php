@@ -84,8 +84,8 @@ class ReportController extends Controller
         $lowStock = $items->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count();
         $outOfStock = $items->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count();
         $expiring = $items->filter(function (Item $item): bool {
-            return $item->expiration_date
-                && Carbon::parse($item->expiration_date)->lte(now()->addDays(30));
+            return $item->next_expiration_date
+                && Carbon::parse($item->next_expiration_date)->lte(now()->addDays(30));
         })->count();
 
         $categoryTotals = $items
@@ -107,7 +107,7 @@ class ReportController extends Controller
                 $this->cell(ucfirst($item->type)),
                 $this->cell($status, $statusTone),
                 $this->cell($item->storage_location),
-                $this->cell($item->expiration_date ? Carbon::parse($item->expiration_date)->format('M d, Y') : '-'),
+                $this->cell($item->next_expiration_date ? Carbon::parse($item->next_expiration_date)->format('M d, Y') : '-'),
             ]);
         })->values()->all();
 

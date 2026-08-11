@@ -284,11 +284,15 @@
     <script>
         (function() {
             let previousCount = {{ $unreadCount }};
+            let latestNotificationKey = null;
             let notifiedHashes = new Set();
 
             // Request permission for browser notifications on first visit
             if ('Notification' in window && Notification.permission === 'default') {
-                Notification.requestPermission();
+                Notification.requestPermission().then(function() {
+                    latestNotificationKey = null;
+                    poll();
+                });
             }
 
             function updateBadge(count) {
@@ -329,15 +333,12 @@
                 if (!notification) return;
 
                 // Avoid duplicate notifications for the same item
-                const hash = notification.request_code + notification.notification_status;
+                const hash = notification.id;
                 if (notifiedHashes.has(hash)) return;
                 notifiedHashes.add(hash);
 
-                const title = notification.item_name
-                    ? 'New Alert: ' + notification.item_name
-                    : 'New Notification';
-
-                const body = notification.notification_status || 'You have a new alert.';
+                const title = notification.title || 'New Notification';
+                const body = notification.message || 'You have a new alert.';
 
                 try {
                     const n = new Notification(title, {
@@ -363,13 +364,16 @@
                 .then(function (r) { return r.json(); })
                 .then(function (data) {
                     const count = data.unreadCount || 0;
+                    const latest = data.latest;
+                    const latestKey = latest ? latest.id + ':' + latest.updated_at : null;
 
-                    // If count increased, show an alert
-                    if (count > previousCount) {
-                        showDesktopAlert(data.latest);
+                    // Alert when the latest notification changes, even if the total count stays the same.
+                    if (latest && latestKey !== latestNotificationKey) {
+                        showDesktopAlert(latest);
                     }
 
                     previousCount = count;
+                    latestNotificationKey = latestKey;
                     updateBadge(count);
                 })
                 .catch(function () {

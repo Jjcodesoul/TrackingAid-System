@@ -5,13 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Request;
+use App\Services\InventorySyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
 
 class BorrowReleaseController extends Controller
 {
-    public function create()
+    public function create(InventorySyncService $inventorySync)
     {
+        $inventorySync->syncAllItems();
+
         $items = Inventory::all();
         $approvedRequests = Request::with('inventory')
             ->where('status', 'Approved')
@@ -25,7 +28,7 @@ class BorrowReleaseController extends Controller
         return view('borrow-release.create', compact('items', 'approvedRequests', 'recentReleases'));
     }
 
-    public function store(HttpRequest $request)
+    public function store(HttpRequest $request, InventorySyncService $inventorySync)
     {
         $validated = $request->validate([
             'request_id' => 'required|exists:requests,id',
@@ -37,7 +40,7 @@ class BorrowReleaseController extends Controller
             'released_at' => 'required|date',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $inventorySync) {
             $supplyRequest = Request::whereKey($validated['request_id'])
                 ->where('status', 'Approved')
                 ->lockForUpdate()
@@ -56,6 +59,7 @@ class BorrowReleaseController extends Controller
             }
 
             $inventory = Inventory::whereKey($validated['inventory_id'])->lockForUpdate()->firstOrFail();
+            $inventory = $inventorySync->syncInventory($inventory);
 
             if ($inventory->quantity < $validated['quantity']) {
                 return back()
@@ -65,7 +69,7 @@ class BorrowReleaseController extends Controller
 
             BorrowRelease::create($validated);
 
-            $inventory->decrement('quantity', $validated['quantity']);
+            $inventorySync->releaseFromInventory($inventory, $validated['quantity']);
 
             $supplyRequest->update([
                 'status' => 'Released',

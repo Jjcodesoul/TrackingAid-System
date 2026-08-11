@@ -50,7 +50,7 @@ class RequestController extends Controller
         // 1. Validate the incoming data from Niña's website
         $validated = $request->validate([
             'request_code' => 'required|string|unique:requests,request_code',
-            'inventory_id' => 'required|integer',
+            'inventory_id' => 'required|exists:inventory,id',
             'quantity'     => 'required|integer|min:1',
             'priority'     => 'required|in:Low,Medium,High',
             'purpose'      => 'nullable|string',

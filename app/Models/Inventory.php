@@ -21,6 +21,10 @@ class Inventory extends Model
         'storage_location'
     ];
 
+    protected $casts = [
+        'expiration' => 'date',
+    ];
+
     public function requests()
     {
         return $this->hasMany(Request::class);

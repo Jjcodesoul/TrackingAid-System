@@ -2,28 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Request as SupplyRequest;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
+use Carbon\Carbon;
 
 class NotificationController extends Controller
 {
-    public function index()
+    public function index(NotificationService $notificationsService)
     {
-        // Mark all current notifications as "read" by recording the timestamp
+        $lastViewedAt = $this->lastViewedAt();
+        $notifications = $notificationsService->all($lastViewedAt);
+
+        // Mark current notifications as read after calculating row badges.
         session(['notifications_last_viewed_at' => now()]);
 
-        $notifications = SupplyRequest::whereNotNull('notification_status')
-            ->latest('updated_at')
-            ->get()
-            ->map(function ($request) {
-                $request->read = false;
-                return $request;
-            });
-
-        // Use shared unread count from AppServiceProvider via the view
         return view('notifications', [
             'notifications' => $notifications,
-            'unreadCount' => $notifications->count(),
+            'unreadCount' => 0,
         ]);
     }
 
@@ -32,28 +27,35 @@ class NotificationController extends Controller
      * and the latest notification details so the front-end can
      * show browser alerts and update the badge in real time.
      */
-    public function unreadJson(Request $request)
+    public function unreadJson(Request $request, NotificationService $notificationsService)
+    {
+        $unread = $notificationsService->unread($this->lastViewedAt());
+        $latest = $unread->first();
+
+        return response()->json([
+            'unreadCount' => $unread->count(),
+            'latest' => $latest ? $this->jsonAlert($latest) : null,
+        ]);
+    }
+
+    private function lastViewedAt(): ?Carbon
     {
         $lastViewedAt = session('notifications_last_viewed_at');
 
-        $unreadCount = SupplyRequest::whereNotNull('notification_status')
-            ->when($lastViewedAt, fn ($q) => $q->where('updated_at', '>', $lastViewedAt))
-            ->count();
+        return $lastViewedAt ? Carbon::parse($lastViewedAt) : null;
+    }
 
-        // Grab the single most-recent notification for the alert message
-        $latest = SupplyRequest::whereNotNull('notification_status')
-            ->with('inventory')
-            ->latest('updated_at')
-            ->first();
-
-        return response()->json([
-            'unreadCount' => $unreadCount,
-            'latest' => $latest ? [
-                'request_code' => $latest->request_code,
-                'notification_status' => $latest->notification_status,
-                'item_name' => $latest->inventory?->name,
-                'updated_at' => $latest->updated_at?->toIso8601String(),
-            ] : null,
-        ]);
+    private function jsonAlert(array $alert): array
+    {
+        return [
+            'id' => $alert['id'],
+            'type' => $alert['type'],
+            'title' => $alert['title'],
+            'message' => $alert['message'],
+            'request_code' => $alert['request_code'],
+            'item_name' => $alert['item_name'],
+            'url' => $alert['url'],
+            'updated_at' => $alert['updated_at']->toIso8601String(),
+        ];
     }
 }

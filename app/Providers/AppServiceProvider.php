@@ -3,6 +3,8 @@
 namespace App\Providers;
 
 use App\Models\Request as SupplyRequest;
+use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -23,15 +25,17 @@ class AppServiceProvider extends ServiceProvider
     {
         // Share unread notification count with the app layout so the
         // bell indicator and sidebar badge work on every authenticated page.
-        View::composer('layouts.app', function ($view) {
+        View::composer('layouts.app', function ($view): void {
             $lastViewedAt = session('notifications_last_viewed_at');
+            $lastViewedAt = $lastViewedAt ? Carbon::parse($lastViewedAt) : null;
 
-            $unreadCount = SupplyRequest::whereNotNull('notification_status')
-                ->when($lastViewedAt, fn ($q) => $q->where('updated_at', '>', $lastViewedAt))
-                ->count();
+            $unreadCount = app(NotificationService::class)->unreadCount($lastViewedAt);
+            $requestsCount = SupplyRequest::where('status', 'Pending')->count();
 
-            $view->with('unreadCount', $unreadCount);
+            $view->with([
+                'unreadCount' => $unreadCount,
+                'requestsCount' => $requestsCount,
+            ]);
         });
     }
 }
-
