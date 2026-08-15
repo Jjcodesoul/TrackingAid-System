@@ -153,12 +153,6 @@
                     </li>
 
                     @if(auth()->user()->role === 'admin')
-                    <li>
-                        <a href="/inventory/create" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('inventory/create*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <i class="fa-solid fa-plus w-5 text-center text-base"></i>
-                            <span>Add Item (SKU)</span>
-                        </a>
-                    </li>
 
                     <li>
                         <a href="/stock-in" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('stock-in*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">

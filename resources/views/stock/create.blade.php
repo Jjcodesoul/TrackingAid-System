@@ -29,22 +29,41 @@
 <div style="max-width:800px;">
     <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:28px;">
 
-        <form method="POST" action="/stock-in/store">
+        <form method="POST" action="/stock-in/store" id="stockInForm">
             @csrf
 
-            {{-- SELECT ITEM SKU --}}
+            {{-- CATEGORY FILTER --}}
             <div style="margin-bottom:20px;">
-                <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Select Item (SKU)</label>
-                <select name="item_id" required
+                <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Filter by Category</label>
+                <select id="categoryFilter" onchange="onCategoryChange()"
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; background:#fff; color:#374151; box-sizing:border-box;"
                     onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
-                    <option value="">— Select SKU —</option>
-                    @foreach($items as $item)
-                        <option value="{{ $item->id }}">
-                            {{ $item->sku }} — {{ $item->name }}
-                        </option>
+                    <option value="">All Categories</option>
+                    @foreach($categories as $cat)
+                        <option value="{{ strtoupper($cat) }}">{{ ucfirst(strtolower($cat)) }}</option>
                     @endforeach
                 </select>
+            </div>
+
+            {{-- SEARCHABLE ITEM SKU --}}
+            <div style="margin-bottom:20px; position:relative;">
+                <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Select Item (SKU)</label>
+
+                <input type="text" id="itemSearchInput" placeholder="Type SKU or item name to search..."
+                    autocomplete="off"
+                    oninput="onSearchInput()" onfocus="onSearchFocus()"
+                    style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+
+                <input type="hidden" name="item_id" id="itemIdField" required>
+
+                {{-- DROPDOWN RESULTS LIST --}}
+                <div id="itemDropdownList" style="display:none; position:absolute; z-index:20; top:calc(100% + 4px); left:0; right:0; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+                    {{-- populated by JS --}}
+                </div>
+
+                <p id="noItemsMsg" style="display:none; font-size:12px; color:#DC2626; margin:6px 0 0;">
+                    No matching items found.
+                </p>
             </div>
 
             {{-- QUANTITY + SUPPLIER --}}
@@ -91,5 +110,108 @@
 
     </div>
 </div>
+
+<script>
+// Full item list passed from backend
+const allItems = [
+    @foreach($items as $item)
+    {
+        id: {{ $item->id }},
+        sku: @json($item->sku),
+        name: @json($item->name),
+        category: @json(strtoupper($item->category))
+    },
+    @endforeach
+];
+
+const searchInput = document.getElementById('itemSearchInput');
+const dropdownList = document.getElementById('itemDropdownList');
+const itemIdField = document.getElementById('itemIdField');
+const noItemsMsg = document.getElementById('noItemsMsg');
+const categoryFilter = document.getElementById('categoryFilter');
+
+function getFilteredItems() {
+    const category = categoryFilter.value;
+    const query = searchInput.value.trim().toLowerCase();
+
+    return allItems.filter(item => {
+        const matchCategory = category === '' || item.category === category;
+        const matchQuery = query === '' ||
+            item.sku.toLowerCase().includes(query) ||
+            item.name.toLowerCase().includes(query);
+        return matchCategory && matchQuery;
+    });
+}
+
+function renderDropdown() {
+    const filtered = getFilteredItems();
+    dropdownList.innerHTML = '';
+
+    if (filtered.length === 0) {
+        noItemsMsg.style.display = 'block';
+        dropdownList.style.display = 'none';
+        return;
+    }
+
+    noItemsMsg.style.display = 'none';
+
+    filtered.slice(0, 50).forEach(item => { // cap at 50 rendered for performance
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; font-size:13px;';
+        row.onmouseenter = () => row.style.background = '#F0FFF4';
+        row.onmouseleave = () => row.style.background = '#fff';
+        row.innerHTML = `<span style="font-family:monospace; font-weight:600; color:#10B981;">${item.sku}</span>
+                          <span style="color:#374151;"> — ${item.name}</span>`;
+        row.onclick = () => selectItem(item);
+        dropdownList.appendChild(row);
+    });
+
+    if (filtered.length > 50) {
+        const moreNote = document.createElement('div');
+        moreNote.style.cssText = 'padding:8px 14px; font-size:11px; color:#94a3b8; text-align:center;';
+        moreNote.innerText = `+${filtered.length - 50} more — keep typing to narrow down`;
+        dropdownList.appendChild(moreNote);
+    }
+
+    dropdownList.style.display = 'block';
+}
+
+function selectItem(item) {
+    searchInput.value = item.sku + ' — ' + item.name;
+    itemIdField.value = item.id;
+    dropdownList.style.display = 'none';
+}
+
+function onSearchInput() {
+    itemIdField.value = ''; // reset selection since user is typing a new search
+    renderDropdown();
+}
+
+function onSearchFocus() {
+    renderDropdown();
+}
+
+function onCategoryChange() {
+    searchInput.value = '';
+    itemIdField.value = '';
+    renderDropdown();
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#itemSearchInput') && !e.target.closest('#itemDropdownList')) {
+        dropdownList.style.display = 'none';
+    }
+});
+
+// Prevent submit if no item actually selected
+document.getElementById('stockInForm').addEventListener('submit', function(e) {
+    if (!itemIdField.value) {
+        e.preventDefault();
+        alert('Please select an item from the list.');
+        searchInput.focus();
+    }
+});
+</script>
 
 @endsection

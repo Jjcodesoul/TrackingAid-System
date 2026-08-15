@@ -37,26 +37,41 @@
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Item Name</label>
             <input type="text" id="name" name="name" placeholder="e.g. Rice, Medical Kit, Life Vest"
                 onkeyup="generateSKU()" required
-                style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; transition:border .2s;"
+                style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                 onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
         </div>
 
         {{-- CATEGORY + UNIT TYPE --}}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+            {{-- CATEGORY --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Category</label>
-                <select id="category" name="category" onchange="generateSKU()" required
+                <select id="category" onchange="handleDynamicChange('category')" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="">Select</option>
                     <option value="FOOD">Food</option>
                     <option value="MEDICAL">Medical Supplies</option>
                     <option value="RESCUE">Rescue Equipment</option>
                     <option value="RELIEF">Relief</option>
+                    @foreach($customCategories ?? [] as $val)
+                        <option value="{{ $val }}">{{ ucfirst(strtolower($val)) }}</option>
+                    @endforeach
+                    <option value="__new__" style="font-weight:600; color:#10B981;">+ Add New Category</option>
                 </select>
+                <div id="category_newWrapper" style="display:none; margin-top:8px;">
+                    <input type="text" id="category_newInput" placeholder="Type new category name"
+                        oninput="handleDynamicNewInput('category')"
+                        style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                    <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new category.</p>
+                </div>
+                <input type="hidden" name="category" id="category_final">
             </div>
+
+            {{-- UNIT TYPE --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Unit Type</label>
-                <select id="unit_type" name="unit_type" onchange="generateSKU()" required
+                <select id="unit_type" onchange="handleDynamicChange('unit_type')" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="">Select</option>
                     <option value="BOX">Box</option>
@@ -64,15 +79,28 @@
                     <option value="PCS">PCS</option>
                     <option value="SACK">Sack</option>
                     <option value="BOTTLE">Bottle</option>
+                    @foreach($customUnits ?? [] as $val)
+                        <option value="{{ $val }}">{{ $val }}</option>
+                    @endforeach
+                    <option value="__new__" style="font-weight:600; color:#10B981;">+ Add New Unit Type</option>
                 </select>
+                <div id="unit_type_newWrapper" style="display:none; margin-top:8px;">
+                    <input type="text" id="unit_type_newInput" placeholder="Type new unit type (e.g. Drum)"
+                        oninput="handleDynamicNewInput('unit_type')"
+                        style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                    <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new unit type.</p>
+                </div>
+                <input type="hidden" name="unit_type" id="unit_type_final">
             </div>
         </div>
 
         {{-- SIZE + TARGET --}}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+            {{-- SIZE / WEIGHT --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Size / Weight</label>
-                <select id="size_weight" name="size_weight" onchange="generateSKU()"
+                <select id="size_weight" onchange="handleDynamicChange('size_weight')"
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="">Select</option>
                     <option value="SM">Small</option>
@@ -83,32 +111,71 @@
                     <option value="500ML">500ML</option>
                     <option value="1L">1L</option>
                     <option value="REG">Regular</option>
+                    @foreach($customSizes ?? [] as $val)
+                        <option value="{{ $val }}">{{ $val }}</option>
+                    @endforeach
+                    <option value="__new__" style="font-weight:600; color:#10B981;">+ Add New Size</option>
                 </select>
+                <div id="size_weight_newWrapper" style="display:none; margin-top:8px;">
+                    <input type="text" id="size_weight_newInput" placeholder="Type new size (e.g. 10KG)"
+                        oninput="handleDynamicNewInput('size_weight')"
+                        style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                    <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new size option.</p>
+                </div>
+                <input type="hidden" name="size_weight" id="size_weight_final">
             </div>
+
+            {{-- TARGET BENEFICIARY --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Target Beneficiary</label>
-                <select id="target_beneficiary" name="target_beneficiary" onchange="generateSKU()" required
+                <select id="target_beneficiary" onchange="handleDynamicChange('target_beneficiary')" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="">Select</option>
                     <option value="ADULT">Adult</option>
                     <option value="CHILD">Child</option>
                     <option value="ALL">All</option>
+                    @foreach($customTargets ?? [] as $val)
+                        <option value="{{ $val }}">{{ ucfirst(strtolower($val)) }}</option>
+                    @endforeach
+                    <option value="__new__" style="font-weight:600; color:#10B981;">+ Add New Target</option>
                 </select>
+                <div id="target_beneficiary_newWrapper" style="display:none; margin-top:8px;">
+                    <input type="text" id="target_beneficiary_newInput" placeholder="Type new target (e.g. Elderly)"
+                        oninput="handleDynamicNewInput('target_beneficiary')"
+                        style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                    <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new target beneficiary.</p>
+                </div>
+                <input type="hidden" name="target_beneficiary" id="target_beneficiary_final">
             </div>
         </div>
 
         {{-- VARIANT + ITEM TYPE --}}
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+
+            {{-- VARIANT --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Variant</label>
-                <select id="variant" name="variant" onchange="generateSKU()"
+                <select id="variant" onchange="handleDynamicChange('variant')"
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="NONE">None</option>
                     <option value="REG">Regular</option>
                     <option value="SPICY">Spicy</option>
                     <option value="SWEET">Sweet</option>
+                    @foreach($customVariants ?? [] as $val)
+                        <option value="{{ $val }}">{{ ucfirst(strtolower($val)) }}</option>
+                    @endforeach
+                    <option value="__new__" style="font-weight:600; color:#10B981;">+ Add New Variant</option>
                 </select>
+                <div id="variant_newWrapper" style="display:none; margin-top:8px;">
+                    <input type="text" id="variant_newInput" placeholder="Type new variant (e.g. Unscented)"
+                        oninput="handleDynamicNewInput('variant')"
+                        style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
+                    <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new variant.</p>
+                </div>
+                <input type="hidden" name="variant" id="variant_final" value="NONE">
             </div>
+
+            {{-- ITEM TYPE (stays fixed — system logic depends on this) --}}
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Item Type</label>
                 <select name="type" required
@@ -122,18 +189,7 @@
         {{-- STORAGE LOCATION --}}
         <div style="margin-bottom:18px;">
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location</label>
-            <input type="text" name="storage_location" placeholder="e.g. Warehouse A, Equipment Bay"
-                required
-                style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
-                onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
-        </div>
-
-        {{-- EXPIRATION DATE --}}
-        <div>
-            <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">
-                Expiration Date <span style="color:#94a3b8; font-weight:400;">(optional)</span>
-            </label>
-            <input type="date" name="expiration_date"
+            <input type="text" name="storage_location" placeholder="e.g. Warehouse A, Equipment Bay" required
                 style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                 onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
         </div>
@@ -142,18 +198,15 @@
     {{-- RIGHT: SKU PANEL --}}
     <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:24px;">
 
-        {{-- GENERATED SKU BOX --}}
         <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
             <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Generated SKU</h4>
 
-            {{-- SKU DISPLAY --}}
             <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:16px 20px; margin-bottom:16px;">
                 <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:15px; margin:0; word-break:break-all; letter-spacing:.03em;">
                     FOOD-ITEM-PACK-SM-ALL
                 </p>
             </div>
 
-            {{-- SKU BREAKDOWN TABLE --}}
             <div style="margin-bottom:16px;">
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
@@ -179,7 +232,6 @@
                 </table>
             </div>
 
-            {{-- COPY SKU BUTTON --}}
             <button type="button" onclick="copySKU()"
                 style="width:100%; padding:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; color:#374151; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;">
                 <i class="fa-regular fa-copy"></i>
@@ -187,7 +239,6 @@
             </button>
         </div>
 
-        {{-- SKU FORMAT INFO --}}
         <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:16px;">
             <div style="display:flex; align-items:flex-start; gap:10px;">
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
@@ -199,7 +250,6 @@
             </div>
         </div>
 
-        {{-- ACTION BUTTONS --}}
         <button type="submit"
             style="width:100%; padding:14px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.02em;">
             Save Item
@@ -217,15 +267,41 @@
 </form>
 
 <script>
-function generateSKU() {
-    const category = document.getElementById('category').value;
-    const name = document.getElementById('name').value.replace(/\s+/g, '-').toUpperCase();
-    const unit = document.getElementById('unit_type').value;
-    const size = document.getElementById('size_weight').value;
-    const target = document.getElementById('target_beneficiary').value;
-    const variant = document.getElementById('variant').value;
+// Generic handler for all dynamic "Add New" dropdowns
+function handleDynamicChange(field) {
+    const select = document.getElementById(field);
+    const wrapper = document.getElementById(field + '_newWrapper');
+    const newInput = document.getElementById(field + '_newInput');
+    const finalInput = document.getElementById(field + '_final');
 
-    // Update breakdown
+    if (select.value === '__new__') {
+        wrapper.style.display = 'block';
+        newInput.focus();
+        finalInput.value = '';
+    } else {
+        wrapper.style.display = 'none';
+        newInput.value = '';
+        finalInput.value = select.value;
+    }
+    generateSKU();
+}
+
+function handleDynamicNewInput(field) {
+    const newInput = document.getElementById(field + '_newInput');
+    const finalInput = document.getElementById(field + '_final');
+    const cleaned = newInput.value.trim().toUpperCase().replace(/\s+/g, '_');
+    finalInput.value = cleaned;
+    generateSKU();
+}
+
+function generateSKU() {
+    const category = document.getElementById('category_final').value;
+    const name = document.getElementById('name').value.replace(/\s+/g, '-').toUpperCase();
+    const unit = document.getElementById('unit_type_final').value;
+    const size = document.getElementById('size_weight_final').value;
+    const target = document.getElementById('target_beneficiary_final').value;
+    const variant = document.getElementById('variant_final').value;
+
     document.getElementById('bd-category').innerText = category || '—';
     document.getElementById('bd-item').innerText = name || '—';
     document.getElementById('bd-unit').innerText = unit || '—';
@@ -233,7 +309,6 @@ function generateSKU() {
     document.getElementById('bd-target').innerText = target || '—';
     document.getElementById('bd-variant').innerText = (variant && variant !== 'NONE') ? variant : '—';
 
-    // Build SKU
     let parts = [category, name, unit, size, target];
     if (variant && variant !== 'NONE') parts.push(variant);
 
@@ -257,6 +332,13 @@ function clearForm() {
     document.querySelector('form').reset();
     document.getElementById('skuPreview').innerText = 'FOOD-ITEM-PACK-SM-ALL';
     document.getElementById('sku').value = '';
+
+    ['category', 'unit_type', 'size_weight', 'target_beneficiary', 'variant'].forEach(field => {
+        document.getElementById(field + '_final').value = field === 'variant' ? 'NONE' : '';
+        document.getElementById(field + '_newWrapper').style.display = 'none';
+        document.getElementById(field + '_newInput').value = '';
+    });
+
     ['bd-category','bd-item','bd-unit','bd-size','bd-target','bd-variant'].forEach(id => {
         document.getElementById(id).innerText = '—';
     });

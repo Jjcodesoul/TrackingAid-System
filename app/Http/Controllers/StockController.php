@@ -11,8 +11,11 @@ class StockController extends Controller
 {
     public function create()
     {
-        $items = Item::all();
-        return view('stock.create', compact('items'));
+        $items = Item::all()->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+
+        $categories = Item::distinct()->pluck('category')->sort()->values();
+
+        return view('stock.create', compact('items', 'categories'));
     }
 
     public function store(Request $request, InventorySyncService $inventorySync)

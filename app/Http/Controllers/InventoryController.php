@@ -10,13 +10,45 @@ class InventoryController extends Controller
 {
     public function index()
     {
-        $items = Item::with('stockBatches')->latest()->get();
+        $items = Item::with('stockBatches')
+            ->get()
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->groupBy('category')
+            ->sortKeys();
+
         return view('inventory.index', compact('items'));
     }
 
     public function create()
     {
-        return view('inventory.create');
+        $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
+        $defaultUnits = ['BOX', 'PACK', 'PCS', 'SACK', 'BOTTLE'];
+        $defaultSizes = ['SM', 'MD', 'LG', '50KG', '25KG', '500ML', '1L', 'REG'];
+        $defaultTargets = ['ADULT', 'CHILD', 'ALL'];
+        $defaultVariants = ['NONE', 'REG', 'SPICY', 'SWEET'];
+
+        $customCategories = Item::whereNotIn('category', $defaultCategories)
+            ->distinct()->pluck('category');
+
+        $customUnits = Item::whereNotNull('unit_type')->where('unit_type', '!=', '')
+            ->whereNotIn('unit_type', $defaultUnits)
+            ->distinct()->pluck('unit_type');
+
+        $customSizes = Item::whereNotNull('size_weight')->where('size_weight', '!=', '')
+            ->whereNotIn('size_weight', $defaultSizes)
+            ->distinct()->pluck('size_weight');
+
+        $customTargets = Item::whereNotNull('target_beneficiary')->where('target_beneficiary', '!=', '')
+            ->whereNotIn('target_beneficiary', $defaultTargets)
+            ->distinct()->pluck('target_beneficiary');
+
+        $customVariants = Item::whereNotNull('variant')->where('variant', '!=', '')
+            ->whereNotIn('variant', $defaultVariants)
+            ->distinct()->pluck('variant');
+
+        return view('inventory.create', compact(
+            'customCategories', 'customUnits', 'customSizes', 'customTargets', 'customVariants'
+        ));
     }
 
     public function store(Request $request, InventorySyncService $inventorySync)
@@ -77,7 +109,13 @@ class InventoryController extends Controller
     public function edit($id)
     {
         $item = Item::findOrFail($id);
-        return view('inventory.edit', compact('item'));
+
+        $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
+
+        $customCategories = Item::whereNotIn('category', $defaultCategories)
+            ->distinct()->pluck('category');
+
+        return view('inventory.edit', compact('item', 'customCategories'));
     }
 
     public function update(Request $request, InventorySyncService $inventorySync, $id)
