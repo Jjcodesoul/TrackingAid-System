@@ -3,27 +3,23 @@
 @section('content')
 
 {{-- BREADCRUMB --}}
-<div style="display:flex; align-items:center; gap:8px; margin-bottom:20px; font-size:13px; color:#94a3b8;">
-    <a href="/inventory" style="color:#94a3b8; text-decoration:none;">TrackingAid</a>
+<div class="breadcrumb">
+    <a href="/inventory">Inventory</a>
     <span>›</span>
-    <a href="/inventory" style="color:#94a3b8; text-decoration:none;">Inventory</a>
-    <span>›</span>
-    <span style="color:#1a202c; font-weight:600;">Edit Item</span>
+    <span class="current">Edit Item</span>
 </div>
 
 {{-- HEADER --}}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+<div class="page-header">
     <div>
-        <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Edit Inventory Item</h2>
-        <p style="color:#64748B; font-size:13px; margin:4px 0 0;">Update item information and SKU details</p>
+        <h2 class="page-title">Edit Item</h2>
+        <p class="page-subtitle">Update item information and SKU details</p>
     </div>
-    <a href="/inventory" class="btn-secondary">Back</a>
+    <a href="/inventory" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back</a>
 </div>
 
 @if(session('error'))
-    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('error') }}
-    </div>
+    <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
 
 <form method="POST" action="/inventory/update/{{ $item->id }}">

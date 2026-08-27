@@ -3,26 +3,23 @@
 @section('content')
 
 {{-- BREADCRUMB --}}
-<div style="display:flex; align-items:center; gap:8px; margin-bottom:20px; font-size:13px; color:#94a3b8;">
-    <a href="/admin/dashboard" style="color:#94a3b8; text-decoration:none;">TrackingAid</a>
+<div class="breadcrumb">
+    <a href="/admin/dashboard">Dashboard</a>
     <span>›</span>
-    <span style="color:#1a202c; font-weight:600;">Stock In</span>
+    <span class="current">Stock In</span>
 </div>
 
 {{-- HEADER --}}
 <div style="margin-bottom:24px;">
-    <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Stock In</h2>
-    <p style="color:#64748B; font-size:13px; margin:4px 0 0;">Record incoming inventory from suppliers or donors</p>
+    <h2 class="page-title">Stock In</h2>
+    <p class="page-subtitle">Record incoming inventory from suppliers or donors</p>
 </div>
 
 @if(session('success'))
-    <div style="background:#ECFDF5; border:1px solid #A7F3D0; color:#166534; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('success') }}
-    </div>
+    <div class="alert-box alert-success">{{ session('success') }}</div>
 @endif
 @if(session('error'))
-    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('error') }}
+    <div class="alert-box alert-error">{{ session('error') }}</div>
     </div>
 @endif
 
@@ -149,8 +146,7 @@
             </div>
         </div>
 
-        <button type="submit"
-            style="width:100%; padding:14px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.02em;">
+        <button type="submit" class="btn-main btn-block" style="padding:14px; font-size:14px;">
             Submit Stock In
         </button>
 

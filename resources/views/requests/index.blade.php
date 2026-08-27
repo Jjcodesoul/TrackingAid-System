@@ -2,14 +2,12 @@
 
 @section('content')
     <div style="margin-bottom:24px;">
-        <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Requests</h2>
-        <p style="color:#64748B; font-size:13px; margin:4px 0 0;">Incoming requests from ResqOperation — review, approve, or reject</p>
+        <h2 class="page-title">Requests</h2>
+        <p class="page-subtitle">Review, approve, or reject incoming requests</p>
     </div>
 
     @if(session('success'))
-        <div style="background:#ECFDF5; border:1px solid #A7F3D0; color:#166534; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-            {{ session('success') }}
-        </div>
+        <div class="alert-box alert-success">{{ session('success') }}</div>
     @endif
 
     <div class="row g-3 mb-4">

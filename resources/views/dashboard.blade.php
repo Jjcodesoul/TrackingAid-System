@@ -16,7 +16,7 @@
     }
 
     .dashboard-header h2 {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
         color: var(--text-dark);
         margin-bottom: 4px;
@@ -198,7 +198,7 @@
 <div class="dashboard-container">
     <div class="dashboard-header">
         <h2>Dashboard</h2>
-        <p>Track and manage your disaster logistics layout metrics across operations.</p>
+        <p>Overview of your relief operation activity</p>
     </div>
 
     <div class="metric-card-grid">

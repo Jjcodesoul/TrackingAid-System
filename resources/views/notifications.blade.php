@@ -18,14 +18,15 @@
     }
 
     .notif-title h2 {
-        font-size: 24px;
+        font-size: 22px;
         font-weight: 700;
         color: #0f172a;
+        margin: 0;
     }
 
     .notif-title span {
-        font-size: 14px;
-        color: #718096;
+        font-size: 13px;
+        color: #64748B;
     }
 
     .notif-list {
@@ -122,7 +123,7 @@
                 <div class="flex-1">
                     <h3>{{ $notif['request_code'] ?? $notif['title'] ?? 'Request update' }}
                         @if($notif['updated_at']->greaterThan(session('notifications_last_viewed_at', now()->subYear())))
-                            <span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-emerald-500 rounded-none align-middle">NEW</span>
+                            <span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-emerald-500 rounded-xl align-middle">NEW</span>
                         @endif
                     </h3>
                     <p>{{ $notif['message'] }}</p>

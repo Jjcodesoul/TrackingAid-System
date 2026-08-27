@@ -3,24 +3,20 @@
 @section('content')
 
 {{-- BREADCRUMB --}}
-<div style="display:flex; align-items:center; gap:8px; margin-bottom:20px; font-size:13px; color:#94a3b8;">
-    <a href="/inventory" style="color:#94a3b8; text-decoration:none;">TrackingAid</a>
+<div class="breadcrumb">
+    <a href="/inventory">Inventory</a>
     <span>›</span>
-    <a href="/inventory" style="color:#94a3b8; text-decoration:none;">Inventory</a>
-    <span>›</span>
-    <span style="color:#1a202c; font-weight:600;">Add Item</span>
+    <span class="current">Add Item</span>
 </div>
 
 {{-- HEADER --}}
 <div style="margin-bottom:24px;">
-    <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Add Item — SKU Generator</h2>
-    <p style="color:#64748B; font-size:13px; margin:4px 0 0;">Define item properties. SKU is auto-generated from your selections in real time.</p>
+    <h2 class="page-title">Add Item</h2>
+    <p class="page-subtitle">SKU auto-generates from your selections below.</p>
 </div>
 
 @if(session('error'))
-    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('error') }}
-    </div>
+    <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
 
 <form method="POST" action="/inventory/store">
@@ -288,13 +284,11 @@
             </div>
         </div>
 
-        <button type="submit"
-            style="width:100%; padding:14px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.02em;">
+        <button type="submit" class="btn-main btn-block" style="padding:14px; font-size:14px;">
             Save Item
         </button>
 
-        <button type="button" onclick="clearForm()"
-            style="width:100%; padding:12px; background:#fff; color:#374151; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer;">
+        <button type="button" onclick="clearForm()" class="btn-soft btn-block" style="padding:12px; margin-top:10px;">
             Clear Form
         </button>
 

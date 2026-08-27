@@ -3,27 +3,23 @@
 @section('content')
 
 {{-- HEADER --}}
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+<div class="page-header" style="margin-bottom:8px;">
     <div>
-        <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Inventory</h2>
-        <p style="color:#64748B; font-size:13px; margin:4px 0 0;">All registered items and current stock levels</p>
+        <h2 class="page-title">Inventory</h2>
+        <p class="page-subtitle">All registered items and current stock levels</p>
     </div>
-    
+
     @if(auth()->user()->role === 'admin')
-        <a href="{{ route('inventory.create') }}" class="btn-main">+ Add Item</a>
+        <a href="{{ route('inventory.create') }}" class="btn-main"><i class="fa-solid fa-plus"></i> Add Item</a>
     @endif
 </div>
 
 {{-- ALERTS --}}
 @if(session('success'))
-    <div style="background:#ECFDF5; border:1px solid #A7F3D0; color:#166534; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('success') }}
-    </div>
+    <div class="alert-box alert-success">{{ session('success') }}</div>
 @endif
 @if(session('error'))
-    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
-        {{ session('error') }}
-    </div>
+    <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
 
 {{-- TABLE CARD --}}

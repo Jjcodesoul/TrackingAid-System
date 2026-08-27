@@ -54,43 +54,62 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
-        .btn-main {
+        /* ── Buttons — one system, used everywhere ── */
+        .btn-main, .btn-soft, .btn-secondary, .btn-danger {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 6px;
             padding: 10px 20px;
-            background: #1a202c;
-            color: #fff;
             font-size: 13px;
             font-weight: 600;
-            border: none;
             border-radius: 8px;
             cursor: pointer;
             text-decoration: none;
-            transition: background 0.15s ease;
+            transition: background 0.15s ease, border-color 0.15s ease;
+            white-space: nowrap;
+        }
+        .btn-main {
+            background: #10B981;
+            color: #fff;
+            border: none;
         }
         .btn-main:hover {
-            background: #2d3748;
+            background: #059669;
             color: #fff;
         }
 
         .btn-soft {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 10px 20px;
             background: #f1f5f9;
             color: #374151;
-            font-size: 13px;
-            font-weight: 600;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            cursor: pointer;
-            text-decoration: none;
-            transition: background 0.15s ease;
         }
         .btn-soft:hover {
             background: #e2e8f0;
+        }
+
+        /* Outline button — used for "Back" / secondary navigation actions */
+        .btn-secondary {
+            background: #fff;
+            color: #374151;
+            border: 1px solid #cbd5e1;
+        }
+        .btn-secondary:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        .btn-danger {
+            background: #fff;
+            color: #DC2626;
+            border: 1px solid #FCA5A5;
+        }
+        .btn-danger:hover {
+            background: #FEF2F2;
+        }
+
+        .btn-block {
+            width: 100%;
         }
 
         .page-title {
@@ -103,6 +122,58 @@
             font-size: 13px;
             color: #64748B;
             margin: 4px 0 0;
+        }
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .breadcrumb a {
+            color: #94a3b8;
+            text-decoration: none;
+        }
+        .breadcrumb a:hover {
+            color: #475569;
+        }
+        .breadcrumb .current {
+            color: #1a202c;
+            font-weight: 600;
+        }
+
+        /* ── Flash / alert messages — one system, used everywhere ── */
+        .alert-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+        .alert-success {
+            background: #ECFDF5;
+            border: 1px solid #A7F3D0;
+            color: #166534;
+        }
+        .alert-error {
+            background: #FEF2F2;
+            border: 1px solid #FCA5A5;
+            color: #991B1B;
+        }
+        .alert-warning {
+            background: #FFFBEB;
+            border: 1px solid #FDE68A;
+            color: #92400E;
         }
 
         .note {

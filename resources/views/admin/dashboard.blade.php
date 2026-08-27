@@ -3,9 +3,8 @@
 @section('content')
 
 {{-- HEADER --}}
-<div style="margin-bottom:24px;">
-    <h2 style="font-weight:700; font-size:22px; color:#1a202c; margin:0;">Dashboard</h2>
-    <p style="color:#64748B; font-size:13px; margin:4px 0 0;">System overview — TrackingAid × ResqOperation</p>
+<div class="page-header">
+    <h2 class="page-title">Dashboard</h2>
 </div>
 
 {{-- TOP KPI ROW --}}
