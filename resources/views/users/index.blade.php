@@ -122,6 +122,7 @@
                                         <option value="user">User</option>
                                         <option value="staff">Staff</option>
                                         <option value="admin">Admin</option>
+                                        <option value="delivery_personnel">Delivery Personnel</option>
                                     </select>
                                     <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
                                         <i class="fa-solid fa-chevron-down"></i>

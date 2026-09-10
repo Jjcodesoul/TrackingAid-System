@@ -81,4 +81,18 @@ class RequestController extends Controller
             ]
         ], 201); 
     }
+
+
+    public function mobileDeliveries()
+{
+    $deliveries = SupplyRequest::with('inventory')
+        ->whereIn('status', ['Approved', 'Released'])
+        ->latest()
+        ->get();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $deliveries
+    ]);
+}
 }
