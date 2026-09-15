@@ -1,4 +1,3 @@
-```php
 <?php
 
 namespace App\Http\Controllers;
@@ -111,4 +110,3 @@ class BorrowReleaseController extends Controller
         });
     }
 }
-```

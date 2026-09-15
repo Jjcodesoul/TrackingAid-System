@@ -10,32 +10,9 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>TrackingAid - Disaster Logistics System</title>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css">
-
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            corePlugins: {
-                preflight: false,   /* prevent conflict with Bootstrap resets */
-            },
-            theme: {
-                extend: {
-                    colors: {
-                        slate: {
-                            900: '#1a202c',
-                            800: '#2d3748',
-                            950: '#0f172a'
-                        },
-                        emerald: {
-                            500: '#2ecc71',
-                            600: '#27ae60'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+    <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/tailwind.css') }}">
 
     <style>
         /* ── Shared custom components used across views ── */
@@ -176,6 +153,40 @@
             color: #92400E;
         }
 
+        /* ── Form fields — one system, used everywhere ── */
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 6px;
+        }
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+            color: #374151;
+            box-sizing: border-box;
+            font-family: inherit;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            border-color: #10B981;
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+        }
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
         .note {
             background: #FFFBEB;
             border: 1px solid #FDE68A;
@@ -193,7 +204,7 @@
         <aside class="w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800">
             
             <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
-                <div class="w-9 h-9 bg-emerald-500 flex items-center justify-center text-white text-lg rounded-none shrink-0 shadow-sm">
+                <div class="w-9 h-9 bg-emerald-500 flex items-center justify-center text-white text-lg rounded-lg shrink-0 shadow-sm">
                     <i class="fa-solid fa-cubes"></i>
                 </div>
                 <div class="flex flex-col min-w-0">
@@ -210,14 +221,14 @@
                             $dashboardUrl = auth()->user()->role === 'admin' ? '/admin/dashboard' : '/dashboard';
                             $isActive = request()->is('admin/dashboard*') || (request()->is('dashboard*') && !request()->is('admin*'));
                         @endphp
-                        <a href="{{ $dashboardUrl }}" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ $isActive ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="{{ $dashboardUrl }}" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ $isActive ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i>
                             <span>Dashboard</span>
                         </a>
                     </li>
 
                     <li>
-                        <a href="/inventory" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('inventory') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/inventory" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('inventory') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-box w-5 text-center text-base"></i>
                             <span>Inventory</span>
                         </a>
@@ -226,7 +237,7 @@
                     @if(auth()->user()->role === 'admin')
 
                     <li>
-                        <a href="/stock-in" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('stock-in*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/stock-in" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('stock-in*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-arrow-down-1-9 w-5 text-center text-base"></i>
                             <span>Stock In</span>
                         </a>
@@ -234,26 +245,26 @@
                     @endif
 
                     <li>
-                        <a href="/requests" class="flex items-center justify-between px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('requests*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/requests" class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('requests*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <div class="flex items-center gap-3">
                                 <i class="fa-solid fa-clipboard-list w-5 text-center text-base"></i>
                                 <span>Requests</span>
                             </div>
                             @if($requestsCount > 0)
-                                <span class="px-2 py-0.5 text-xs font-bold rounded-none bg-amber-500 text-slate-950">{{ $requestsCount }}</span>
+                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-500 text-slate-950">{{ $requestsCount }}</span>
                             @endif
                         </a>
                     </li>
 
                     <li>
-                        <a href="/borrow-release" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('borrow-release*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/borrow-release" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('borrow-release*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-handshake w-5 text-center text-base"></i>
                             <span>Borrow / Release</span>
                         </a>
                     </li>
 
                     <li>
-                        <a href="/returns" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('returns*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/returns" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('returns*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-rotate-left w-5 text-center text-base"></i>
                             <span>Return Management</span>
                         </a>
@@ -261,7 +272,7 @@
 
                     @if(auth()->user()->role === 'admin')
                     <li>
-                        <a href="/reports" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('reports*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/reports" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('reports*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-chart-line w-5 text-center text-base"></i>
                             <span>Reports</span>
                         </a>
@@ -269,20 +280,20 @@
                     @endif
 
                     <li>
-                        <a href="/notifications" class="flex items-center justify-between px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('notifications*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/notifications" class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('notifications*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <div class="flex items-center gap-3">
                                 <i class="fa-regular fa-bell w-5 text-center text-base"></i>
                                 <span>Notifications</span>
                             </div>
                             @if($unreadCount > 0)
-                                <span class="px-2 py-0.5 text-xs font-bold rounded-none bg-rose-500 text-white">{{ $unreadCount }}</span>
+                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-rose-500 text-white">{{ $unreadCount }}</span>
                             @endif
                         </a>
                     </li>
 
                     @if(auth()->user()->role === 'admin')
                     <li>
-                        <a href="/users" class="flex items-center gap-3 px-4 py-2 rounded-none text-sm font-medium transition-all {{ request()->is('users*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/users" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('users*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-user-gear w-5 text-center text-base"></i>
                             <span>Users & Roles</span>
                         </a>
@@ -312,7 +323,7 @@
                     </a>
                     
                     <div class="flex items-center gap-3 min-w-0 border-l border-slate-200 pl-6">
-                        <div class="w-9 h-9 bg-emerald-600 text-white font-bold text-sm flex items-center justify-center rounded-none shrink-0 shadow-sm">
+                        <div class="w-9 h-9 bg-emerald-600 text-white font-bold text-sm flex items-center justify-center rounded-lg shrink-0 shadow-sm">
                             {{ strtoupper(substr(auth()->user()->name ?? 'US', 0, 2)) }}
                         </div>
                         <div class="flex flex-col min-w-0 leading-none">
@@ -370,7 +381,7 @@
                         sidebarBadge.textContent = count;
                     } else if (sidebarLink) {
                         const badge = document.createElement('span');
-                        badge.className = 'px-2 py-0.5 text-xs font-bold rounded-none bg-rose-500 text-white';
+                        badge.className = 'px-2 py-0.5 text-xs font-bold rounded-full bg-rose-500 text-white';
                         badge.textContent = count;
                         sidebarLink.appendChild(badge);
                     }

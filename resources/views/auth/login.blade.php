@@ -82,14 +82,14 @@
 
 .hero-content p {
     font-size: 16px;
-    opacity: 0.95;
+    font-weight: 500;
     line-height: 1.6;
     margin-bottom: 8px;
 }
 
 .hero-tagline {
-    font-size: 13px;
-    opacity: 0.85;
+    font-size: 13.5px;
+    opacity: 0.92;
     margin-bottom: 32px !important;
 }
 
@@ -292,8 +292,6 @@
     border-radius: 10px;
     font-size: 14px;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     cursor: pointer;
     transition: all 0.3s ease;
     box-shadow: 0 4px 12px rgba(46,204,113,0.3);
@@ -344,22 +342,22 @@
     <!-- Hero Section -->
     <div class="login-hero">
         <div class="hero-content">
-            <div class="hero-logo">📦</div>
+            <div class="hero-logo"><i class="fa-solid fa-cubes"></i></div>
             <h1>TrackingAid</h1>
             <p>Disaster Logistics System</p>
             <p class="hero-tagline">Post-disaster response and inventory management</p>
 
             <div class="hero-features">
                 <div class="hero-feature">
-                    <span class="hero-feature-icon">🔒</span>
+                    <span class="hero-feature-icon"><i class="fa-solid fa-shield-halved"></i></span>
                     <span class="hero-feature-text">Secure Access</span>
                 </div>
                 <div class="hero-feature">
-                    <span class="hero-feature-icon">📊</span>
+                    <span class="hero-feature-icon"><i class="fa-solid fa-chart-line"></i></span>
                     <span class="hero-feature-text">Real-time Tracking</span>
                 </div>
                 <div class="hero-feature">
-                    <span class="hero-feature-icon">⚡</span>
+                    <span class="hero-feature-icon"><i class="fa-solid fa-bolt"></i></span>
                     <span class="hero-feature-text">Fast &amp; Reliable</span>
                 </div>
             </div>
@@ -371,7 +369,7 @@
         <div class="login-form-wrapper">
 
             <div class="form-mobile-logo">
-                <div class="form-mobile-logo-badge">📦</div>
+                <div class="form-mobile-logo-badge"><i class="fa-solid fa-cubes"></i></div>
                 <span class="form-mobile-logo-text">TrackingAid</span>
             </div>
 

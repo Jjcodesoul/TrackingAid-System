@@ -250,6 +250,14 @@
         white-space: nowrap;
     }
 
+    .chart-label small {
+        display: block;
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 400;
+        margin-top: 2px;
+    }
+
     .chart-empty {
         min-height: 180px;
         display: flex;
@@ -478,7 +486,12 @@
                                     ></span>
                                 @endforeach
                             </div>
-                            <span class="chart-label">{{ $label }}</span>
+                            <span class="chart-label">
+                                {{ $label }}
+                                @if(!empty($report['chart']['labelMeta'][$labelIndex]))
+                                    <small>{{ $report['chart']['labelMeta'][$labelIndex] }}</small>
+                                @endif
+                            </span>
                         </div>
                     @endforeach
                 </div>
