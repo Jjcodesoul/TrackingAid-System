@@ -7,9 +7,37 @@ use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
 {
-    /**
-     * Get deliveries for the mobile app.
-     */
+    public function dashboard()
+{
+    $deliveries = BorrowRelease::with([
+        'request',
+        'inventory'
+    ])
+    ->latest()
+    ->get();
+
+    $counts = [
+        'Loading' => $deliveries->where('delivery_status', 'Loading')->count(),
+        'Dispatched' => $deliveries->where('delivery_status', 'Dispatched')->count(),
+        'In Transit' => $deliveries->where('delivery_status', 'In Transit')->count(),
+        'Arrived' => $deliveries->where('delivery_status', 'Arrived')->count(),
+    ];
+
+    $currentShipment = $deliveries
+        ->whereIn('delivery_status', [
+            'Loading',
+            'Dispatched',
+            'In Transit',
+        ])
+        ->first();
+
+    return response()->json([
+        'status' => 'success',
+        'counts' => $counts,
+        'current_shipment' => $currentShipment,
+    ]);
+}
+
     public function index()
     {
         $deliveries = BorrowRelease::with([
@@ -29,6 +57,22 @@ class DeliveryController extends Controller
             'data' => $deliveries,
         ]);
     }
+
+    public function history()
+{
+    $deliveries = BorrowRelease::with([
+        'request',
+        'inventory'
+    ])
+    ->where('delivery_status', 'Arrived')
+    ->latest('arrived_at')
+    ->get();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $deliveries,
+    ]);
+}
 
     /**
      * Update delivery status.

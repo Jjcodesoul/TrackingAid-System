@@ -20,8 +20,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 });
 
+Route::get('/dashboard', [DeliveryController::class, 'dashboard']);
 Route::get('/deliveries', [DeliveryController::class, 'index']);
-
+Route::get('/history', [DeliveryController::class, 'history']);
 Route::get('/deliveries/{delivery}', [DeliveryController::class, 'show']);
 
 Route::patch('/deliveries/{delivery}/status', [
