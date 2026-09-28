@@ -16,7 +16,29 @@ class InventoryController extends Controller
             ->groupBy('category')
             ->sortKeys();
 
-        return view('inventory.index', compact('items'));
+        $allItems = $items->flatten(1);
+        $today = now()->startOfDay();
+        $expiryStates = $allItems->filter(fn (Item $item): bool => $item->total_stock > 0 && $item->next_expiration_date)
+            ->map(function (Item $item) use ($today): string {
+                $expiration = \Carbon\Carbon::parse($item->next_expiration_date)->startOfDay();
+
+                if ($expiration->lt($today)) {
+                    return 'expired';
+                }
+
+                return $expiration->lte($today->copy()->addDays(30)) ? 'expiring' : 'safe';
+            });
+
+        $inventoryStats = [
+            'totalItems' => $allItems->count(),
+            'totalStock' => (int) $allItems->sum(fn (Item $item): int => $item->total_stock),
+            'lowStock' => $allItems->filter(fn (Item $item): bool => $item->total_stock > 0 && $item->total_stock < 10)->count(),
+            'outOfStock' => $allItems->filter(fn (Item $item): bool => $item->total_stock <= 0)->count(),
+            'expired' => $expiryStates->filter(fn (string $state): bool => $state === 'expired')->count(),
+            'expiring' => $expiryStates->filter(fn (string $state): bool => $state === 'expiring')->count(),
+        ];
+
+        return view('inventory.index', compact('items', 'inventoryStats'));
     }
 
     public function create()

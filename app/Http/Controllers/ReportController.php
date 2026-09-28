@@ -10,6 +10,7 @@ use App\Models\ReturnItem;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
 
@@ -26,11 +27,27 @@ class ReportController extends Controller
     {
         $activeReport = $this->activeReport($request);
         $report = $this->buildReport($activeReport);
+        $allRows = collect($report['rows']);
+        $perPage = 15;
+        $lastPage = max(1, (int) ceil($allRows->count() / $perPage));
+        $currentPage = min(LengthAwarePaginator::resolveCurrentPage(), $lastPage);
+
+        $report['rows'] = new LengthAwarePaginator(
+            $allRows->forPage($currentPage, $perPage)->values(),
+            $allRows->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('reports.index', [
             'tabs' => self::REPORTS,
             'activeReport' => $activeReport,
             'report' => $report,
+            'allRows' => $allRows,
         ]);
     }
 
@@ -84,8 +101,14 @@ class ReportController extends Controller
         $lowStock = $items->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count();
         $outOfStock = $items->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count();
         $expiring = $items->filter(function (Item $item): bool {
-            return $item->next_expiration_date
-                && Carbon::parse($item->next_expiration_date)->lte(now()->addDays(30));
+            if (! $item->next_expiration_date) {
+                return false;
+            }
+
+            $expirationDate = Carbon::parse($item->next_expiration_date)->startOfDay();
+            $today = now()->startOfDay();
+
+            return $expirationDate->between($today, $today->copy()->addDays(30), true);
         })->count();
 
         $categoryTotals = $items

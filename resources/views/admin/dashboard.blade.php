@@ -2,13 +2,34 @@
 
 @section('content')
 
+<style>
+    .dashboard-kpi-grid,
+    .dashboard-lower-grid {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+
+    .dashboard-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dashboard-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    @media (max-width: 1100px) {
+        .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 680px) {
+        .dashboard-kpi-grid,
+        .dashboard-lower-grid { grid-template-columns: minmax(0, 1fr); }
+    }
+</style>
+
 {{-- HEADER --}}
 <div class="page-header">
     <h2 class="page-title">Dashboard</h2>
 </div>
 
 {{-- TOP KPI ROW --}}
-<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:20px;">
+<div class="dashboard-kpi-grid">
 
     <a href="/inventory" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #BFDBFE; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
         <div>
@@ -25,7 +46,7 @@
         <div>
             <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Active Requests</p>
             <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ $activeRequests }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">From ResqOperation</p>
+            <p style="font-size:12px; color:#94a3b8; margin:0;">Awaiting review</p>
         </div>
         <div style="background:#F0FFF4; color:#38a169; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i class="fa-solid fa-list-check"></i>
@@ -36,7 +57,7 @@
         <div>
             <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Approved Requests</p>
             <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ $approvedRequests }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">This month</p>
+            <p style="font-size:12px; color:#94a3b8; margin:0;">All-time approved</p>
         </div>
         <div style="background:#F0FFF4; color:#38a169; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i class="fa-regular fa-circle-check"></i>
@@ -46,7 +67,7 @@
 </div>
 
 {{-- BOTTOM KPI ROW --}}
-<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:24px;">
+<div class="dashboard-kpi-grid" style="margin-bottom:24px;">
 
     <a href="/inventory" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #FDBA74; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
         <div>
@@ -63,7 +84,7 @@
         <div>
             <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Expiring Items</p>
             <h3 style="font-size:32px; font-weight:700; color:#D97706; margin:0 0 4px;">{{ $expiringItems }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Within 7 days</p>
+            <p style="font-size:12px; color:#94a3b8; margin:0;">Expired or expiring within 30 days</p>
         </div>
         <div style="background:#FFFBEB; color:#D97706; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i class="fa-regular fa-clock"></i>
@@ -73,8 +94,8 @@
     <div style="background:#fff; border:2px solid #BFDBFE; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start;">
         <div>
             <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Completed Deliveries</p>
-            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">0</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">This month</p>
+            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ number_format($completedDeliveries) }}</h3>
+            <p style="font-size:12px; color:#94a3b8; margin:0;">Arrived this month</p>
         </div>
         <div style="background:#EBF8FF; color:#3182ce; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
             <i class="fa-solid fa-truck"></i>
@@ -84,7 +105,7 @@
 </div>
 
 {{-- REQUEST STATUS OVERVIEW + ACTIVITY FEED --}}
-<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+<div class="dashboard-lower-grid">
 
     {{-- REQUEST STATUS OVERVIEW (now first) --}}
     <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px; display:flex; flex-direction:column;">
@@ -93,6 +114,7 @@
             $total = max($totalRequests, 1);
             $pendingPct  = round(($activeRequests / $total) * 100);
             $approvedPct = round(($approvedRequests / $total) * 100);
+            $releasedPct = round(($releasedRequests / $total) * 100);
             $rejectedPct = round(($rejectedRequests / $total) * 100);
         @endphp
         <div style="display:flex; flex-direction:column; gap:16px; flex:1;">
@@ -112,6 +134,15 @@
                 </div>
                 <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
                     <div style="width:{{ $approvedPct }}%; background:#10B981; height:100%; border-radius:999px;"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+                    <span style="font-size:13px; color:#4a5568;">Released</span>
+                    <span style="font-size:13px; font-weight:700; color:#1a202c;">{{ $releasedRequests }}</span>
+                </div>
+                <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
+                    <div style="width:{{ $releasedPct }}%; background:#6366F1; height:100%; border-radius:999px;"></div>
                 </div>
             </div>
             <div>
