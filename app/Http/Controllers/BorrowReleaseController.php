@@ -43,7 +43,7 @@ class BorrowReleaseController extends Controller
             'quantity' => 'required|integer|min:1',
             'unit' => 'required|string|max:100',
             'purpose' => 'required|string|max:255',
-            'location' => 'nullable|string|max:255',
+            'location' => 'required|string|max:255',
             'released_at' => 'required|date',
         ]);
 

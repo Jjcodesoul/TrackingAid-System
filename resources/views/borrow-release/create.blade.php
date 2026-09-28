@@ -102,9 +102,16 @@
                     </div>
 
                     <div>
-                        <label class="form-label" for="location">Location</label>
-                        <input id="location" name="location" type="text" class="form-input" value="{{ old('location') }}" placeholder="e.g., Disaster Zone A, Relief Center">
-                    </div>
+                        <label class="form-label" for="location">Location *</label>
+                    <input
+                        id="location"
+                        name="location"
+                        type="text"
+                        class="form-input"
+                        value="{{ old('location') }}"
+                        placeholder="e.g., Disaster Zone A, Relief Center"
+                        required
+                    >
 
                     <div>
                         <label class="form-label" for="released_at">Date & Time *</label>
