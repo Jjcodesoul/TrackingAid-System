@@ -43,7 +43,9 @@
                 <button onclick="filterStatus('all')" id="tab-all" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:#1a202c; color:#fff;">All</button>
                 <button onclick="filterStatus('Pending')" id="tab-pending" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151; display:flex; align-items:center; gap:6px;">
                     Pending
-                    <span style="background:#EF4444; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px;">{{ $requests->where('status', 'Pending')->count() }}</span>
+                    <span style="background:#EF4444; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px;">
+                        {{ ($requests ? $requests->where('status', 'Pending')->count() : 0) + (isset($forwardedRequests) ? $forwardedRequests->count() : 0) }}
+                    </span>
                 </button>
                 <button onclick="filterStatus('Approved')" id="tab-approved" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Approved</button>
                 <button onclick="filterStatus('Rejected')" id="tab-rejected" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Rejected</button>
@@ -70,55 +72,161 @@
                     </tr>
                 </thead>
                 <tbody id="requestsTable">
-                    @forelse($requests as $req)
-                        @php
-                            $priorityColors = [
-                                'Critical' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
-                                'High' => ['bg' => '#FFF7ED', 'color' => '#EA580C'],
-                                'Medium' => ['bg' => '#FFFBEB', 'color' => '#D97706'],
-                                'Low' => ['bg' => '#F0FDF4', 'color' => '#16A34A'],
-                            ];
-                            $pc = $priorityColors[$req->priority] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
+                    @php
+                        $priorityColors = [
+                            'Critical' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
+                            'High'     => ['bg' => '#FFF7ED', 'color' => '#EA580C'],
+                            'Medium'   => ['bg' => '#FFFBEB', 'color' => '#D97706'],
+                            'Low'      => ['bg' => '#F0FDF4', 'color' => '#16A34A'],
+                        ];
+                        $statusColors = [
+                            'Pending'  => ['bg' => '#FFFBEB', 'color' => '#D97706'],
+                            'Approved' => ['bg' => '#ECFDF5', 'color' => '#059669'],
+                            'Rejected' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
+                            'Released' => ['bg' => '#EEF2FF', 'color' => '#4338CA'],
+                        ];
+                    @endphp
 
-                            $statusColors = [
-                                'Pending' => ['bg' => '#FFFBEB', 'color' => '#D97706'],
-                                'Approved' => ['bg' => '#ECFDF5', 'color' => '#059669'],
-                                'Rejected' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
-                                'Released' => ['bg' => '#EEF2FF', 'color' => '#4338CA'],
-                            ];
-                            $sc = $statusColors[$req->status] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
-                        @endphp
-                        <tr class="req-row" data-status="{{ $req->status }}" style="border-bottom:1px solid #f1f5f9;">
-                            <td style="padding:14px 16px;"><span style="font-size:12px; font-weight:600; color:#64748b; font-family:monospace;">{{ $req->request_code }}</span></td>
-                            <td style="padding:14px 16px;">
-                                <span style="font-weight:600; color:#1a202c; font-size:14px; display:block;">{{ $req->inventory?->name ?? 'Unknown Item' }}</span>
-                                <span style="font-size:11px; color:#94a3b8; font-family:monospace;">{{ $req->inventory?->sku ?? '—' }}</span>
-                            </td>
-                            <td style="padding:14px 16px; font-weight:700; color:#1a202c;">{{ number_format($req->quantity) }}</td>
-                            <td style="padding:14px 16px;"><span style="background:{{ $pc['bg'] }}; color:{{ $pc['color'] }}; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">{{ $req->priority }}</span></td>
-                            <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                {{ $req->source ?? $req->responder_email ?? '—' }}
-                                @if($req->purpose)
-                                    <span style="display:block; font-size:11px; color:#94a3b8;">{{ \Illuminate\Support\Str::limit($req->purpose, 30) }}</span>
-                                @endif
-                            </td>
-                            <td style="padding:14px 16px; font-size:13px; color:#4a5568;">{{ optional($req->created_at)->format('M d, Y') }}</td>
-                            <td style="padding:14px 16px;"><span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">{{ $req->status }}</span></td>
-                            <td style="padding:14px 16px;">
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <button type="button" title="{{ $req->notification_status ?? 'No notification yet' }}" style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;"><i class="fa-regular fa-eye"></i></button>
-                                    @if($req->status === 'Pending')
-                                        <form action="{{ route('requests.approve', $req) }}" method="POST" style="margin:0;">@csrf<button type="submit" title="Approve" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;"><i class="fa-regular fa-circle-check"></i></button></form>
-                                        <form action="{{ route('requests.reject', $req) }}" method="POST" onsubmit="return confirm('Reject this request?')" style="margin:0;">@csrf<button type="submit" title="Reject" style="background:none; border:none; cursor:pointer; color:#DC2626; padding:4px; font-size:16px;"><i class="fa-regular fa-circle-xmark"></i></button></form>
+                    {{-- 1. LOCAL REQUESTS LOOP --}}
+                    @if(isset($requests) && count($requests) > 0)
+                        @foreach($requests as $req)
+                            @php
+                                $priorityKey = ucfirst(strtolower($req->priority ?? 'Low'));
+                                $statusKey   = ucfirst(strtolower($req->status ?? 'Pending'));
+                                $pc = $priorityColors[$priorityKey] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
+                                $sc = $statusColors[$statusKey] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
+                            @endphp
+                            <tr class="req-row" data-status="{{ $statusKey }}" style="border-bottom:1px solid #f1f5f9;">
+                                <td style="padding:14px 16px;">
+                                    <span style="font-size:12px; font-weight:600; color:#64748b; font-family:monospace;">
+                                        {{ $req->request_code ?? ('REQ-' . $req->id) }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="font-weight:600; color:#1a202c; font-size:14px; display:block;">
+                                        {{ $req->inventory?->name ?? $req->inventory?->item_name ?? 'Unknown Item' }}
+                                    </span>
+                                    <span style="font-size:11px; color:#94a3b8; font-family:monospace;">
+                                        {{ $req->inventory?->sku ?? '—' }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px; font-weight:700; color:#1a202c;">
+                                    {{ number_format($req->quantity ?? 0) }}
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="background:{{ $pc['bg'] }}; color:{{ $pc['color'] }}; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+                                        {{ $priorityKey }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                                    {{ $req->source ?? $req->responder_email ?? 'Local User' }}
+                                    @if(!empty($req->purpose))
+                                        <span style="display:block; font-size:11px; color:#94a3b8;">
+                                            {{ \Illuminate\Support\Str::limit($req->purpose, 30) }}
+                                        </span>
                                     @endif
-                                </div>
+                                </td>
+                                <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                                    {{ optional($req->created_at)->format('M d, Y') ?? 'N/A' }}
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">
+                                        {{ $statusKey }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <button type="button" title="{{ $req->notification_status ?? 'No notification yet' }}" style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </button>
+                                        @if($statusKey === 'Pending')
+                                            <form action="{{ route('requests.approve', $req) }}" method="POST" style="margin:0;">
+                                                @csrf
+                                                <button type="submit" title="Approve" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
+                                                    <i class="fa-regular fa-circle-check"></i>
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('requests.reject', $req) }}" method="POST" onsubmit="return confirm('Reject this request?')" style="margin:0;">
+                                                @csrf
+                                                <button type="submit" title="Reject" style="background:none; border:none; cursor:pointer; color:#DC2626; padding:4px; font-size:16px;">
+                                                    <i class="fa-regular fa-circle-xmark"></i>
+                                                </button>
+                                            </form>
+                                        @endif
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
+
+                    {{-- 2. RESQOPERATION FORWARDED REQUESTS LOOP --}}
+                    @if(isset($forwardedRequests) && count($forwardedRequests) > 0)
+                        @foreach($forwardedRequests as $freq)
+                            @php
+                                $urgencyKey = ucfirst(strtolower($freq->urgency ?? 'Medium'));
+                                $pc = $priorityColors[$urgencyKey] ?? ['bg' => '#FFFBEB', 'color' => '#D97706'];
+                                $sc = $statusColors['Pending'];
+                            @endphp
+                            <tr class="req-row" data-status="Pending" style="border-bottom:1px solid #f1f5f9; background-color:#f0f9ff;">
+                                <td style="padding:14px 16px;">
+                                    <span style="font-size:12px; font-weight:600; color:#0369a1; font-family:monospace;">
+                                        {{ $freq->tracking_reference }}
+                                    </span>
+                                    <span style="display:inline-block; background:#e0f2fe; color:#0369a1; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700; margin-left:4px;">
+                                        ResQOperation
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="font-weight:600; color:#1a202c; font-size:14px; display:block;">
+                                        {{ $freq->item_name }}
+                                    </span>
+                                    <span style="font-size:11px; color:#94a3b8; font-family:monospace;">
+                                        {{ $freq->resqoperation_request_id ?? 'Forwarded' }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px; font-weight:700; color:#1a202c;">
+                                    {{ number_format($freq->quantity ?? 0) }} {{ $freq->unit ?? '' }}
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="background:{{ $pc['bg'] }}; color:{{ $pc['color'] }}; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+                                        {{ $urgencyKey }}
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                                    {{ $freq->request_source ?? 'HQ Desk' }}
+                                    @if(!empty($freq->area_label))
+                                        <span style="display:block; font-size:11px; color:#94a3b8;">
+                                            {{ $freq->area_label }}
+                                        </span>
+                                    @endif
+                                </td>
+                                <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                                    {{ optional($freq->created_at)->format('M d, Y') ?? 'N/A' }}
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">
+                                        Pending
+                                    </span>
+                                </td>
+                                <td style="padding:14px 16px;">
+                                    <div style="display:flex; align-items:center; gap:8px;">
+                                        <button type="button" title="Forwarded External Request" style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;">
+                                            <i class="fa-regular fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    @endif
+
+                    {{-- 3. EMPTY STATE --}}
+                    @if((!isset($requests) || count($requests) == 0) && (!isset($forwardedRequests) || count($forwardedRequests) == 0))
+                        <tr>
+                            <td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+                                No requests found.
                             </td>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">No requests found.</td>
-                        </tr>
-                    @endforelse
+                    @endif
                 </tbody>
             </table>
         </div>

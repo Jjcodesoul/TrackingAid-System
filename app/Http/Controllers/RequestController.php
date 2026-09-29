@@ -3,24 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Request as SupplyRequest;
+use App\Models\ResqoperationForwardedRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB; // <-- ADDED THIS so the DB query below works
+use Illuminate\Support\Facades\DB;
 
 class RequestController extends Controller
 {
-    // --- YOUR TEAMMATE'S EXISTING CODE ---
-
     public function index()
     {
+        // 1. Fetch local supply requests with inventory details
         $requests = SupplyRequest::with('inventory')->latest()->get();
+
+        // 2. Fetch external forwarded requests sent by ResQOperation
+        $forwardedRequests = ResqoperationForwardedRequest::latest()->get();
+
+        // 3. Calculate combined statistics safely
         $stats = [
-            'pending' => $requests->where('status', 'Pending')->count(),
+            'pending'  => $requests->where('status', 'Pending')->count() + $forwardedRequests->count(),
             'approved' => $requests->where('status', 'Approved')->count(),
             'released' => $requests->where('status', 'Released')->count(),
             'rejected' => $requests->where('status', 'Rejected')->count(),
         ];
 
-        return view('requests.index', compact('requests', 'stats'));
+        // 4. Pass all variables to view
+        return view('requests.index', compact('requests', 'forwardedRequests', 'stats'));
     }
 
     public function approve(SupplyRequest $request)
@@ -47,38 +53,30 @@ class RequestController extends Controller
 
     public function storeResqData(Request $request)
     {
-        // 1. Validate the incoming data from Niña's website
+        // Validate exact payload structure matching resqoperation_forwarded_requests schema
         $validated = $request->validate([
-            'request_code' => 'required|string|unique:requests,request_code',
-            'inventory_id' => 'required|exists:inventory,id',
-            'quantity'     => 'required|integer|min:1',
-            'priority'     => 'required|in:Low,Medium,High',
-            'purpose'      => 'nullable|string',
-            'responder_email' => 'nullable|email'
+            'tracking_reference'       => 'required|string',
+            'resqoperation_request_id' => 'nullable|string',
+            'source_reference'         => 'nullable|string',
+            'request_source'           => 'nullable|string',
+            'source_system'            => 'nullable|string',
+            'request_category'         => 'nullable|string',
+            'resource_type'            => 'nullable|string',
+            'item_name'                => 'required|string',
+            'quantity'                 => 'required|integer|min:1',
+            'unit'                     => 'nullable|string',
+            'urgency'                  => 'nullable|string',
+            'area_label'               => 'nullable|string',
+            'area_note'                => 'nullable|string',
         ]);
 
-        // 2. Save it directly into the TrackingAid database
-        DB::table('requests')->insert([
-            'request_code'    => $validated['request_code'],
-            'inventory_id'    => $validated['inventory_id'],
-            'source'          => 'ResQOperation', 
-            'quantity'        => $validated['quantity'],
-            'priority'        => $validated['priority'],
-            'status'          => 'Pending', 
-            'purpose'         => $validated['purpose'] ?? null,
-            'responder_email' => $validated['responder_email'] ?? null,
-            'created_at'      => now(),
-            'updated_at'      => now(),
-        ]);
+        // Create the forwarded record
+        $forwardedRequest = ResqoperationForwardedRequest::create($validated);
 
-        // 3. Send a "Success" receipt back to Niña's website
         return response()->json([
-            'status' => 'success',
-            'message' => 'Rescue request successfully received by TrackingAid!',
-            'data' => [
-                'request_code' => $validated['request_code'],
-                'status' => 'Pending'
-            ]
-        ], 201); 
+            'status'  => 'success',
+            'message' => 'Forwarded request successfully received by TrackingAid!',
+            'data'    => $forwardedRequest
+        ], 201);
     }
 }
