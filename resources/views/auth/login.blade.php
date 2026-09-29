@@ -374,7 +374,7 @@
             </div>
 
             <div class="form-header">
-                <h2>Welcome back</h2>
+                <h2>Get Started with TrackingAid</h2>
                 <p>Sign in to continue to your dashboard</p>
             </div>
 
