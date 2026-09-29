@@ -122,6 +122,11 @@ class NotificationService
 
     private function expiringAlertForItem(Item $item): ?array
     {
+
+        if ($item->total_stock <= 0) {
+            return null;
+        }
+
         $batch = $item->stockBatches
             ->filter(fn (StockBatch $batch): bool => (int) $batch->quantity > 0 && filled($batch->expiration_date))
             ->sortBy(fn (StockBatch $batch): string => Carbon::parse($batch->expiration_date)->toDateString())

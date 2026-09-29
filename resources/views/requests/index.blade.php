@@ -40,20 +40,21 @@
     <section class="panel" style="padding:0; overflow:hidden;">
         <div style="padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button onclick="filterStatus('all')" id="tab-all" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:#1a202c; color:#fff;">All</button>
-                <button onclick="filterStatus('Pending')" id="tab-pending" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151; display:flex; align-items:center; gap:6px;">
+                <button onclick="filterStatus('all')" id="tab-all" type="button" aria-pressed="true" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:#1a202c; color:#fff;">All</button>
+                <button onclick="filterStatus('Pending')" id="tab-pending" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151; display:flex; align-items:center; gap:6px;">
                     Pending
                     <span style="background:#EF4444; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px;">
                         {{ ($requests ? $requests->where('status', 'Pending')->count() : 0) + (isset($forwardedRequests) ? $forwardedRequests->count() : 0) }}
                     </span>
                 </button>
-                <button onclick="filterStatus('Approved')" id="tab-approved" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Approved</button>
-                <button onclick="filterStatus('Rejected')" id="tab-rejected" type="button" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Rejected</button>
+                <button onclick="filterStatus('Approved')" id="tab-approved" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Approved</button>
+                <button onclick="filterStatus('Released')" id="tab-released" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Released</button>
+                <button onclick="filterStatus('Rejected')" id="tab-rejected" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Rejected</button>
             </div>
 
             <div style="position:relative;">
                 <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
-                <input type="text" id="searchInput" placeholder="Search requests..." onkeyup="searchTable()" style="padding:8px 12px 8px 36px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; width:220px;">
+                <input type="search" id="searchInput" aria-label="Search requests" placeholder="Search requests..." oninput="searchTable()" style="padding:8px 12px 8px 36px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; width:220px;">
             </div>
         </div>
 
@@ -229,23 +230,23 @@
                     @endif
                 </tbody>
             </table>
+            <p id="requestNoResults" role="status" style="display:none; text-align:center; padding:24px; color:#64748b; font-size:13px;">No requests match these filters.</p>
         </div>
     </section>
 
     <script>
-        function filterStatus(status) {
-            const rows = document.querySelectorAll('.req-row');
-            rows.forEach(row => {
-                const rowStatus = row.getAttribute('data-status');
-                row.style.display = (status === 'all' || rowStatus === status) ? '' : 'none';
-            });
+        let activeRequestStatus = 'all';
 
-            const tabs = ['all', 'Pending', 'Approved', 'Rejected'];
+        function filterStatus(status) {
+            activeRequestStatus = status;
+            const tabs = ['all', 'Pending', 'Approved', 'Released', 'Rejected'];
             tabs.forEach(t => {
                 const btn = document.getElementById('tab-' + t.toLowerCase());
                 if (!btn) return;
 
-                if ((t === 'all' && status === 'all') || t === status) {
+                const active = (t === 'all' && status === 'all') || t === status;
+                btn.setAttribute('aria-pressed', String(active));
+                if (active) {
                     btn.style.background = '#1a202c';
                     btn.style.color = '#fff';
                     btn.style.border = 'none';
@@ -255,13 +256,24 @@
                     btn.style.border = '1px solid #e2e8f0';
                 }
             });
+            applyRequestFilters();
         }
 
         function searchTable() {
+            applyRequestFilters();
+        }
+
+        function applyRequestFilters() {
             const search = document.getElementById('searchInput').value.toLowerCase();
+            let visibleCount = 0;
             document.querySelectorAll('.req-row').forEach(row => {
-                row.style.display = row.innerText.toLowerCase().includes(search) ? '' : 'none';
+                const matchesStatus = activeRequestStatus === 'all' || row.dataset.status === activeRequestStatus;
+                const matchesSearch = row.innerText.toLowerCase().includes(search);
+                const visible = matchesStatus && matchesSearch;
+                row.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
             });
+            document.getElementById('requestNoResults').style.display = visibleCount === 0 ? '' : 'none';
         }
     </script>
 @endsection

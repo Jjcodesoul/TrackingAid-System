@@ -250,6 +250,14 @@
         white-space: nowrap;
     }
 
+    .chart-label small {
+        display: block;
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 400;
+        margin-top: 2px;
+    }
+
     .chart-empty {
         min-height: 180px;
         display: flex;
@@ -293,6 +301,46 @@
     .report-table-wrap {
         overflow-x: auto;
     }
+
+    .print-report-table-wrap { display: none; }
+
+    .report-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        padding: 14px 16px;
+        border-top: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: 13px;
+    }
+
+    .report-pagination-pages {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .report-pagination a,
+    .report-pagination-current,
+    .report-pagination-disabled {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        min-height: 36px;
+        padding: 0 10px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        background: #fff;
+        color: #334155;
+        text-decoration: none;
+    }
+
+    .report-pagination a:hover { background: #f1f5f9; }
+    .report-pagination-current { background: #059669; border-color: #059669; color: #fff; font-weight: 700; }
+    .report-pagination-disabled { color: #94a3b8; background: #f8fafc; }
 
     .report-table {
         width: 100%;
@@ -377,24 +425,45 @@
     }
 
     @media print {
-        .sidebar,
-        .topbar,
+        .app-sidebar,
+        .app-sidebar-backdrop,
+        .app-header,
         .reports-toolbar,
-        .report-actions {
+        .report-pagination,
+        .screen-report-table-wrap {
             display: none !important;
         }
 
-        .main {
-            margin-left: 0 !important;
+        .app-shell,
+        .app-main {
+            display: block !important;
+            width: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
         }
 
-        .page-content {
-            padding: 0 !important;
+        html,
+        body {
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        .print-report-table-wrap {
+            display: block !important;
+            overflow: visible !important;
         }
 
         .report-card,
         .report-stat {
             box-shadow: none !important;
+        }
+
+        .report-card {
+            break-inside: auto;
+        }
+
+        .report-table tr {
             break-inside: avoid;
         }
 
@@ -423,9 +492,9 @@
         </div>
 
         <div class="report-actions">
-            <button type="button" class="report-action" onclick="window.print()">
-                <i class="fa-solid fa-download"></i>
-                PDF
+            <button type="button" class="report-action" onclick="window.print()" aria-label="Print full report or save as PDF">
+                <i class="fa-solid fa-print" aria-hidden="true"></i>
+                Print / PDF
             </button>
             <a class="report-action" href="{{ route('reports.export', ['report' => $activeReport]) }}">
                 <i class="fa-solid fa-download"></i>
@@ -478,7 +547,12 @@
                                     ></span>
                                 @endforeach
                             </div>
-                            <span class="chart-label">{{ $label }}</span>
+                            <span class="chart-label">
+                                {{ $label }}
+                                @if(!empty($report['chart']['labelMeta'][$labelIndex]))
+                                    <small>{{ $report['chart']['labelMeta'][$labelIndex] }}</small>
+                                @endif
+                            </span>
                         </div>
                     @endforeach
                 </div>
@@ -500,8 +574,9 @@
     <section class="report-card">
         <div class="report-table-title">Summary Table</div>
 
-        <div class="report-table-wrap">
-            <table class="report-table">
+        <div class="report-table-wrap screen-report-table-wrap">
+            <table class="report-table screen-report-table">
+                <caption class="sr-only">Current page of {{ $report['title'] }} rows</caption>
                 <thead>
                     <tr>
                         @foreach($report['headers'] as $header)
@@ -528,6 +603,67 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="report-table-wrap print-report-table-wrap" aria-hidden="true">
+            <table class="report-table print-report-table">
+                <caption>{{ $report['title'] }} — full report</caption>
+                <thead>
+                    <tr>
+                        @foreach($report['headers'] as $header)
+                            <th>{{ $header }}</th>
+                        @endforeach
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($allRows as $row)
+                        <tr>
+                            @foreach($row['cells'] as $cell)
+                                <td class="{{ $cell['tone'] ? 'cell-tone-' . $cell['tone'] : '' }} {{ $cell['mono'] ? 'cell-mono' : '' }}">
+                                    {{ $cell['value'] }}
+                                </td>
+                            @endforeach
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="{{ count($report['headers']) }}" style="text-align:center; padding:40px; color:#94a3b8;">
+                                {{ $report['empty'] }}
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        @if($report['rows']->hasPages())
+            <nav class="report-pagination" aria-label="Summary table pagination">
+                <p style="margin:0;">
+                    Showing <strong>{{ $report['rows']->firstItem() }}–{{ $report['rows']->lastItem() }}</strong>
+                    of <strong>{{ $report['rows']->total() }}</strong> rows
+                </p>
+
+                <div class="report-pagination-pages">
+                    @if($report['rows']->onFirstPage())
+                        <span class="report-pagination-disabled" aria-disabled="true">Previous</span>
+                    @else
+                        <a href="{{ $report['rows']->previousPageUrl() }}" rel="prev" aria-label="Go to previous page">Previous</a>
+                    @endif
+
+                    @foreach($report['rows']->getUrlRange(max(1, $report['rows']->currentPage() - 2), min($report['rows']->lastPage(), $report['rows']->currentPage() + 2)) as $page => $url)
+                        @if($page === $report['rows']->currentPage())
+                            <span class="report-pagination-current" aria-current="page" aria-label="Current page, {{ $page }}">{{ $page }}</span>
+                        @else
+                            <a href="{{ $url }}" aria-label="Go to page {{ $page }}">{{ $page }}</a>
+                        @endif
+                    @endforeach
+
+                    @if($report['rows']->hasMorePages())
+                        <a href="{{ $report['rows']->nextPageUrl() }}" rel="next" aria-label="Go to next page">Next</a>
+                    @else
+                        <span class="report-pagination-disabled" aria-disabled="true">Next</span>
+                    @endif
+                </div>
+            </nav>
+        @endif
     </section>
 </div>
 @endsection

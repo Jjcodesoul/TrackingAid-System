@@ -10,6 +10,7 @@ use App\Models\ReturnItem;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
 
@@ -26,11 +27,27 @@ class ReportController extends Controller
     {
         $activeReport = $this->activeReport($request);
         $report = $this->buildReport($activeReport);
+        $allRows = collect($report['rows']);
+        $perPage = 15;
+        $lastPage = max(1, (int) ceil($allRows->count() / $perPage));
+        $currentPage = min(LengthAwarePaginator::resolveCurrentPage(), $lastPage);
+
+        $report['rows'] = new LengthAwarePaginator(
+            $allRows->forPage($currentPage, $perPage)->values(),
+            $allRows->count(),
+            $perPage,
+            $currentPage,
+            [
+                'path' => LengthAwarePaginator::resolveCurrentPath(),
+                'query' => $request->query(),
+            ]
+        );
 
         return view('reports.index', [
             'tabs' => self::REPORTS,
             'activeReport' => $activeReport,
             'report' => $report,
+            'allRows' => $allRows,
         ]);
     }
 
@@ -84,14 +101,24 @@ class ReportController extends Controller
         $lowStock = $items->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count();
         $outOfStock = $items->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count();
         $expiring = $items->filter(function (Item $item): bool {
-            return $item->next_expiration_date
-                && Carbon::parse($item->next_expiration_date)->lte(now()->addDays(30));
+            if (! $item->next_expiration_date) {
+                return false;
+            }
+
+            $expirationDate = Carbon::parse($item->next_expiration_date)->startOfDay();
+            $today = now()->startOfDay();
+
+            return $expirationDate->between($today, $today->copy()->addDays(30), true);
         })->count();
 
         $categoryTotals = $items
             ->groupBy(fn (Item $item): string => strtoupper($item->category ?: 'Uncategorized'))
             ->map(fn (Collection $items): int => $items->sum(fn (Item $item): int => $stockFor($item)))
             ->sortDesc();
+
+        $categoryCounts = $items
+            ->groupBy(fn (Item $item): string => strtoupper($item->category ?: 'Uncategorized'))
+            ->map(fn (Collection $items): int => $items->count());
 
         $rows = $items->map(function (Item $item) use ($stockFor): array {
             $stock = $stockFor($item);
@@ -114,14 +141,15 @@ class ReportController extends Controller
         return [
             'title' => 'Inventory Levels',
             'subtitle' => 'Current item stock by category, location, and stock status.',
-            'chartTitle' => 'Stock Levels by Category',
+            'chartTitle' => 'Total Stock Units by Category',
             'chart' => $this->chart(
                 $categoryTotals->keys()->values()->all(),
                 [[
                     'name' => 'Stock',
                     'color' => '#10b981',
                     'values' => $categoryTotals->values()->map(fn ($value): int => (int) $value)->all(),
-                ]]
+                ]],
+                $categoryTotals->keys()->map(fn ($category) => $categoryCounts[$category] . ' item' . ($categoryCounts[$category] === 1 ? '' : 's'))->values()->all()
             ),
             'stats' => [
                 $this->stat('Total Items', number_format($items->count()), 'Registered SKUs', 'fa-solid fa-boxes-stacked'),
@@ -370,7 +398,7 @@ class ReportController extends Controller
             ->first();
     }
 
-    private function chart(array $labels, array $series): array
+    private function chart(array $labels, array $series, array $labelMeta = []): array
     {
         $max = collect($series)
             ->flatMap(fn (array $set): array => $set['values'])
@@ -380,6 +408,7 @@ class ReportController extends Controller
             'labels' => $labels,
             'series' => $series,
             'max' => max((int) $max, 1),
+            'labelMeta' => $labelMeta,
         ];
     }
 

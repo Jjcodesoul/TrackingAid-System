@@ -41,15 +41,16 @@ class UserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
-            'role' => 'required|string|in:admin,user,staff', 
+            'role' => 'required|string|in:admin,user,staff,delivery_personnel',
         ]);
 
-        User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'role' => $validated['role'],
-        ]);
+       User::create([
+    'name' => $validated['name'],
+    'email' => $validated['email'],
+    'password' => Hash::make($validated['password']),
+    'role' => $validated['role'],
+    'must_change_password' => $validated['role'] === 'delivery_personnel',
+]);
 
         return redirect()->route('users.index')->with('success', 'Personnel authorized successfully.');
     }

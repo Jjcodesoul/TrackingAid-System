@@ -6,24 +6,18 @@
     <h1 class="page-title">Return Management</h1>
     <div class="page-subtitle">Process returns of borrowed items</div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-4">
-            <div class="panel p-3">
-                <div class="text-muted small">Returnable Items</div>
-                <div class="display-6 fw-bold">{{ $items->count() }}</div>
-            </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
+            <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Returnable Items</div>
+            <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $items->count() }}</div>
         </div>
-        <div class="col-md-4">
-            <div class="panel p-3">
-                <div class="text-muted small">Good Returns</div>
-                <div class="display-6 fw-bold">{{ $recentReturns->where('condition', 'Good')->count() }}</div>
-            </div>
+        <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
+            <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Good Returns</div>
+            <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $recentReturns->where('condition', 'Good')->count() }}</div>
         </div>
-        <div class="col-md-4">
-            <div class="panel p-3">
-                <div class="text-muted small">Recent Returns</div>
-                <div class="display-6 fw-bold">{{ $recentReturns->count() }}</div>
-            </div>
+        <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
+            <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Recent Returns</div>
+            <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $recentReturns->count() }}</div>
         </div>
     </div>
 
@@ -87,23 +81,23 @@
             <table class="table align-middle">
                 <thead>
                     <tr>
-                        <th>Item</th>
-                        <th>Quantity</th>
-                        <th>Condition</th>
-                        <th>Notes</th>
+                        <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Item</th>
+                        <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Quantity</th>
+                        <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Condition</th>
+                        <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Notes</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($recentReturns as $return)
-                        <tr>
-                            <td>{{ $return->inventory->sku ?? 'N/A' }}</td>
-                            <td>{{ number_format($return->quantity) }}</td>
-                            <td>{{ $return->condition }}</td>
-                            <td>{{ $return->notes ?: '—' }}</td>
+                        <tr class="hover:bg-gray-50">
+                            <td class="p-3 text-[13px] font-medium text-[#1e293b]">{{ $return->inventory->sku ?? 'N/A' }}</td>
+                            <td class="p-3 text-[13px] text-[#475569]">{{ number_format($return->quantity) }}</td>
+                            <td class="p-3 text-[13px] text-[#475569]">{{ $return->condition }}</td>
+                            <td class="p-3 text-[13px] text-[#64748b]">{{ $return->notes ?: '—' }}</td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-4">No recent returns recorded yet.</td>
+                            <td colspan="4" class="p-8 text-center text-[#94a3b8] text-[13px]">No recent returns recorded yet.</td>
                         </tr>
                     @endforelse
                 </tbody>
