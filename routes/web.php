@@ -56,6 +56,8 @@ Route::middleware('auth')->group(function () {
 
         Route::post('/requests/{request}/approve', [RequestController::class, 'approve'])->name('requests.approve');
         Route::post('/requests/{request}/reject', [RequestController::class, 'reject'])->name('requests.reject');
+        Route::post('/requests/forwarded/{forwardedRequest}/approve', [RequestController::class, 'approveForwarded'])->name('requests.forwarded.approve');
+        Route::post('/requests/forwarded/{forwardedRequest}/reject', [RequestController::class, 'rejectForwarded'])->name('requests.forwarded.reject');
 
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');

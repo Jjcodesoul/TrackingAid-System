@@ -17,12 +17,19 @@ class RequestController extends Controller
         // 2. Fetch external forwarded requests sent by ResQOperation
         $forwardedRequests = ResqoperationForwardedRequest::latest()->get();
 
-        // 3. Calculate combined statistics safely
+        $forwardedStatusGroup = fn ($forwardedRequest) => match (strtolower($forwardedRequest->resqperation_status ?? 'forwarded')) {
+            'approved' => 'approved',
+            'rejected' => 'rejected',
+            'released' => 'released',
+            default => 'pending',
+        };
+        $forwardedStats = $forwardedRequests->countBy($forwardedStatusGroup);
+
         $stats = [
-            'pending'  => $requests->where('status', 'Pending')->count() + $forwardedRequests->count(),
-            'approved' => $requests->where('status', 'Approved')->count(),
-            'released' => $requests->where('status', 'Released')->count(),
-            'rejected' => $requests->where('status', 'Rejected')->count(),
+            'pending'  => $requests->where('status', 'Pending')->count() + $forwardedStats->get('pending', 0),
+            'approved' => $requests->where('status', 'Approved')->count() + $forwardedStats->get('approved', 0),
+            'released' => $requests->where('status', 'Released')->count() + $forwardedStats->get('released', 0),
+            'rejected' => $requests->where('status', 'Rejected')->count() + $forwardedStats->get('rejected', 0),
         ];
 
         // 4. Pass all variables to view
@@ -51,33 +58,73 @@ class RequestController extends Controller
         return back()->with('success', 'Request rejected.');
     }
 
+    public function approveForwarded(ResqoperationForwardedRequest $forwardedRequest)
+    {
+        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+            return back()->with('error', 'This forwarded request has already been reviewed.');
+        }
+
+        $forwardedRequest->resqperation_status = 'approved';
+        $forwardedRequest->save();
+
+        return back()->with('success', 'ResQperation request approved.');
+    }
+
+    public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest)
+    {
+        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+            return back()->with('error', 'This forwarded request has already been reviewed.');
+        }
+
+        $forwardedRequest->resqperation_status = 'rejected';
+        $forwardedRequest->save();
+
+        return back()->with('success', 'ResQperation request rejected.');
+    }
+
     public function storeResqData(Request $request)
     {
-        // Validate exact payload structure matching resqoperation_forwarded_requests schema
+        if (! $request->filled('resqperation_request_id') && $request->filled('resqoperation_request_id')) {
+            $request->merge([
+                'resqperation_request_id' => $request->input('resqoperation_request_id'),
+            ]);
+        }
+
         $validated = $request->validate([
-            'tracking_reference'       => 'required|string',
-            'resqoperation_request_id' => 'nullable|string',
-            'source_reference'         => 'nullable|string',
-            'request_source'           => 'nullable|string',
-            'source_system'            => 'nullable|string',
-            'request_category'         => 'nullable|string',
-            'resource_type'            => 'nullable|string',
-            'item_name'                => 'required|string',
-            'quantity'                 => 'required|integer|min:1',
-            'unit'                     => 'nullable|string',
-            'urgency'                  => 'nullable|string',
-            'area_label'               => 'nullable|string',
+            'tracking_reference'       => 'required|string|max:120',
+            'resqperation_request_id'  => 'required|string|max:120',
+            'source_reference'         => 'nullable|string|max:120',
+            'request_source'           => 'nullable|string|max:80',
+            'source_system'            => 'nullable|string|max:80',
+            'request_category'         => 'nullable|string|max:80',
+            'resource_type'            => 'nullable|string|max:150',
+            'item_name'                => 'nullable|string|max:150',
+            'quantity'                 => 'sometimes|integer|min:1',
+            'unit'                     => 'nullable|string|max:50',
+            'urgency'                  => 'nullable|string|max:80',
+            'area_label'               => 'nullable|string|max:255',
             'area_note'                => 'nullable|string',
+            'requested_by'             => 'nullable|string|max:255',
+            'description'              => 'nullable|string',
+            'validation_notes'          => 'nullable|string',
+            'validated_by_user_id'     => 'nullable|string|max:120',
+            'forwarded_by_user_id'     => 'nullable|string|max:120',
+            'forwarded_by_name'        => 'nullable|string|max:255',
+            'forwarded_by_role'        => 'nullable|string|max:80',
+            'payload_json'             => 'nullable|array',
+            'forwarded_at'             => 'nullable|date',
         ]);
 
-        // Create the forwarded record
-        $forwardedRequest = ResqoperationForwardedRequest::create($validated);
+        $forwardedRequest = ResqoperationForwardedRequest::updateOrCreate(
+            ['tracking_reference' => $validated['tracking_reference']],
+            $validated
+        );
 
         return response()->json([
             'status'  => 'success',
             'message' => 'Forwarded request successfully received by TrackingAid!',
             'data'    => $forwardedRequest
-        ], 201);
+        ], $forwardedRequest->wasRecentlyCreated ? 201 : 200);
     }
 
 

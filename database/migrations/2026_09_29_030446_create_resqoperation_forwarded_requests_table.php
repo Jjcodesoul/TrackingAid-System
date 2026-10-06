@@ -11,33 +11,32 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('resqoperation_forwarded_requests', function (Blueprint $table) {
+        Schema::create('resqperation_forwarded_requests', function (Blueprint $table) {
             $table->id();
-            
-            // External Identifiers & Tracking
-            $table->string('tracking_reference')->nullable()->index();
-            $table->string('resqoperation_request_id')->nullable()->index();
-            $table->string('source_reference')->nullable();
-            
-            // Origin Metadata
-            $table->string('request_source')->default('ResQOperation');
-            $table->string('source_system')->nullable();
-            $table->string('request_category')->nullable();
-            $table->string('resource_type')->nullable();
-            
-            // Core Request Payload Details
-            $table->string('item_name');
-            $table->unsignedInteger('quantity')->default(1);
-            $table->string('unit')->nullable();
-            $table->string('urgency')->default('Medium');
-            
-            // Location Information
+
+            $table->string('tracking_reference', 120)->unique();
+            $table->string('resqperation_request_id', 120)->index();
+            $table->string('source_reference', 120)->nullable()->index();
+            $table->string('request_source', 80)->nullable();
+            $table->string('source_system', 80)->default('ResQperation');
+            $table->string('request_category', 80)->nullable();
+            $table->string('resource_type', 150)->nullable();
+            $table->string('item_name', 150)->nullable();
+            $table->integer('quantity')->default(1);
+            $table->string('unit', 50)->nullable();
+            $table->string('urgency', 80)->nullable();
             $table->string('area_label')->nullable();
             $table->text('area_note')->nullable();
-            
-            // Operational Status
-            $table->string('status')->default('Pending')->index();
-            
+            $table->string('requested_by')->nullable();
+            $table->text('description')->nullable();
+            $table->text('validation_notes')->nullable();
+            $table->string('validated_by_user_id', 120)->nullable();
+            $table->string('forwarded_by_user_id', 120)->nullable();
+            $table->string('forwarded_by_name')->nullable();
+            $table->string('forwarded_by_role', 80)->nullable();
+            $table->string('resqperation_status', 80)->default('forwarded')->index();
+            $table->json('payload_json')->nullable();
+            $table->timestamp('forwarded_at')->nullable()->index();
             $table->timestamps();
         });
     }
@@ -47,6 +46,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('resqoperation_forwarded_requests');
+        Schema::dropIfExists('resqperation_forwarded_requests');
     }
 };

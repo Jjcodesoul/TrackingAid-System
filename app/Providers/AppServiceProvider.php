@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\Request as SupplyRequest;
+use App\Models\ResqoperationForwardedRequest;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\View;
@@ -30,7 +31,8 @@ class AppServiceProvider extends ServiceProvider
             $lastViewedAt = $lastViewedAt ? Carbon::parse($lastViewedAt) : null;
 
             $unreadCount = app(NotificationService::class)->unreadCount($lastViewedAt);
-            $requestsCount = SupplyRequest::where('status', 'Pending')->count();
+            $requestsCount = SupplyRequest::where('status', 'Pending')->count()
+                + ResqoperationForwardedRequest::whereIn('resqperation_status', ['forwarded', 'Forwarded', 'pending', 'Pending'])->count();
 
             $view->with([
                 'unreadCount' => $unreadCount,

@@ -6,8 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class ResqoperationForwardedRequest extends Model
 {
-    // Explicitly define the table name matching your Workbench table
-    protected $table = 'resqoperation_forwarded_requests';
+    protected $table = 'resqperation_forwarded_requests';
 
     protected $guarded = [];
+
+    protected $casts = [
+        'payload_json' => 'array',
+        'forwarded_at' => 'datetime',
+    ];
 }

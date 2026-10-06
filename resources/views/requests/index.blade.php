@@ -44,7 +44,7 @@
                 <button onclick="filterStatus('Pending')" id="tab-pending" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151; display:flex; align-items:center; gap:6px;">
                     Pending
                     <span style="background:#EF4444; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px;">
-                        {{ ($requests ? $requests->where('status', 'Pending')->count() : 0) + (isset($forwardedRequests) ? $forwardedRequests->count() : 0) }}
+                        {{ $stats['pending'] ?? 0 }}
                     </span>
                 </button>
                 <button onclick="filterStatus('Approved')" id="tab-approved" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Approved</button>
@@ -166,9 +166,15 @@
                             @php
                                 $urgencyKey = ucfirst(strtolower($freq->urgency ?? 'Medium'));
                                 $pc = $priorityColors[$urgencyKey] ?? ['bg' => '#FFFBEB', 'color' => '#D97706'];
-                                $sc = $statusColors['Pending'];
+                                $statusKey = match (strtolower($freq->resqperation_status ?? 'forwarded')) {
+                                    'approved' => 'Approved',
+                                    'rejected' => 'Rejected',
+                                    'released' => 'Released',
+                                    default => 'Pending',
+                                };
+                                $sc = $statusColors[$statusKey];
                             @endphp
-                            <tr class="req-row" data-status="Pending" style="border-bottom:1px solid #f1f5f9; background-color:#f0f9ff;">
+                            <tr class="req-row" data-status="{{ $statusKey }}" style="border-bottom:1px solid #f1f5f9; background-color:#f0f9ff;">
                                 <td style="padding:14px 16px;">
                                     <span style="font-size:12px; font-weight:600; color:#0369a1; font-family:monospace;">
                                         {{ $freq->tracking_reference }}
@@ -179,10 +185,10 @@
                                 </td>
                                 <td style="padding:14px 16px;">
                                     <span style="font-weight:600; color:#1a202c; font-size:14px; display:block;">
-                                        {{ $freq->item_name }}
+                                        {{ $freq->item_name ?? $freq->resource_type ?? $freq->request_category ?? 'Unspecified item' }}
                                     </span>
                                     <span style="font-size:11px; color:#94a3b8; font-family:monospace;">
-                                        {{ $freq->resqoperation_request_id ?? 'Forwarded' }}
+                                        {{ $freq->resqperation_request_id ?? 'Forwarded' }}
                                     </span>
                                 </td>
                                 <td style="padding:14px 16px; font-weight:700; color:#1a202c;">
@@ -194,7 +200,7 @@
                                     </span>
                                 </td>
                                 <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                    {{ $freq->request_source ?? 'HQ Desk' }}
+                                    {{ $freq->requested_by ?? $freq->request_source ?? 'External request' }}
                                     @if(!empty($freq->area_label))
                                         <span style="display:block; font-size:11px; color:#94a3b8;">
                                             {{ $freq->area_label }}
@@ -206,14 +212,52 @@
                                 </td>
                                 <td style="padding:14px 16px;">
                                     <span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">
-                                        Pending
+                                        {{ $statusKey }}
                                     </span>
                                 </td>
                                 <td style="padding:14px 16px;">
                                     <div style="display:flex; align-items:center; gap:8px;">
-                                        <button type="button" title="Forwarded External Request" style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;">
+                                        <button
+                                            type="button"
+                                            title="View request details"
+                                            aria-label="View {{ $freq->tracking_reference }} details"
+                                            onclick="showForwardedRequest(this)"
+                                            data-tracking-reference="{{ $freq->tracking_reference }}"
+                                            data-request-id="{{ $freq->resqperation_request_id }}"
+                                            data-source-reference="{{ $freq->source_reference }}"
+                                            data-item="{{ $freq->item_name ?? $freq->resource_type ?? $freq->request_category ?? 'Unspecified item' }}"
+                                            data-category="{{ $freq->request_category }}"
+                                            data-resource-type="{{ $freq->resource_type }}"
+                                            data-quantity="{{ $freq->quantity }}"
+                                            data-unit="{{ $freq->unit }}"
+                                            data-urgency="{{ $freq->urgency }}"
+                                            data-requested-by="{{ $freq->requested_by }}"
+                                            data-request-source="{{ $freq->request_source }}"
+                                            data-source-system="{{ $freq->source_system }}"
+                                            data-area-label="{{ $freq->area_label }}"
+                                            data-area-note="{{ $freq->area_note }}"
+                                            data-description="{{ $freq->description }}"
+                                            data-validation-notes="{{ $freq->validation_notes }}"
+                                            data-forwarded-at="{{ optional($freq->forwarded_at)->format('M d, Y H:i') }}"
+                                            data-status="{{ $statusKey }}"
+                                            style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;"
+                                        >
                                             <i class="fa-regular fa-eye"></i>
                                         </button>
+                                        @if($statusKey === 'Pending')
+                                            <form action="{{ route('requests.forwarded.approve', $freq) }}" method="POST" style="margin:0;">
+                                                @csrf
+                                                <button type="submit" title="Approve" aria-label="Approve {{ $freq->tracking_reference }}" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
+                                                    <i class="fa-regular fa-circle-check"></i>
+                                                </button>
+                                            </form>
+                                            <form action="{{ route('requests.forwarded.reject', $freq) }}" method="POST" onsubmit="return confirm('Reject this ResQperation request?')" style="margin:0;">
+                                                @csrf
+                                                <button type="submit" title="Reject" aria-label="Reject {{ $freq->tracking_reference }}" style="background:none; border:none; cursor:pointer; color:#DC2626; padding:4px; font-size:16px;">
+                                                    <i class="fa-regular fa-circle-xmark"></i>
+                                                </button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -234,8 +278,65 @@
         </div>
     </section>
 
+    <dialog id="forwardedRequestDialog" aria-labelledby="forwardedRequestDialogTitle" style="width:min(640px, calc(100% - 32px)); max-height:85vh; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; padding:0; box-shadow:0 24px 64px rgb(15 23 42 / 24%);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid #e2e8f0;">
+            <h2 id="forwardedRequestDialogTitle" style="margin:0; font-size:18px; color:#1a202c;">ResQperation request details</h2>
+            <button type="button" onclick="document.getElementById('forwardedRequestDialog').close()" aria-label="Close request details" title="Close" style="background:none; border:0; color:#64748b; cursor:pointer; font-size:20px;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px 20px; margin:0; padding:20px;">
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Tracking reference</dt><dd data-request-detail="trackingReference" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">ResQperation request ID</dt><dd data-request-detail="requestId" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Source reference</dt><dd data-request-detail="sourceReference" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Item</dt><dd data-request-detail="item" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Category</dt><dd data-request-detail="category" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Resource type</dt><dd data-request-detail="resourceType" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Quantity</dt><dd data-request-detail="quantity" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Urgency</dt><dd data-request-detail="urgency" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Requested by</dt><dd data-request-detail="requestedBy" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Request source</dt><dd data-request-detail="requestSource" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area</dt><dd data-request-detail="areaLabel" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Status</dt><dd data-request-detail="status" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area notes</dt><dd data-request-detail="areaNote" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
+            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Description</dt><dd data-request-detail="description" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
+            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Validation notes</dt><dd data-request-detail="validationNotes" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Forwarded at</dt><dd data-request-detail="forwardedAt" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Source system</dt><dd data-request-detail="sourceSystem" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+        </dl>
+    </dialog>
+
     <script>
         let activeRequestStatus = 'all';
+
+        function showForwardedRequest(button) {
+            const details = {
+                trackingReference: button.dataset.trackingReference,
+                requestId: button.dataset.requestId,
+                sourceReference: button.dataset.sourceReference,
+                item: button.dataset.item,
+                category: button.dataset.category,
+                resourceType: button.dataset.resourceType,
+                quantity: `${button.dataset.quantity ?? ''} ${button.dataset.unit ?? ''}`.trim(),
+                urgency: button.dataset.urgency,
+                requestedBy: button.dataset.requestedBy,
+                requestSource: button.dataset.requestSource,
+                sourceSystem: button.dataset.sourceSystem,
+                areaLabel: button.dataset.areaLabel,
+                areaNote: button.dataset.areaNote,
+                description: button.dataset.description,
+                validationNotes: button.dataset.validationNotes,
+                forwardedAt: button.dataset.forwardedAt,
+                status: button.dataset.status,
+            };
+
+            Object.entries(details).forEach(([key, value]) => {
+                const field = document.querySelector(`[data-request-detail="${key}"]`);
+                field.textContent = value || 'Not provided';
+            });
+
+            document.getElementById('forwardedRequestDialog').showModal();
+        }
 
         function filterStatus(status) {
             activeRequestStatus = status;
