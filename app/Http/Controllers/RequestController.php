@@ -17,7 +17,7 @@ class RequestController extends Controller
         // 2. Fetch external forwarded requests sent by ResQOperation
         $forwardedRequests = ResqoperationForwardedRequest::latest()->get();
 
-        $forwardedStatusGroup = fn ($forwardedRequest) => match (strtolower($forwardedRequest->resqperation_status ?? 'forwarded')) {
+        $forwardedStatusGroup = fn ($forwardedRequest) => match (strtolower($forwardedRequest->status ?? 'forwarded')) {
             'approved' => 'approved',
             'rejected' => 'rejected',
             'released' => 'released',
@@ -60,11 +60,11 @@ class RequestController extends Controller
 
     public function approveForwarded(ResqoperationForwardedRequest $forwardedRequest)
     {
-        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+        if (! in_array(strtolower($forwardedRequest->status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
 
-        $forwardedRequest->resqperation_status = 'approved';
+        $forwardedRequest->status = 'approved';
         $forwardedRequest->save();
 
         return back()->with('success', 'ResQperation request approved.');
@@ -72,11 +72,11 @@ class RequestController extends Controller
 
     public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest)
     {
-        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+        if (! in_array(strtolower($forwardedRequest->status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
 
-        $forwardedRequest->resqperation_status = 'rejected';
+        $forwardedRequest->status = 'rejected';
         $forwardedRequest->save();
 
         return back()->with('success', 'ResQperation request rejected.');

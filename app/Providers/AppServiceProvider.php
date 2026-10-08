@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
 
             $unreadCount = app(NotificationService::class)->unreadCount($lastViewedAt);
             $requestsCount = SupplyRequest::where('status', 'Pending')->count()
-                + ResqoperationForwardedRequest::whereIn('resqperation_status', ['forwarded', 'Forwarded', 'pending', 'Pending'])->count();
+                + ResqoperationForwardedRequest::whereIn('status', ['forwarded', 'Forwarded', 'pending', 'Pending'])->count();
 
             $view->with([
                 'unreadCount' => $unreadCount,
