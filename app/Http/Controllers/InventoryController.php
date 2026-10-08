@@ -10,32 +10,40 @@ class InventoryController extends Controller
 {
     public function index()
     {
-        $items = Item::with('stockBatches')
+        $allItems = Item::with('stockBatches')
             ->get()
-            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
+
+        $items = $allItems
             ->groupBy('category')
             ->sortKeys();
 
-        $allItems = $items->flatten(1);
-        $today = now()->startOfDay();
-        $expiryStates = $allItems->filter(fn (Item $item): bool => $item->total_stock > 0 && $item->next_expiration_date)
-            ->map(function (Item $item) use ($today): string {
-                $expiration = \Carbon\Carbon::parse($item->next_expiration_date)->startOfDay();
+        // Same stock calculation and low-stock threshold (10 units) used on
+        // the Reports page, so the numbers always match across the system.
+        $stockFor = fn (Item $item): int => (int) $item->stockBatches->sum('quantity');
 
-                if ($expiration->lt($today)) {
-                    return 'expired';
-                }
+        // Same 30-day "expiring soon" window used on the Reports page.
+        // "expired" (already past date) and "expiring" (within 30 days, not
+        // yet past) are kept mutually exclusive so they never double-count
+        // the same item.
+        $expired = $allItems->filter(function (Item $item): bool {
+            return $item->next_expiration_date
+                && \Carbon\Carbon::parse($item->next_expiration_date)->isPast();
+        })->count();
 
-                return $expiration->lte($today->copy()->addDays(30)) ? 'expiring' : 'safe';
-            });
+        $expiring = $allItems->filter(function (Item $item): bool {
+            return $item->next_expiration_date
+                && \Carbon\Carbon::parse($item->next_expiration_date)->isFuture()
+                && \Carbon\Carbon::parse($item->next_expiration_date)->lte(now()->addDays(30));
+        })->count();
 
         $inventoryStats = [
             'totalItems' => $allItems->count(),
-            'totalStock' => (int) $allItems->sum(fn (Item $item): int => $item->total_stock),
-            'lowStock' => $allItems->filter(fn (Item $item): bool => $item->total_stock > 0 && $item->total_stock < 10)->count(),
-            'outOfStock' => $allItems->filter(fn (Item $item): bool => $item->total_stock <= 0)->count(),
-            'expired' => $expiryStates->filter(fn (string $state): bool => $state === 'expired')->count(),
-            'expiring' => $expiryStates->filter(fn (string $state): bool => $state === 'expiring')->count(),
+            'totalStock' => $allItems->sum(fn (Item $item): int => $stockFor($item)),
+            'lowStock'   => $allItems->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count(),
+            'outOfStock' => $allItems->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count(),
+            'expired'    => $expired,
+            'expiring'   => $expiring,
         ];
 
         return view('inventory.index', compact('items', 'inventoryStats'));
@@ -90,24 +98,33 @@ class InventoryController extends Controller
         $category = strtoupper($validated['category']);
         $unitType = strtoupper($validated['unit_type']);
 
-        $sku = $category . '-' .
-               strtoupper(str_replace(' ', '-', $validated['name'])) . '-' .
-               $unitType;
+        // SKU format: [2-letter category code][3-letter item code][3-digit sequence]
+        // e.g. "FDCOR001" — keeps every SKU at a fixed, short 8 characters,
+        // well inside the 7-12 character range.
+        $categoryCode = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $validated['category']), 0, 2));
+        $firstWord = preg_split('/\s+/', trim($validated['name']))[0] ?? '';
+        $itemCode = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $firstWord), 0, 3));
 
-        if (! empty($validated['size_weight'])) {
-            $sku .= '-' . strtoupper(str_replace(' ', '', $validated['size_weight']));
-        }
+        // Pad codes that end up shorter than expected (e.g. a 1-letter category
+        // or item name) so the format stays consistent.
+        $categoryCode = str_pad($categoryCode, 2, 'X');
+        $itemCode = str_pad($itemCode, 3, 'X');
 
-        if (! empty($validated['target_beneficiary'])) {
-            $sku .= '-' . strtoupper($validated['target_beneficiary']);
-        }
+        $prefix = $categoryCode . $itemCode;
 
-        if (! empty($validated['variant']) && strtoupper($validated['variant']) !== 'NONE') {
-            $sku .= '-' . strtoupper(str_replace(' ', '-', $validated['variant']));
-        }
+        // Next sequence number for this exact category+item code combination —
+        // this is what guarantees uniqueness, not text matching, so two items
+        // with the same name/category (e.g. different sizes of the same
+        // product) simply get 001, 002, 003 automatically.
+        $existingCount = Item::where('sku', 'like', $prefix . '%')->count();
+        $sequence = $existingCount + 1;
+        $sku = $prefix . str_pad($sequence, 3, '0', STR_PAD_LEFT);
 
-        if (Item::where('sku', $sku)->exists()) {
-            return back()->with('error', 'SKU already exists. Please change item details.');
+        // Safety net in case of a race condition (two people saving at the
+        // same instant) — keep bumping until we find a free slot.
+        while (Item::where('sku', $sku)->exists()) {
+            $sequence++;
+            $sku = $prefix . str_pad($sequence, 3, '0', STR_PAD_LEFT);
         }
 
         $item = Item::create([
