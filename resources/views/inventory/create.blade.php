@@ -16,7 +16,9 @@
 </div>
 
 @if(session('error'))
-    <div class="alert-box alert-error">{{ session('error') }}</div>
+    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+        {{ session('error') }}
+    </div>
 @endif
 
 <form method="POST" action="/inventory/store">
@@ -51,7 +53,7 @@
                         <i class="fa-solid fa-arrow-rotate-left"></i>
                     </div>
                     <div>
-                        <p style="margin:0; font-size:13px; font-weight:700; color:#374151;">Returnable</p>
+                        <p style="margin:0; font-size:13px; font-weight:700; color:#374151;">Reusable</p>
                         <p style="margin:0; font-size:11px; color:#94a3b8;">Equipment, gear, vehicles, etc.</p>
                     </div>
                 </label>
@@ -236,8 +238,8 @@
             <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Generated SKU</h4>
 
             <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:16px 20px; margin-bottom:16px;">
-                <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:15px; margin:0; word-break:break-all; letter-spacing:.03em;">
-                    FOOD-ITEM-PACK-SM-ALL
+                <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:20px; margin:0; letter-spacing:.06em;">
+                    FDITM001
                 </p>
             </div>
 
@@ -245,22 +247,16 @@
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="border-bottom:1px solid #f1f5f9;">
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Category</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Item</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Unit</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Size</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Target</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Variant</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Category Code</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Item Code</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Sequence</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-category">—</td>
                             <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-item">—</td>
-                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-unit">—</td>
-                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-size">—</td>
-                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-target">—</td>
-                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-variant">—</td>
+                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-seq">001*</td>
                         </tr>
                     </tbody>
                 </table>
@@ -278,8 +274,8 @@
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
                 <div>
                     <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY-ITEM-UNIT-SIZE-TARGET[-VARIANT]</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">Variant segment is omitted when set to None.</p>
+                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">[2-letter Category][3-letter Item][3-digit Number]</p>
+                    <p style="font-size:11px; color:#6B7280; margin:0;">8 characters total — e.g. FDCOR001 for the 1st Food/Corned Beef item. *The sequence number shown here is a preview only; the final number is assigned when you save, to guarantee it's never a duplicate.</p>
                 </div>
             </div>
         </div>
@@ -370,25 +366,25 @@ function handleDynamicNewInput(field) {
 
 function generateSKU() {
     const category = document.getElementById('category_final').value;
-    const name = document.getElementById('name').value.replace(/\s+/g, '-').toUpperCase();
-    const unit = document.getElementById('unit_type_final').value;
-    const size = document.getElementById('size_weight_final').value;
-    const target = document.getElementById('target_beneficiary_final').value;
-    const variant = document.getElementById('variant_final').value;
+    const rawName = document.getElementById('name').value.trim();
 
-    document.getElementById('bd-category').innerText = category || '—';
-    document.getElementById('bd-item').innerText = name || '—';
-    document.getElementById('bd-unit').innerText = unit || '—';
-    document.getElementById('bd-size').innerText = size || '—';
-    document.getElementById('bd-target').innerText = target || '—';
-    document.getElementById('bd-variant').innerText = (variant && variant !== 'NONE') ? variant : '—';
+    // 2-letter category code (e.g. "Food" -> "FD")
+    const categoryCode = category.replace(/[^A-Za-z]/g, '').substring(0, 2).toUpperCase();
+    // 3-letter item code from the first word (e.g. "Corned Beef" -> "COR")
+    const firstWord = rawName.split(/\s+/)[0] || '';
+    const itemCode = firstWord.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase();
 
-    let parts = [category, name, unit, size, target];
-    if (variant && variant !== 'NONE') parts.push(variant);
+    document.getElementById('bd-category').innerText = categoryCode || '—';
+    document.getElementById('bd-item').innerText = itemCode || '—';
 
-    let sku = parts.filter(p => p).join('-').replace(/--+/g, '-').replace(/-$/, '');
+    let sku = '';
+    if (categoryCode && itemCode) {
+        // "001" is a placeholder preview only — the real sequence number is
+        // assigned server-side on save, guaranteed never to collide.
+        sku = categoryCode + itemCode + '001';
+    }
 
-    document.getElementById('skuPreview').innerText = sku || 'CATEGORY-ITEM-UNIT-SIZE-TARGET';
+    document.getElementById('skuPreview').innerText = sku || 'FDITM001';
     document.getElementById('sku').value = sku;
 }
 
@@ -404,7 +400,7 @@ function copySKU() {
 
 function clearForm() {
     document.querySelector('form').reset();
-    document.getElementById('skuPreview').innerText = 'FOOD-ITEM-PACK-SM-ALL';
+    document.getElementById('skuPreview').innerText = 'FDITM001';
     document.getElementById('sku').value = '';
 
     ['category', 'unit_type', 'size_weight', 'target_beneficiary', 'variant'].forEach(field => {
@@ -413,7 +409,7 @@ function clearForm() {
         document.getElementById(field + '_newInput').value = '';
     });
 
-    ['bd-category','bd-item','bd-unit','bd-size','bd-target','bd-variant'].forEach(id => {
+    ['bd-category','bd-item'].forEach(id => {
         document.getElementById(id).innerText = '—';
     });
 

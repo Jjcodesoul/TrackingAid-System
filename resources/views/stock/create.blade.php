@@ -20,7 +20,6 @@
 @endif
 @if(session('error'))
     <div class="alert-box alert-error">{{ session('error') }}</div>
-    </div>
 @endif
 
 <form method="POST" action="/stock-in/store" id="stockInForm">
@@ -146,7 +145,8 @@
             </div>
         </div>
 
-        <button type="submit" class="btn-main btn-block" style="padding:14px; font-size:14px;">
+        <button type="submit"
+            style="width:100%; padding:14px; background:#10B981; color:#fff; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; letter-spacing:.02em;">
             Submit Stock In
         </button>
 
@@ -217,7 +217,7 @@ function renderDropdown() {
         row.onmouseleave = () => row.style.background = '#fff';
 
         const typeBadge = item.type === 'returnable'
-            ? '<span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; background:#FAF5FF; color:#6B46C1;">Returnable</span>'
+            ? '<span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; background:#FAF5FF; color:#6B46C1;">Reusable</span>'
             : '<span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; background:#EBF8FF; color:#2B6CB0;">Consumable</span>';
 
         row.innerHTML = `<span><span style="font-family:monospace; font-weight:600; color:#10B981;">${item.sku}</span>
@@ -261,7 +261,7 @@ function selectItem(item) {
         icon.style.background = '#E9D5FF';
         icon.style.color = '#6B46C1';
         icon.innerHTML = '<i class="fa-solid fa-arrow-rotate-left"></i>';
-        label.innerText = 'Returnable Item';
+        label.innerText = 'Reusable Item';
         label.style.color = '#6B46C1';
         note.innerText = 'Must be tracked and returned';
         note.style.color = '#8B5CF6';

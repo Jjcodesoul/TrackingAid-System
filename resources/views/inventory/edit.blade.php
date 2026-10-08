@@ -19,7 +19,9 @@
 </div>
 
 @if(session('error'))
-    <div class="alert-box alert-error">{{ session('error') }}</div>
+    <div style="background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; padding:12px 16px; border-radius:8px; margin-bottom:16px;">
+        {{ session('error') }}
+    </div>
 @endif
 
 <form method="POST" action="/inventory/update/{{ $item->id }}">
@@ -109,7 +111,7 @@
                 <select name="type" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="consumable" {{ $item->type == 'consumable' ? 'selected' : '' }}>Consumable</option>
-                    <option value="returnable" {{ $item->type == 'returnable' ? 'selected' : '' }}>Returnable</option>
+                    <option value="returnable" {{ $item->type == 'returnable' ? 'selected' : '' }}>Reusable</option>
                 </select>
             </div>
         </div>

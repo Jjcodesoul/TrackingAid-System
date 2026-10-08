@@ -23,8 +23,108 @@
     .inventory-summary-value { margin: 7px 0 3px; color: #0f172a; font-size: 25px; font-weight: 800; line-height: 1.15; }
     .inventory-summary-hint { margin: 0; color: #64748b; font-size: 12px; }
 
+    /* ── Category tabs ── */
+    .inv-tabs-wrap {
+        position: relative;
+        display: flex;
+        align-items: stretch;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .inv-tabs {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        align-items: flex-end;
+        gap: 4px;
+        padding: 0 16px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .inv-tabs::-webkit-scrollbar { display: none; }
+    .inv-tabs-arrow {
+        display: none;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        border: 0;
+        background: #fff;
+        color: #475569;
+        cursor: pointer;
+        font-size: 12px;
+        z-index: 1;
+    }
+    .inv-tabs-arrow:hover { background: #f8fafc; color: #0f172a; }
+    .inv-tabs-arrow.left  { box-shadow: 6px 0 8px -6px rgba(15, 23, 42, .18); }
+    .inv-tabs-arrow.right { box-shadow: -6px 0 8px -6px rgba(15, 23, 42, .18); }
+
+    .inv-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+        padding: 12px 20px;
+        border-top: 1px solid #f1f5f9;
+    }
+    .inv-pagination-info { font-size: 12px; color: #64748b; }
+    .inv-pagination-nav { display: inline-flex; align-items: center; gap: 4px; }
+    .inv-page-btn {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 10px;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        background: #fff;
+        color: #374151;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+    }
+    .inv-page-btn:hover:not(:disabled):not(.is-current) { background: #f8fafc; }
+    .inv-page-btn.is-current { background: #10B981; border-color: #10B981; color: #fff; cursor: default; }
+    .inv-page-btn:disabled { color: #cbd5e1; cursor: not-allowed; }
+    .inv-page-gap { padding: 0 4px; color: #94a3b8; font-size: 12px; }
+    .inv-tab {
+        flex: 0 0 auto;
+        padding: 14px 14px 12px;
+        background: transparent;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        margin-bottom: -1px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: color .15s ease, border-color .15s ease;
+    }
+    .inv-tab:hover { color: #0f172a; }
+    .inv-tab .inv-tab-count {
+        margin-left: 6px;
+        padding: 1px 7px;
+        border-radius: 999px;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .inv-tab.is-active {
+        color: #10B981;
+        border-bottom-color: #10B981;
+    }
+    .inv-tab.is-active .inv-tab-count {
+        background: #ECFDF5;
+        color: #047857;
+    }
+
     @media (max-width: 1100px) { .inventory-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 480px) { .inventory-summary { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+        .inventory-toolbar { flex-wrap: wrap; padding: 12px !important; }
+        .inventory-search { flex: 1 1 100% !important; max-width: none !important; }
+        .inventory-toolbar select { flex: 1 1 120px; }
+    }
 </style>
 
 {{-- HEADER --}}
@@ -73,21 +173,37 @@
 {{-- TABLE CARD --}}
 <div class="card-ui" style="padding:0; overflow:hidden;">
 
-    {{-- SEARCH / FILTER --}}
+    {{-- CATEGORY TABS --}}
+    <div class="inv-tabs-wrap">
+    <button type="button" class="inv-tabs-arrow left" id="invTabsLeft" onclick="scrollTabs(-1)" aria-label="Scroll categories left">
+        <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <div class="inv-tabs" id="invTabs" role="tablist" aria-label="Inventory categories">
+        <button type="button" class="inv-tab is-active" role="tab" aria-selected="true"
+            data-tab="all" onclick="switchTab('all')">
+            All <span class="inv-tab-count">{{ number_format($inventoryStats['totalItems']) }}</span>
+        </button>
+        @foreach($items as $category => $categoryItems)
+            <button type="button" class="inv-tab" role="tab" aria-selected="false"
+                data-tab="{{ \Illuminate\Support\Str::slug($category) }}"
+                onclick="switchTab('{{ \Illuminate\Support\Str::slug($category) }}')">
+                {{ ucfirst(strtolower($category)) }}
+                <span class="inv-tab-count">{{ $categoryItems->count() }}</span>
+            </button>
+        @endforeach
+    </div>
+    <button type="button" class="inv-tabs-arrow right" id="invTabsRight" onclick="scrollTabs(1)" aria-label="Scroll categories right">
+        <i class="fa-solid fa-chevron-right"></i>
+    </button>
+    </div>
+
+    {{-- SEARCH / STATUS FILTER --}}
     <div class="inventory-toolbar" style="padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; gap:12px;">
         <div class="inventory-search" style="position:relative; flex:1; max-width:320px;">
             <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
             <input type="search" id="searchInput" aria-label="Search inventory items" placeholder="Search items..." oninput="filterTable()"
                 style="width:100%; padding:8px 12px 8px 36px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
         </div>
-        <label for="categoryFilter" class="sr-only">Filter by category</label>
-        <select id="categoryFilter" onchange="filterTable()" aria-label="Filter by category"
-            style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#374151; outline:none; background:#fff;">
-            <option value="">All categories</option>
-            @foreach($items->keys() as $category)
-                <option value="{{ strtoupper($category) }}">{{ ucfirst(strtolower($category)) }}</option>
-            @endforeach
-        </select>
         <label for="statusFilter" class="sr-only">Filter by stock and expiration status</label>
         <select id="statusFilter" onchange="filterTable()" aria-label="Filter by stock and expiration status"
             style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#374151; outline:none; background:#fff;">
@@ -98,10 +214,7 @@
             <option value="expiring">Expiring within 30 days</option>
             <option value="expired">Expired</option>
         </select>
-        <button type="button" onclick="toggleAllCategories()" id="toggleAllBtn" aria-expanded="true"
-            style="margin-left:auto; padding:8px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; font-weight:600; color:#374151; background:#fff; cursor:pointer; white-space:nowrap;">
-            Collapse All
-        </button>
+        <span id="resultCount" style="margin-left:auto; font-size:12px; color:#94a3b8; white-space:nowrap;"></span>
     </div>
 
     {{-- TABLE --}}
@@ -125,155 +238,119 @@
                 </tr>
             </thead>
             <tbody id="inventoryTable">
-            @php $perPage = 10; @endphp
+            @php
+                $catColors = [
+                    'FOOD'           => ['bg'=>'#F0FFF4','color'=>'#276749'],
+                    'MEDICAL'        => ['bg'=>'#EBF8FF','color'=>'#2B6CB0'],
+                    'HYGIENE'        => ['bg'=>'#FFF0F6','color'=>'#B83280'],
+                    'SHELTER'        => ['bg'=>'#FFFBEB','color'=>'#B7791F'],
+                    'COMMUNICATIONS' => ['bg'=>'#EEF2FF','color'=>'#4338CA'],
+                    'RESCUE'         => ['bg'=>'#FFF5F5','color'=>'#C53030'],
+                    'RELIEF'         => ['bg'=>'#FFFAF0','color'=>'#C05621'],
+                ];
+            @endphp
             @forelse($items as $category => $categoryItems)
 
                 @php
-                    $catColors = [
-                        'FOOD'    => ['bg'=>'#F0FFF4','color'=>'#276749'],
-                        'MEDICAL' => ['bg'=>'#EBF8FF','color'=>'#2B6CB0'],
-                        'RESCUE'  => ['bg'=>'#FFF5F5','color'=>'#C53030'],
-                        'RELIEF'  => ['bg'=>'#FFFAF0','color'=>'#C05621'],
-                    ];
                     $catUpper = strtoupper($category);
                     $cc = $catColors[$catUpper] ?? ['bg'=>'#F7FAFC','color'=>'#4A5568'];
                     $catSlug = \Illuminate\Support\Str::slug($category);
-                    $totalPages = (int) ceil($categoryItems->count() / $perPage);
                 @endphp
 
-                {{-- CATEGORY HEADER ROW (CLICKABLE) --}}
-        <tr class="category-header-row">
-                    <td colspan="{{ auth()->user()->role === 'admin' ? 10 : 9 }}"
-                        style="padding:10px 16px; background:{{ $cc['bg'] }};">
-                        <button type="button" class="category-toggle" onclick="toggleCategory('{{ $catSlug }}')" aria-expanded="true" data-category-name="{{ ucfirst(strtolower($category)) }}" aria-label="Collapse {{ ucfirst(strtolower($category)) }} category" style="display:inline-flex; align-items:center; gap:8px; border:0; padding:0; background:transparent; cursor:pointer; font:inherit; color:inherit; text-align:left;">
-                            <i class="fa-solid fa-chevron-down chevron-icon" id="chevron-{{ $catSlug }}" aria-hidden="true" style="font-size:10px; transition:transform .15s ease;"></i>
-                            {{ ucfirst(strtolower($category)) }}
-                            <span style="font-weight:500; color:#94a3b8; text-transform:none; letter-spacing:normal;">
-                                ({{ $categoryItems->count() }} {{ Str::plural('item', $categoryItems->count()) }})
-                            </span>
-                        </button>
-                    </td>
-                </tr>
+                @foreach($categoryItems as $item)
+                    @php
+                        $nextExpirationDate = $item->next_expiration_date;
+                        $stockQuantity = $item->total_stock;
+                        $expirationDate = $nextExpirationDate ? \Carbon\Carbon::parse($nextExpirationDate)->startOfDay() : null;
+                        $today = now()->startOfDay();
+                        $isExpired = $stockQuantity > 0 && $expirationDate && $expirationDate->lt($today);
+                        $isExpiring = $stockQuantity > 0 && $expirationDate && $expirationDate->between($today, $today->copy()->addDays(30), true);
+                        $statusFilters = [$stockQuantity <= 0 ? 'out-of-stock' : ($stockQuantity < 10 ? 'low-stock' : 'in-stock')];
+                        if ($isExpired) $statusFilters[] = 'expired';
+                        elseif ($isExpiring) $statusFilters[] = 'expiring';
+                    @endphp
+                    <tr style="border-bottom:1px solid #f1f5f9;"
+                        class="table-row"
+                        data-category="{{ strtoupper($item->category) }}"
+                        data-cat-slug="{{ $catSlug }}"
+                        data-status="{{ implode(' ', $statusFilters) }}">
 
-                {{-- ITEMS IN THIS CATEGORY, CHUNKED INTO PAGES OF 10 --}}
-                @foreach($categoryItems->chunk($perPage) as $pageIndex => $pageOfItems)
-                    @foreach($pageOfItems as $item)
-                        @php
-                            $nextExpirationDate = $item->next_expiration_date;
-                            $stockQuantity = $item->total_stock;
-                            $expirationDate = $nextExpirationDate ? \Carbon\Carbon::parse($nextExpirationDate)->startOfDay() : null;
-                            $today = now()->startOfDay();
-                            $isExpired = $stockQuantity > 0 && $expirationDate && $expirationDate->lt($today);
-                            $isExpiring = $stockQuantity > 0 && $expirationDate && $expirationDate->between($today, $today->copy()->addDays(30), true);
-                            $statusFilters = [$stockQuantity <= 0 ? 'out-of-stock' : ($stockQuantity < 10 ? 'low-stock' : 'in-stock')];
-                            if ($isExpired) $statusFilters[] = 'expired';
-                            elseif ($isExpiring) $statusFilters[] = 'expiring';
-                        @endphp
-                        <tr style="border-bottom:1px solid #f1f5f9; {{ $pageIndex > 0 ? 'display:none;' : '' }}"
-                            class="table-row cat-group-{{ $catSlug }} cat-page-{{ $catSlug }}-{{ $pageIndex }}"
-                            data-category="{{ strtoupper($item->category) }}"
-                            data-cat-slug="{{ $catSlug }}"
-                            data-page="{{ $pageIndex }}"
-                            data-status="{{ implode(' ', $statusFilters) }}">
-
-                            <td style="padding:14px 16px;">
-                                <span style="font-size:11px; font-weight:600; color:#64748b; font-family:monospace;">{{ $item->sku }}</span>
-                            </td>
-
-                            <td style="padding:14px 16px;">
-                                <span style="font-weight:600; color:#1a202c; font-size:14px;">{{ $item->name }}</span>
-                            </td>
-
-                            <td style="padding:14px 16px;">
-                                <span style="background:{{ $cc['bg'] }}; color:{{ $cc['color'] }}; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">
-                                    {{ ucfirst(strtolower($item->category)) }}
-                                </span>
-                            </td>
-
-                            <td style="padding:14px 16px;">
-                                <span style="font-weight:700; font-size:15px; color:{{ $stockQuantity <= 0 ? '#dc2626' : ($stockQuantity < 10 ? '#d97706' : '#1a202c') }};">
-                                    {{ number_format($stockQuantity) }}
-                                </span>
-                            </td>
-
-                            <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                {{ $item->unit_type ?? '—' }}
-                            </td>
-
-                            <td style="padding:14px 16px;">
-                                @if(strtolower($item->type) === 'consumable')
-                                    <span style="background:#EBF8FF; color:#2B6CB0; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Consumable</span>
-                                @else
-                                    <span style="background:#FAF5FF; color:#6B46C1; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Returnable</span>
-                                @endif
-                            </td>
-
-                            <td style="padding:14px 16px;">
-                                @if($stockQuantity <= 0)
-                                    <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Out of Stock</span>
-                                @elseif($stockQuantity < 10)
-                                    <span style="background:#FFFBEB; color:#B45309; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Low Stock</span>
-                                @else
-                                    <span style="background:#ECFDF5; color:#047857; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">In Stock</span>
-                                @endif
-                                @if($isExpired)
-                                    <span style="display:inline-block; margin:2px 0; background:#FEF2F2; color:#B91C1C; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">Expired</span>
-                                @elseif($isExpiring)
-                                    <span style="background:#FFFBEB; color:#D97706; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Expiring</span>
-                                @endif
-                            </td>
-
-                            <td style="padding:14px 16px; font-size:13px; color:{{ $isExpired ? '#b91c1c' : '#4a5568' }}; font-weight:{{ $isExpired ? '600' : '400' }};">
-                                {{ $expirationDate?->format('M d, Y') ?? '—' }}
-                            </td>
-
-                            <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                {{ $item->storage_location ?? '—' }}
-                            </td>
-
-                            @if(auth()->user()->role === 'admin')
-                                <td style="padding:14px 16px; text-align:right;">
-                                    <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
-                                        <a href="{{ route('inventory.edit', $item->id) }}"
-                                            style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
-                                            Edit
-                                        </a>
-                                        <form method="POST" action="{{ route('inventory.delete', $item->id) }}"
-                                            onsubmit="return confirm('Delete this item?')" style="margin:0; padding:0; display:inline-block;">
-                                            @csrf
-                                            <button type="submit"
-                                                style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
-                                                Delete
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            @endif
-
-                        </tr>
-                    @endforeach
-                @endforeach
-
-                {{-- PER-CATEGORY PAGINATION CONTROLS --}}
-                @if($totalPages > 1)
-                    <tr class="cat-group-{{ $catSlug }} cat-pagination-row" data-cat-slug="{{ $catSlug }}">
-                        <td colspan="{{ auth()->user()->role === 'admin' ? 10 : 9 }}" style="padding:10px 16px; text-align:right; border-bottom:1px solid #f1f5f9;">
-                            <div style="display:inline-flex; align-items:center; gap:6px;">
-                                <button type="button" onclick="event.stopPropagation(); changeCatPage('{{ $catSlug }}', -1, {{ $totalPages }})"
-                                    id="prevBtn-{{ $catSlug }}"
-                                    style="padding:5px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; background:#fff; cursor:pointer; color:#cbd5e1;" disabled>
-                                    Previous
-                                </button>
-                                <span style="font-size:12px; color:#64748b;" id="pageLabel-{{ $catSlug }}">Page 1 of {{ $totalPages }}</span>
-                                <button type="button" onclick="event.stopPropagation(); changeCatPage('{{ $catSlug }}', 1, {{ $totalPages }})"
-                                    id="nextBtn-{{ $catSlug }}"
-                                    style="padding:5px 10px; border:1px solid #e2e8f0; border-radius:6px; font-size:12px; background:#fff; cursor:pointer; color:#374151;">
-                                    Next
-                                </button>
-                            </div>
+                        <td style="padding:14px 16px;">
+                            <span style="font-size:11px; font-weight:600; color:#64748b; font-family:monospace;">{{ $item->sku }}</span>
                         </td>
+
+                        <td style="padding:14px 16px;">
+                            <span style="font-weight:600; color:#1a202c; font-size:14px;">{{ $item->name }}</span>
+                        </td>
+
+                        <td style="padding:14px 16px;">
+                            <span style="background:{{ $cc['bg'] }}; color:{{ $cc['color'] }}; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">
+                                {{ ucfirst(strtolower($item->category)) }}
+                            </span>
+                        </td>
+
+                        <td style="padding:14px 16px;">
+                            <span style="font-weight:700; font-size:15px; color:{{ $stockQuantity <= 0 ? '#dc2626' : ($stockQuantity < 10 ? '#d97706' : '#1a202c') }};">
+                                {{ number_format($stockQuantity) }}
+                            </span>
+                        </td>
+
+                        <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                            {{ $item->unit_type ?? '—' }}
+                        </td>
+
+                        <td style="padding:14px 16px;">
+                            @if(strtolower($item->type) === 'consumable')
+                                <span style="background:#EBF8FF; color:#2B6CB0; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Consumable</span>
+                            @else
+                                <span style="background:#FAF5FF; color:#6B46C1; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Reusable</span>
+                            @endif
+                        </td>
+
+                        <td style="padding:14px 16px;">
+                            @if($stockQuantity <= 0)
+                                <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Out of Stock</span>
+                            @elseif($stockQuantity < 10)
+                                <span style="background:#FFFBEB; color:#B45309; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Low Stock</span>
+                            @else
+                                <span style="background:#ECFDF5; color:#047857; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">In Stock</span>
+                            @endif
+                            @if($isExpired)
+                                <span style="display:inline-block; margin:2px 0; background:#FEF2F2; color:#B91C1C; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">Expired</span>
+                            @elseif($isExpiring)
+                                <span style="background:#FFFBEB; color:#D97706; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Expiring</span>
+                            @endif
+                        </td>
+
+                        <td style="padding:14px 16px; font-size:13px; color:{{ $isExpired ? '#b91c1c' : '#4a5568' }}; font-weight:{{ $isExpired ? '600' : '400' }};">
+                            {{ $expirationDate?->format('M d, Y') ?? '—' }}
+                        </td>
+
+                        <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
+                            {{ $item->storage_location ?? '—' }}
+                        </td>
+
+                        @if(auth()->user()->role === 'admin')
+                            <td style="padding:14px 16px; text-align:right;">
+                                <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                                    <a href="{{ route('inventory.edit', $item->id) }}"
+                                        style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
+                                        Edit
+                                    </a>
+                                    <form method="POST" action="{{ route('inventory.delete', $item->id) }}"
+                                        onsubmit="return confirm('Delete this item?')" style="margin:0; padding:0; display:inline-block;">
+                                        @csrf
+                                        <button type="submit"
+                                            style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                                            Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        @endif
+
                     </tr>
-                @endif
+                @endforeach
 
             @empty
                 <tr>
@@ -284,149 +361,178 @@
             @endforelse
             <tr id="inventoryNoResults" style="display:none;">
                 <td colspan="{{ auth()->user()->role === 'admin' ? 10 : 9 }}" style="text-align:center; padding:32px; color:#64748b;">
-                    No items match these filters. Try another search, category, or stock status.
+                    No items match these filters. Try another search, category tab, or stock status.
                 </td>
             </tr>
             </tbody>
         </table>
     </div>
+
+    {{-- PAGINATION (10 items per page, per tab) --}}
+    <div class="inv-pagination" id="inventoryPagination" style="display:none;">
+        <span class="inv-pagination-info" id="paginationInfo"></span>
+        <nav class="inv-pagination-nav" id="paginationNav" aria-label="Inventory pages"></nav>
+    </div>
 </div>
 
 <script>
-const catCurrentPage = {};
+const PER_PAGE = 10;
+let activeTab = 'all';
+let currentPage = 1;
 
-function toggleCategory(catSlug) {
-    const rows = document.querySelectorAll('.cat-group-' + catSlug);
-    const chevron = document.getElementById('chevron-' + catSlug);
-    const toggle = chevron?.closest('.category-toggle');
-    if (!rows.length) return;
+/* ───────── Tabs ───────── */
+function switchTab(tab, instant) {
+    activeTab = tab;
 
-    const isExpanded = toggle?.getAttribute('aria-expanded') === 'true';
+    let activeBtn = null;
+    document.querySelectorAll('.inv-tab').forEach(btn => {
+        const isActive = btn.dataset.tab === tab;
+        btn.classList.toggle('is-active', isActive);
+        btn.setAttribute('aria-selected', String(isActive));
+        if (isActive) activeBtn = btn;
+    });
 
-    if (!isExpanded) {
-        const currentPage = catCurrentPage[catSlug] || 0;
-        rows.forEach(row => {
-            if (row.classList.contains('cat-pagination-row')) {
-                row.style.display = '';
-            } else if (row.dataset.page == currentPage) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
-        });
-        if (chevron) chevron.style.transform = 'rotate(0deg)';
-        toggle?.setAttribute('aria-expanded', 'true');
-        toggle?.setAttribute('aria-label', 'Collapse ' + toggle.dataset.categoryName + ' category');
-    } else {
-        rows.forEach(row => row.style.display = 'none');
-        if (chevron) chevron.style.transform = 'rotate(-90deg)';
-        toggle?.setAttribute('aria-expanded', 'false');
-        toggle?.setAttribute('aria-label', 'Expand ' + toggle.dataset.categoryName + ' category');
+    // Keep the selected tab visible when there are many categories
+    if (activeBtn) {
+        activeBtn.scrollIntoView({ block: 'nearest', inline: 'center', behavior: instant ? 'auto' : 'smooth' });
     }
+
+    try { sessionStorage.setItem('inventoryActiveTab', tab); } catch (e) {}
+
+    filterTable(true);
 }
 
-function changeCatPage(catSlug, direction, totalPages) {
-    let current = catCurrentPage[catSlug] || 0;
-    current += direction;
-    if (current < 0) current = 0;
-    if (current > totalPages - 1) current = totalPages - 1;
-    catCurrentPage[catSlug] = current;
-
-    document.querySelectorAll('.cat-group-' + catSlug + '.table-row').forEach(row => {
-        row.style.display = (row.dataset.page == current) ? '' : 'none';
-    });
-
-    document.getElementById('pageLabel-' + catSlug).textContent = 'Page ' + (current + 1) + ' of ' + totalPages;
-
-    const prevBtn = document.getElementById('prevBtn-' + catSlug);
-    const nextBtn = document.getElementById('nextBtn-' + catSlug);
-    prevBtn.disabled = current === 0;
-    prevBtn.style.color = current === 0 ? '#cbd5e1' : '#374151';
-    nextBtn.disabled = current === totalPages - 1;
-    nextBtn.style.color = current === totalPages - 1 ? '#cbd5e1' : '#374151';
+function scrollTabs(direction) {
+    const el = document.getElementById('invTabs');
+    el.scrollBy({ left: direction * 240, behavior: 'smooth' });
 }
 
-function toggleAllCategories() {
-    const btn = document.getElementById('toggleAllBtn');
-    const willCollapse = btn.textContent === 'Collapse All';
+function updateTabArrows() {
+    const el = document.getElementById('invTabs');
+    const left = document.getElementById('invTabsLeft');
+    const right = document.getElementById('invTabsRight');
+    if (!el || !left || !right) return;
 
-    document.querySelectorAll('.category-header-row').forEach(headerRow => {
-        const toggle = headerRow.querySelector('.category-toggle');
-        const chevron = headerRow.querySelector('.chevron-icon');
-        if (!toggle || !chevron) return;
-        const catSlug = chevron.id.replace('chevron-', '');
-        const isCurrentlyHidden = toggle.getAttribute('aria-expanded') !== 'true';
-
-        if (willCollapse && !isCurrentlyHidden) {
-            toggleCategory(catSlug);
-        } else if (!willCollapse && isCurrentlyHidden) {
-            toggleCategory(catSlug);
-        }
-    });
-
-    btn.textContent = willCollapse ? 'Expand All' : 'Collapse All';
-    btn.setAttribute('aria-expanded', String(!willCollapse));
+    left.style.display  = el.scrollLeft > 4 ? 'flex' : 'none';
+    right.style.display = (el.scrollLeft + el.clientWidth < el.scrollWidth - 4) ? 'flex' : 'none';
 }
 
-function filterTable() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const category = document.getElementById('categoryFilter').value.toUpperCase();
+/* ───────── Filter + paginate ───────── */
+function filterTable(resetPage) {
+    if (resetPage !== false) currentPage = 1;
+
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
     const status = document.getElementById('statusFilter').value;
-    const filtering = search.length > 0 || category.length > 0 || status.length > 0;
+    const rows = Array.from(document.querySelectorAll('#inventoryTable tr.table-row'));
 
-    const rows = document.querySelectorAll('#inventoryTable tr');
-    let lastHeaderRow = null;
-    let hasVisibleItemInGroup = false;
-    let visibleItems = 0;
-
-    rows.forEach(row => {
-        if (row.classList.contains('category-header-row')) {
-            if (lastHeaderRow) lastHeaderRow.style.display = hasVisibleItemInGroup ? '' : 'none';
-            lastHeaderRow = row;
-            hasVisibleItemInGroup = false;
-            return;
-        }
-        if (row.classList.contains('cat-pagination-row')) {
-            row.style.display = filtering ? 'none' : '';
-            return;
-        }
-        if (!row.classList.contains('table-row')) return;
-
-        if (!filtering) {
-            // Reset to page-based visibility when search is cleared
-            const catSlug = row.dataset.catSlug;
-            const currentPage = catCurrentPage[catSlug] || 0;
-            row.style.display = (row.dataset.page == currentPage) ? '' : 'none';
-            if (row.style.display !== 'none') hasVisibleItemInGroup = true;
-            return;
-        }
-
-        const text = row.innerText.toLowerCase();
-        const rowCat = row.getAttribute('data-category');
-        const matchSearch = text.includes(search);
-        const matchCat = category === '' || rowCat === category;
+    const matches = rows.filter(row => {
+        const matchTab = activeTab === 'all' || row.dataset.catSlug === activeTab;
+        const matchSearch = search === '' || row.innerText.toLowerCase().includes(search);
         const matchStatus = status === '' || row.dataset.status.split(' ').includes(status);
-        const visible = matchSearch && matchCat && matchStatus;
+        return matchTab && matchSearch && matchStatus;
+    });
 
-        row.style.display = visible ? '' : 'none';
-        if (visible) {
-            hasVisibleItemInGroup = true;
-            visibleItems++;
+    const totalPages = Math.max(1, Math.ceil(matches.length / PER_PAGE));
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const start = (currentPage - 1) * PER_PAGE;
+    const end = start + PER_PAGE;
+
+    rows.forEach(row => row.style.display = 'none');
+    matches.forEach((row, i) => {
+        row.style.display = (i >= start && i < end) ? '' : 'none';
+    });
+
+    const countEl = document.getElementById('resultCount');
+    if (countEl) countEl.textContent = matches.length + (matches.length === 1 ? ' item' : ' items');
+
+    const noResults = document.getElementById('inventoryNoResults');
+    if (noResults) noResults.style.display = (rows.length > 0 && matches.length === 0) ? '' : 'none';
+
+    renderPagination(matches.length, totalPages, start, end);
+}
+
+function goToPage(page) {
+    currentPage = page;
+    filterTable(false);
+}
+
+function pageList(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+    let from = Math.max(2, current - 1);
+    let to = Math.min(total - 1, current + 1);
+    if (current <= 3) { from = 2; to = 4; }
+    if (current >= total - 2) { from = total - 3; to = total - 1; }
+
+    const pages = [1];
+    if (from > 2) pages.push('gap-left');
+    for (let i = from; i <= to; i++) pages.push(i);
+    if (to < total - 1) pages.push('gap-right');
+    pages.push(total);
+    return pages;
+}
+
+function makePageButton(label, onClick, opts) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'inv-page-btn' + (opts && opts.current ? ' is-current' : '');
+    btn.textContent = label;
+    if (opts && opts.disabled) btn.disabled = true;
+    if (opts && opts.current) btn.setAttribute('aria-current', 'page');
+    if (opts && opts.aria) btn.setAttribute('aria-label', opts.aria);
+    if (onClick && !(opts && opts.disabled)) btn.addEventListener('click', onClick);
+    return btn;
+}
+
+function renderPagination(totalMatches, totalPages, start, end) {
+    const wrap = document.getElementById('inventoryPagination');
+    const info = document.getElementById('paginationInfo');
+    const nav = document.getElementById('paginationNav');
+    if (!wrap || !info || !nav) return;
+
+    nav.innerHTML = '';
+
+    if (totalMatches === 0) {
+        wrap.style.display = 'none';
+        return;
+    }
+
+    wrap.style.display = 'flex';
+    info.textContent = 'Showing ' + (start + 1) + '–' + Math.min(end, totalMatches) + ' of ' + totalMatches + (totalMatches === 1 ? ' item' : ' items');
+
+    // No buttons needed when everything fits on one page
+    if (totalPages <= 1) return;
+
+    nav.appendChild(makePageButton('Previous', () => goToPage(currentPage - 1), { disabled: currentPage === 1, aria: 'Previous page' }));
+
+    pageList(currentPage, totalPages).forEach(p => {
+        if (typeof p === 'string') {
+            const gap = document.createElement('span');
+            gap.className = 'inv-page-gap';
+            gap.textContent = '…';
+            nav.appendChild(gap);
+        } else {
+            nav.appendChild(makePageButton(String(p), () => goToPage(p), { current: p === currentPage, aria: 'Page ' + p }));
         }
     });
 
-    if (lastHeaderRow) lastHeaderRow.style.display = hasVisibleItemInGroup ? '' : 'none';
-    document.getElementById('inventoryNoResults').style.display = filtering && visibleItems === 0 ? '' : 'none';
+    nav.appendChild(makePageButton('Next', () => goToPage(currentPage + 1), { disabled: currentPage === totalPages, aria: 'Next page' }));
 }
-</script>
 
-<style>
-    @media (max-width: 640px) {
-        .inventory-toolbar { flex-wrap: wrap; padding: 12px !important; }
-        .inventory-search { flex: 1 1 100% !important; max-width: none !important; }
-        .inventory-toolbar select { flex: 1 1 120px; }
-        .inventory-toolbar #toggleAllBtn { margin-left: 0 !important; }
-    }
-</style>
+document.addEventListener('DOMContentLoaded', function () {
+    const tabsEl = document.getElementById('invTabs');
+    if (tabsEl) tabsEl.addEventListener('scroll', updateTabArrows, { passive: true });
+    window.addEventListener('resize', updateTabArrows);
+
+    let saved = 'all';
+    try { saved = sessionStorage.getItem('inventoryActiveTab') || 'all'; } catch (e) {}
+
+    // Only restore a saved tab if it still exists (e.g. a category might be gone after a data reset)
+    const exists = document.querySelector('.inv-tab[data-tab="' + saved + '"]');
+    switchTab(exists ? saved : 'all', true);
+    updateTabArrows();
+});
+</script>
 
 @endsection
