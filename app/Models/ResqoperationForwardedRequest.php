@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class ResqoperationForwardedRequest extends Model
 {
-    protected $table = 'resqoperation_forwarded_requests';
+    protected $table = 'resqperation_forwarded_requests';
 
     protected $guarded = [];
 

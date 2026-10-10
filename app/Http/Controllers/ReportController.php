@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Item;
+use App\Models\ReportRequest;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
 use Carbon\Carbon;
@@ -72,10 +73,90 @@ class ReportController extends Controller
         ]);
     }
 
+    public function apiIndex(HttpRequest $request)
+    {
+        $reportType = $this->activeReport($request);
+        $report = $this->buildReport($reportType);
+
+        return response()->json([
+            'status' => 'success',
+            'report' => $reportType,
+            'title' => $report['title'] ?? null,
+            'subtitle' => $report['subtitle'] ?? null,
+            'headers' => $report['headers'] ?? [],
+            'rows' => collect($report['rows'] ?? [])
+                ->map(fn (array $row): array => collect($row['cells'] ?? [])
+                    ->map(fn (array $cell): mixed => $cell['value'] ?? null)
+                    ->values()
+                    ->all())
+                ->values()
+                ->all(),
+            'stats' => $report['stats'] ?? [],
+            'empty' => $report['empty'] ?? null,
+        ]);
+    }
+
+    public function apiStore(HttpRequest $request)
+    {
+        $validated = $request->validate([
+            'report' => ['sometimes', 'string', 'max:80'],
+            'requested_by' => ['nullable', 'string', 'max:120'],
+            'system_name' => ['nullable', 'string', 'max:120'],
+            'format' => ['sometimes', 'in:json,csv'],
+            'filters' => ['sometimes', 'array'],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $reportType = $this->reportNameFromRequest($validated['report'] ?? 'inventory');
+
+        $record = ReportRequest::create([
+            'report_type' => $reportType,
+            'requested_by' => $validated['requested_by'] ?? null,
+            'system_name' => $validated['system_name'] ?? null,
+            'status' => 'queued',
+            'filters' => $validated['filters'] ?? [],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        $payload = $this->apiIndex($request->merge(['report' => $reportType]));
+
+        return response()->json([
+            'status' => 'success',
+            'request_id' => $record->id,
+            'report' => $reportType,
+            'data' => $payload->getData(true),
+        ]);
+    }
+
+    public function apiExport(HttpRequest $request)
+    {
+        $reportType = $this->activeReport($request);
+        $report = $this->buildReport($reportType);
+        $filename = $reportType . '-report-' . now()->format('Ymd-His') . '.csv';
+
+        return Response::streamDownload(function () use ($report) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, $report['headers']);
+
+            foreach ($report['rows'] as $row) {
+                fputcsv($handle, $row['csv']);
+            }
+
+            fclose($handle);
+        }, $filename, [
+            'Content-Type' => 'text/csv',
+        ]);
+    }
+
     private function activeReport(HttpRequest $request): string
     {
-        $report = (string) $request->query('report', 'inventory');
+        $report = (string) $request->query('report', $request->input('report', 'inventory'));
 
+        return $this->reportNameFromRequest($report);
+    }
+
+    private function reportNameFromRequest(string $report): string
+    {
         return array_key_exists($report, self::REPORTS) ? $report : 'inventory';
     }
 

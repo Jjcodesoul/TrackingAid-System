@@ -45,3 +45,7 @@ Route::patch('/deliveries/{delivery}/status', [
         'updateStatus'
     ]);
 });
+
+Route::get('/reports', [\App\Http\Controllers\ReportController::class, 'apiIndex']);
+Route::post('/reports', [\App\Http\Controllers\ReportController::class, 'apiStore']);
+Route::post('/reports/export', [\App\Http\Controllers\ReportController::class, 'apiExport']);
