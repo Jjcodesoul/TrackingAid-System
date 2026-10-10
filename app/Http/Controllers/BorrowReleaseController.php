@@ -5,47 +5,74 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Request;
+use App\Models\User;
 use App\Services\InventorySyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
 
 class BorrowReleaseController extends Controller
 {
-    public function create(InventorySyncService $inventorySync)
-    {
-        $inventorySync->syncAllItems();
+   public function create(InventorySyncService $inventorySync)
+{
+    $inventorySync->syncAllItems();
 
-        $items = Inventory::all();
+    $items = Inventory::all();
 
-        $approvedRequests = Request::with('inventory')
-            ->where('status', 'Approved')
-            ->latest()
-            ->get();
+    $deliveryPersonnel = User::where('role', 'delivery_personnel')
+        ->orderBy('name')
+        ->get();
 
-        $recentReleases = BorrowRelease::with(['request', 'inventory'])
-            ->latest('released_at')
-            ->take(5)
-            ->get();
+    $approvedRequests = Request::with('inventory')
+        ->where('status', 'Approved')
+        ->latest()
+        ->get();
 
-        return view(
-            'borrow-release.create',
-            compact('items', 'approvedRequests', 'recentReleases')
-        );
-    }
+    $recentReleases = BorrowRelease::with([
+        'request',
+        'inventory',
+        'deliveryPersonnel'
+    ])
+        ->latest('released_at')
+        ->take(5)
+        ->get();
+
+    return view(
+        'borrow-release.create',
+        compact(
+            'items',
+            'approvedRequests',
+            'recentReleases',
+            'deliveryPersonnel'
+        )
+    );
+}
 
     public function store(
         HttpRequest $request,
         InventorySyncService $inventorySync
     ) {
         $validated = $request->validate([
-            'request_id' => 'required|exists:requests,id',
-            'inventory_id' => 'required|exists:inventory,id',
-            'quantity' => 'required|integer|min:1',
-            'unit' => 'required|string|max:100',
-            'purpose' => 'required|string|max:255',
-            'location' => 'required|string|max:255',
-            'released_at' => 'required|date',
-        ]);
+    'request_id' => 'required|exists:requests,id',
+    'inventory_id' => 'required|exists:inventory,id',
+
+    'delivery_personnel_id' => [
+        'required',
+        'exists:users,id',
+        function ($attribute, $value, $fail) {
+            $user = User::find($value);
+
+            if (!$user || $user->role !== 'delivery_personnel') {
+                $fail('The selected user is not a delivery personnel.');
+            }
+        },
+    ],
+
+    'quantity' => 'required|integer|min:1',
+    'unit' => 'required|string|max:100',
+    'purpose' => 'required|string|max:255',
+    'location' => 'required|string|max:255',
+    'released_at' => 'required|date',
+]);
 
         return DB::transaction(function () use ($validated, $inventorySync) {
             $supplyRequest = Request::whereKey($validated['request_id'])

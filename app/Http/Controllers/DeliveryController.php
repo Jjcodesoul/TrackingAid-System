@@ -11,8 +11,10 @@ class DeliveryController extends Controller
 {
     $deliveries = BorrowRelease::with([
         'request',
-        'inventory'
+        'inventory',
+        'deliveryPersonnel'
     ])
+    ->where('delivery_personnel_id', auth()->id())
     ->latest()
     ->get();
 
@@ -37,33 +39,36 @@ class DeliveryController extends Controller
         'current_shipment' => $currentShipment,
     ]);
 }
-
     public function index()
-    {
-        $deliveries = BorrowRelease::with([
-            'request',
-            'inventory'
-        ])
-        ->whereIn('delivery_status', [
-            'Loading',
-            'Dispatched',
-            'In Transit',
-        ])
-        ->latest()
-        ->get();
-
-        return response()->json([
-            'status' => 'success',
-            'data' => $deliveries,
-        ]);
-    }
-
-    public function history()
 {
     $deliveries = BorrowRelease::with([
         'request',
-        'inventory'
+        'inventory',
+        'deliveryPersonnel'
     ])
+    ->where('delivery_personnel_id', auth()->id())
+    ->whereIn('delivery_status', [
+        'Loading',
+        'Dispatched',
+        'In Transit',
+    ])
+    ->latest()
+    ->get();
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $deliveries,
+    ]);
+}
+
+public function history()
+{
+    $deliveries = BorrowRelease::with([
+        'request',
+        'inventory',
+        'deliveryPersonnel'
+    ])
+    ->where('delivery_personnel_id', auth()->id())
     ->where('delivery_status', 'Arrived')
     ->latest('arrived_at')
     ->get();
@@ -79,6 +84,14 @@ class DeliveryController extends Controller
      */
     public function updateStatus(Request $request, BorrowRelease $delivery)
     {
+
+        if ((int) $delivery->delivery_personnel_id !== (int) auth()->id()) {
+    return response()->json([
+        'status' => 'error',
+        'message' => 'You are not assigned to this delivery.',
+    ], 403);
+        }
+
         $validated = $request->validate([
             'status' => [
                 'required',
@@ -136,13 +149,21 @@ class DeliveryController extends Controller
      * Get one delivery.
      */
     public function show(BorrowRelease $delivery)
-    {
+{
+    if ((int) $delivery->delivery_personnel_id !== (int) auth()->id()) {
         return response()->json([
-            'status' => 'success',
-            'data' => $delivery->load([
-                'request',
-                'inventory'
-            ]),
-        ]);
+            'status' => 'error',
+            'message' => 'You are not assigned to this delivery.',
+        ], 403);
     }
+
+    return response()->json([
+        'status' => 'success',
+        'data' => $delivery->load([
+            'request',
+            'inventory',
+            'deliveryPersonnel'
+        ]),
+    ]);
+}
 }

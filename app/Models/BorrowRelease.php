@@ -9,6 +9,7 @@ class BorrowRelease extends Model
     protected $fillable = [
     'request_id',
     'inventory_id',
+    'delivery_personnel_id',
     'unit',
     'quantity',
     'purpose',
@@ -36,4 +37,9 @@ class BorrowRelease extends Model
     {
         return $this->belongsTo(Inventory::class);
     }
+
+    public function deliveryPersonnel()
+{
+    return $this->belongsTo(User::class, 'delivery_personnel_id');
+}
 }

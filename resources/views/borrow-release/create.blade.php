@@ -86,6 +86,31 @@
                         </select>
                     </div>
 
+                    {{-- NEW: Delivery Personnel --}}
+<div>
+    <label class="form-label" for="delivery_personnel_id">
+        Delivery Personnel *
+    </label>
+
+    <select
+        id="delivery_personnel_id"
+        name="delivery_personnel_id"
+        class="form-select"
+        required
+    >
+        <option value="">Choose delivery personnel...</option>
+
+        @foreach($deliveryPersonnel as $person)
+            <option
+                value="{{ $person->id }}"
+                {{ old('delivery_personnel_id') == $person->id ? 'selected' : '' }}
+            >
+                {{ $person->name }} - {{ $person->email }}
+            </option>
+        @endforeach
+    </select>
+</div>
+
                     <div>
                         <label class="form-label" for="unit">Unit *</label>
                         <input id="unit" name="unit" type="text" class="form-input" value="{{ old('unit') }}" placeholder="e.g., PCS, BOX, SACK" required>
