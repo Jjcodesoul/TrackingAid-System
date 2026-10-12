@@ -12,67 +12,67 @@ use Illuminate\Http\Request as HttpRequest;
 
 class BorrowReleaseController extends Controller
 {
-   public function create(InventorySyncService $inventorySync)
-{
-    $inventorySync->syncAllItems();
+    public function create(InventorySyncService $inventorySync)
+    {
+        $inventorySync->syncAllItems();
 
-    $items = Inventory::all();
+        $items = Inventory::all();
 
-    $deliveryPersonnel = User::where('role', 'delivery_personnel')
-        ->orderBy('name')
-        ->get();
+        $deliveryPersonnel = User::where('role', 'delivery_personnel')
+            ->orderBy('name')
+            ->get();
 
-    $approvedRequests = Request::with('inventory')
-        ->where('status', 'Approved')
-        ->latest()
-        ->get();
+        $approvedRequests = Request::with('inventory')
+            ->where('status', 'Approved')
+            ->latest()
+            ->get();
 
-    $recentReleases = BorrowRelease::with([
-        'request',
-        'inventory',
-        'deliveryPersonnel'
-    ])
-        ->latest('released_at')
-        ->take(5)
-        ->get();
+        $recentReleases = BorrowRelease::with([
+            'request',
+            'inventory',
+            'deliveryPersonnel',
+        ])
+            ->latest('released_at')
+            ->take(5)
+            ->get();
 
-    return view(
-        'borrow-release.create',
-        compact(
-            'items',
-            'approvedRequests',
-            'recentReleases',
-            'deliveryPersonnel'
-        )
-    );
-}
+        return view(
+            'borrow-release.create',
+            compact(
+                'items',
+                'approvedRequests',
+                'recentReleases',
+                'deliveryPersonnel'
+            )
+        );
+    }
 
     public function store(
         HttpRequest $request,
         InventorySyncService $inventorySync
     ) {
         $validated = $request->validate([
-    'request_id' => 'required|exists:requests,id',
-    'inventory_id' => 'required|exists:inventory,id',
+            'request_id' => 'required|exists:requests,id',
+            'inventory_id' => 'required|exists:inventory,id',
 
-    'delivery_personnel_id' => [
-        'required',
-        'exists:users,id',
-        function ($attribute, $value, $fail) {
-            $user = User::find($value);
+            'delivery_personnel_id' => [
+                'required',
+                'exists:users,id',
+                function ($attribute, $value, $fail) {
+                    $user = User::find($value);
 
-            if (!$user || $user->role !== 'delivery_personnel') {
-                $fail('The selected user is not a delivery personnel.');
-            }
-        },
-    ],
+                    if (!$user || $user->role !== 'delivery_personnel') {
+                        $fail('The selected user is not a delivery personnel.');
+                    }
+                },
+            ],
 
-    'quantity' => 'required|integer|min:1',
-    'unit' => 'required|string|max:100',
-    'purpose' => 'required|string|max:255',
-    'location' => 'required|string|max:255',
-    'released_at' => 'required|date',
-]);
+            'quantity' => 'required|integer|min:1',
+            'unit' => 'required|string|max:100',
+            'purpose' => 'required|string|max:255',
+            'location' => 'required|string|max:255',
+            'released_at' => 'required|date',
+        ]);
 
         return DB::transaction(function () use ($validated, $inventorySync) {
             $supplyRequest = Request::whereKey($validated['request_id'])
@@ -135,5 +135,18 @@ class BorrowReleaseController extends Controller
                     'Items released, stock deducted, and request marked as released.'
                 );
         });
+    }
+
+    public function monitoring()
+    {
+        $deliveries = BorrowRelease::with([
+            'request',
+            'inventory',
+            'deliveryPersonnel',
+        ])
+            ->latest('released_at')
+            ->get();
+
+        return view('delivery-monitoring.index', compact('deliveries'));
     }
 }

@@ -1,4 +1,4 @@
-@php
+﻿@php
     $requestsCount = isset($requestsCount) ? $requestsCount : 0;
 @endphp
 
@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="{{ asset('css/tailwind.css') }}">
 
     <style>
-        /* ── Shared custom components used across views ── */
+        /* â”€â”€ Shared custom components used across views â”€â”€ */
         .panel {
             background: #ffffff;
             border: 1px solid #edf2f7;
@@ -31,7 +31,7 @@
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
         }
 
-        /* ── Buttons — one system, used everywhere ── */
+        /* â”€â”€ Buttons â€” one system, used everywhere â”€â”€ */
         .btn-main, .btn-soft, .btn-secondary, .btn-danger {
             display: inline-flex;
             align-items: center;
@@ -65,7 +65,7 @@
             background: #e2e8f0;
         }
 
-        /* Outline button — used for "Back" / secondary navigation actions */
+        /* Outline button â€” used for "Back" / secondary navigation actions */
         .btn-secondary {
             background: #fff;
             color: #374151;
@@ -127,7 +127,7 @@
             font-weight: 600;
         }
 
-        /* ── Flash / alert messages — one system, used everywhere ── */
+        /* â”€â”€ Flash / alert messages â€” one system, used everywhere â”€â”€ */
         .alert-box {
             display: flex;
             align-items: center;
@@ -153,7 +153,7 @@
             color: #92400E;
         }
 
-        /* ── Form fields — one system, used everywhere ── */
+        /* â”€â”€ Form fields â€” one system, used everywhere â”€â”€ */
         .form-label {
             display: block;
             font-size: 12px;
@@ -268,22 +268,22 @@
 
     <div class="app-shell flex h-screen w-screen overflow-hidden">
         <button type="button" id="appSidebarBackdrop" class="app-sidebar-backdrop" aria-label="Close navigation menu" tabindex="-1"></button>
-        
+
         <aside id="appSidebar" class="app-sidebar w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800" aria-label="Main navigation">
-            
+
             <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
                 <div class="w-9 h-9 bg-emerald-500 flex items-center justify-center text-white text-lg rounded-lg shrink-0 shadow-sm">
                     <i class="fa-solid fa-cubes"></i>
                 </div>
                 <div class="flex flex-col min-w-0">
                     <h1 class="text-base font-bold text-white tracking-wide m-0 p-0 leading-tight truncate">TrackingAid</h1>
-                    <span class="text-xs text-slate-400 font-medium mt-0.5 m-0 p-0 truncate">× ResqOperation</span>
+                    <span class="text-xs text-slate-400 font-medium mt-0.5 m-0 p-0 truncate">Ã— ResqOperation</span>
                 </div>
             </div>
 
             <nav class="flex-1 overflow-y-auto px-4 py-4">
                 <ul class="space-y-1.5 list-none p-0 m-0">
-                    
+
                     <li>
                         @php
                             $dashboardUrl = auth()->user()->role === 'admin' ? '/admin/dashboard' : '/dashboard';
@@ -332,6 +332,14 @@
                     </li>
 
                     <li>
+    <a href="{{ route('delivery-monitoring.index') }}"
+       class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('delivery-monitoring*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+        <i class="fa-solid fa-truck-fast w-5 text-center text-base"></i>
+        <span>Delivery Monitoring</span>
+    </a>
+</li>
+
+                    <li>
                         <a href="/returns" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('returns*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-rotate-left w-5 text-center text-base"></i>
                             <span>Return Management</span>
@@ -372,9 +380,9 @@
         </aside>
 
         <div class="flex flex-col flex-1 min-w-0 overflow-hidden bg-slate-50">
-            
+
             <header class="app-header flex items-center justify-between bg-white border-b border-slate-200 px-8 h-16 shrink-0 box-border">
-                
+
                 <div class="flex items-center gap-2 text-sm text-slate-500 font-medium min-w-0">
                     <button type="button" class="app-sidebar-toggle" id="appSidebarToggle" aria-label="Open navigation menu" aria-controls="appSidebar" aria-expanded="false">
                         <i class="fa-solid fa-bars" id="appSidebarToggleIcon" aria-hidden="true"></i>
@@ -387,14 +395,14 @@
                 </div>
 
                 <div class="app-header-actions flex items-center gap-6">
-                    
+
                     <a href="{{ route('notifications.index') }}" class="text-slate-400 hover:text-slate-600 relative border-none bg-transparent cursor-pointer p-1.5 flex items-center justify-center" title="Notifications">
                         <i class="fa-regular fa-bell text-lg"></i>
                         @if($unreadCount > 0)
                             <span class="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
                         @endif
                     </a>
-                    
+
                     <div class="flex items-center gap-3 min-w-0 border-l border-slate-200 pl-6">
                         <div class="app-user-avatar w-9 h-9 bg-emerald-600 text-white font-bold text-sm flex items-center justify-center rounded-lg shrink-0 shadow-sm" aria-hidden="true">
                             {{ strtoupper(substr(auth()->user()->name ?? 'US', 0, 2)) }}
@@ -404,7 +412,7 @@
                             <span class="text-xs text-slate-400 truncate capitalize">{{ auth()->user()->role ?? 'User' }}</span>
                         </div>
                     </div>
-                    
+
                     @if(Auth::check())
                         <form method="POST" action="{{ route('logout') }}" class="m-0 p-0 flex items-center">
                             @csrf
@@ -457,7 +465,7 @@
         })();
     </script>
 
-    {{-- ── Real-time notification polling ── --}}
+    {{-- â”€â”€ Real-time notification polling â”€â”€ --}}
     <script>
         (function() {
             let previousCount = {{ $unreadCount }};

@@ -76,6 +76,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/requests', [RequestController::class, 'index'])->name('requests.index');
     Route::get('/borrow-release', [BorrowReleaseController::class, 'create'])->name('borrow-release.create');
     Route::post('/borrow-release', [BorrowReleaseController::class, 'store'])->name('borrow-release.store');
+    Route::get('/delivery-monitoring', [
+    BorrowReleaseController::class,
+    'monitoring'
+])->name('delivery-monitoring.index');
     Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
     Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
 
