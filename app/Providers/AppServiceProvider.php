@@ -11,28 +11,27 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
-        // Share unread notification count with the app layout so the
-        // bell indicator and sidebar badge work on every authenticated page.
         View::composer('layouts.app', function ($view): void {
             $lastViewedAt = session('notifications_last_viewed_at');
-            $lastViewedAt = $lastViewedAt ? Carbon::parse($lastViewedAt) : null;
+            $lastViewedAt = $lastViewedAt
+                ? Carbon::parse($lastViewedAt)
+                : null;
 
-            $unreadCount = app(NotificationService::class)->unreadCount($lastViewedAt);
+            $unreadCount = app(NotificationService::class)
+                ->unreadCount($lastViewedAt);
+
             $requestsCount = SupplyRequest::where('status', 'Pending')->count()
-                + ResqoperationForwardedRequest::whereIn('status', ['forwarded', 'Forwarded', 'pending', 'Pending'])->count();
+                + ResqoperationForwardedRequest::whereIn(
+                    'resqperation_status',
+                    ['forwarded', 'Forwarded', 'pending', 'Pending']
+                )->count();
 
             $view->with([
                 'unreadCount' => $unreadCount,
