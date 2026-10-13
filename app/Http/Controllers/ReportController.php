@@ -8,12 +8,17 @@ use App\Models\Item;
 use App\Models\ReportRequest;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use RuntimeException;
+use Throwable;
 
 class ReportController extends Controller
 {
@@ -56,7 +61,7 @@ class ReportController extends Controller
     {
         $activeReport = $this->activeReport($request);
         $report = $this->buildReport($activeReport);
-        $filename = $activeReport . '-report-' . now()->format('Ymd-His') . '.csv';
+        $filename = $activeReport.'-report-'.now()->format('Ymd-His').'.csv';
 
         return Response::streamDownload(function () use ($report) {
             $handle = fopen('php://output', 'w');
@@ -77,23 +82,11 @@ class ReportController extends Controller
     {
         $reportType = $this->activeReport($request);
         $report = $this->buildReport($reportType);
+        $payload = $this->externalReportPayload($reportType, $report);
+        $payload['report'] = $payload['report_type'];
+        unset($payload['report_type']);
 
-        return response()->json([
-            'status' => 'success',
-            'report' => $reportType,
-            'title' => $report['title'] ?? null,
-            'subtitle' => $report['subtitle'] ?? null,
-            'headers' => $report['headers'] ?? [],
-            'rows' => collect($report['rows'] ?? [])
-                ->map(fn (array $row): array => collect($row['cells'] ?? [])
-                    ->map(fn (array $cell): mixed => $cell['value'] ?? null)
-                    ->values()
-                    ->all())
-                ->values()
-                ->all(),
-            'stats' => $report['stats'] ?? [],
-            'empty' => $report['empty'] ?? null,
-        ]);
+        return response()->json($payload);
     }
 
     public function apiStore(HttpRequest $request)
@@ -128,11 +121,105 @@ class ReportController extends Controller
         ]);
     }
 
+    public function generateExternalReport(HttpRequest $request)
+    {
+        $validated = $request->validate([
+            'report_type' => ['required', 'string', 'in:'.implode(',', array_keys(self::REPORTS))],
+            'format' => ['required', 'string', 'in:json,csv,pdf'],
+            'member_id' => ['nullable', 'string', 'max:120'],
+            'requested_by' => ['nullable', 'string', 'max:120'],
+            'system_name' => ['nullable', 'string', 'max:120'],
+            'notes' => ['nullable', 'string', 'max:255'],
+            'filters' => ['prohibited'],
+            'start_date' => ['prohibited'],
+            'end_date' => ['prohibited'],
+        ]);
+
+        $reportType = $validated['report_type'];
+        $format = $validated['format'];
+        $report = $this->buildReport($reportType);
+        $extension = $format;
+
+        $record = ReportRequest::create([
+            'report_type' => $reportType,
+            'member_id' => $validated['member_id'] ?? null,
+            'requested_by' => $validated['requested_by'] ?? null,
+            'system_name' => $validated['system_name'] ?? null,
+            'status' => 'generating',
+            'format' => $format,
+            'filters' => [],
+            'notes' => $validated['notes'] ?? null,
+        ]);
+
+        $fileName = "trackingaid-{$reportType}-{$record->id}.{$extension}";
+        $filePath = "external_reports/{$fileName}";
+        $expiresAt = now()->addMinutes(30);
+
+        try {
+            $contents = match ($format) {
+                'csv' => $this->reportCsvContents($report),
+                'pdf' => Pdf::loadView('reports.external-pdf', ['report' => $report])
+                    ->setPaper('a4', 'landscape')
+                    ->output(),
+                'json' => json_encode(
+                    $this->externalReportPayload($reportType, $report),
+                    JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR
+                ),
+            };
+
+            if (! Storage::disk('local')->put($filePath, $contents)) {
+                throw new RuntimeException('The generated report could not be saved.');
+            }
+
+            $record->update([
+                'status' => 'completed',
+                'file_name' => $fileName,
+                'file_path' => $filePath,
+            ]);
+        } catch (Throwable $exception) {
+            $record->update(['status' => 'failed']);
+            throw $exception;
+        }
+
+        URL::forceRootUrl(config('app.url'));
+
+        $downloadUrl = URL::temporarySignedRoute(
+            'api.external-reports.download',
+            $expiresAt,
+            ['reportRequest' => $record->id]
+        );
+
+        return response()->json([
+            'status' => 'success',
+            'request_id' => $record->id,
+            'member_id' => $record->member_id,
+            'request_status' => $record->status,
+            'report_type' => $reportType,
+            'format' => $format,
+            'file_name' => $fileName,
+            'download_url' => $downloadUrl,
+            'expires_at' => $expiresAt->toIso8601String(),
+        ]);
+    }
+
+    public function downloadExternalReport(ReportRequest $reportRequest)
+    {
+        abort_unless(
+            $reportRequest->status === 'completed'
+                && filled($reportRequest->file_path)
+                && filled($reportRequest->file_name)
+                && Storage::disk('local')->exists($reportRequest->file_path),
+            404
+        );
+
+        return Storage::disk('local')->download($reportRequest->file_path, $reportRequest->file_name);
+    }
+
     public function apiExport(HttpRequest $request)
     {
         $reportType = $this->activeReport($request);
         $report = $this->buildReport($reportType);
-        $filename = $reportType . '-report-' . now()->format('Ymd-His') . '.csv';
+        $filename = $reportType.'-report-'.now()->format('Ymd-His').'.csv';
 
         return Response::streamDownload(function () use ($report) {
             $handle = fopen('php://output', 'w');
@@ -158,6 +245,51 @@ class ReportController extends Controller
     private function reportNameFromRequest(string $report): string
     {
         return array_key_exists($report, self::REPORTS) ? $report : 'inventory';
+    }
+
+    private function externalReportPayload(string $reportType, array $report): array
+    {
+        return [
+            'status' => 'success',
+            'report_type' => $reportType,
+            'title' => $report['title'] ?? null,
+            'subtitle' => $report['subtitle'] ?? null,
+            'headers' => $report['headers'] ?? [],
+            'rows' => collect($report['rows'] ?? [])
+                ->map(fn (array $row): array => collect($row['cells'] ?? [])
+                    ->map(fn (array $cell): mixed => $cell['value'] ?? null)
+                    ->values()
+                    ->all())
+                ->values()
+                ->all(),
+            'stats' => $report['stats'] ?? [],
+            'empty' => $report['empty'] ?? null,
+        ];
+    }
+
+    private function reportCsvContents(array $report): string
+    {
+        $handle = fopen('php://temp', 'r+');
+
+        if ($handle === false) {
+            throw new RuntimeException('Unable to prepare the CSV report.');
+        }
+
+        fputcsv($handle, $report['headers']);
+
+        foreach ($report['rows'] as $row) {
+            fputcsv($handle, $row['csv']);
+        }
+
+        rewind($handle);
+        $contents = stream_get_contents($handle);
+        fclose($handle);
+
+        if ($contents === false) {
+            throw new RuntimeException('Unable to read the generated CSV report.');
+        }
+
+        return $contents;
     }
 
     private function buildReport(string $report): array
@@ -230,7 +362,7 @@ class ReportController extends Controller
                     'color' => '#10b981',
                     'values' => $categoryTotals->values()->map(fn ($value): int => (int) $value)->all(),
                 ]],
-                $categoryTotals->keys()->map(fn ($category) => $categoryCounts[$category] . ' item' . ($categoryCounts[$category] === 1 ? '' : 's'))->values()->all()
+                $categoryTotals->keys()->map(fn ($category) => $categoryCounts[$category].' item'.($categoryCounts[$category] === 1 ? '' : 's'))->values()->all()
             ),
             'stats' => [
                 $this->stat('Total Items', number_format($items->count()), 'Registered SKUs', 'fa-solid fa-boxes-stacked'),
@@ -269,7 +401,7 @@ class ReportController extends Controller
                 $this->cell(number_format($total)),
                 $this->cell(number_format($approved), 'success'),
                 $this->cell(number_format($rejected), 'danger'),
-                $this->cell($approvalRate . '%'),
+                $this->cell($approvalRate.'%'),
             ]);
         })->all();
 
