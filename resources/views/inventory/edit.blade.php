@@ -24,7 +24,7 @@
     </div>
 @endif
 
-<form method="POST" action="/inventory/update/{{ $item->id }}">
+<form method="POST" action="/inventory/update/{{ $item->id }}" class="inventory-form">
 @csrf
 
 <div style="display:grid; grid-template-columns:1fr 380px; gap:24px; align-items:start;">

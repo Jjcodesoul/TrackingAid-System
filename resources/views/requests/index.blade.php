@@ -10,56 +10,35 @@
         <div class="alert-box alert-success">{{ session('success') }}</div>
     @endif
 
-    <div class="row g-3 mb-4">
-        <div class="col-md-3">
-            <div class="panel p-3">
-                <div class="text-muted small">Pending</div>
-                <div class="display-6 fw-bold">{{ $stats['pending'] ?? 0 }}</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="panel p-3">
-                <div class="text-muted small">Approved</div>
-                <div class="display-6 fw-bold">{{ $stats['approved'] ?? 0 }}</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="panel p-3">
-                <div class="text-muted small">Released</div>
-                <div class="display-6 fw-bold">{{ $stats['released'] ?? 0 }}</div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="panel p-3">
-                <div class="text-muted small">Rejected</div>
-                <div class="display-6 fw-bold">{{ $stats['rejected'] ?? 0 }}</div>
-            </div>
-        </div>
+    <div class="stat-grid stat-grid--four">
+        <div class="stat-card"><p class="stat-label">Pending</p><p class="stat-value">{{ $stats['pending'] ?? 0 }}</p></div>
+        <div class="stat-card"><p class="stat-label">Approved</p><p class="stat-value">{{ $stats['approved'] ?? 0 }}</p></div>
+        <div class="stat-card"><p class="stat-label">Released</p><p class="stat-value">{{ $stats['released'] ?? 0 }}</p></div>
+        <div class="stat-card"><p class="stat-label">Rejected</p><p class="stat-value">{{ $stats['rejected'] ?? 0 }}</p></div>
     </div>
 
     <section class="panel" style="padding:0; overflow:hidden;">
-        <div style="padding:16px 20px; border-bottom:1px solid #f1f5f9; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                <button onclick="filterStatus('all')" id="tab-all" type="button" aria-pressed="true" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:none; background:#1a202c; color:#fff;">All</button>
-                <button onclick="filterStatus('Pending')" id="tab-pending" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151; display:flex; align-items:center; gap:6px;">
+        <div class="requests-toolbar">
+            <div class="request-filter-tabs">
+                <button onclick="filterStatus('all')" id="tab-all" class="request-filter-tab is-active" type="button" aria-pressed="true">All</button>
+                <button onclick="filterStatus('Pending')" id="tab-pending" class="request-filter-tab" type="button" aria-pressed="false">
                     Pending
-                    <span style="background:#EF4444; color:#fff; border-radius:999px; padding:1px 7px; font-size:11px;">
+                    <span class="request-count">
                         {{ $stats['pending'] ?? 0 }}
                     </span>
                 </button>
-                <button onclick="filterStatus('Approved')" id="tab-approved" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Approved</button>
-                <button onclick="filterStatus('Released')" id="tab-released" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Released</button>
-                <button onclick="filterStatus('Rejected')" id="tab-rejected" type="button" aria-pressed="false" style="padding:7px 16px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #e2e8f0; background:#fff; color:#374151;">Rejected</button>
+                <button onclick="filterStatus('Approved')" id="tab-approved" class="request-filter-tab" type="button" aria-pressed="false">Approved</button>
+                <button onclick="filterStatus('Partially Released')" id="tab-partially-released" class="request-filter-tab" type="button" aria-pressed="false">Partially Released</button>
+                <button onclick="filterStatus('Released')" id="tab-released" class="request-filter-tab" type="button" aria-pressed="false">Released</button>
+                <button onclick="filterStatus('Rejected')" id="tab-rejected" class="request-filter-tab" type="button" aria-pressed="false">Rejected</button>
             </div>
 
-            <div style="position:relative;">
-                <i class="fa-solid fa-magnifying-glass" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8; font-size:13px;"></i>
-                <input type="search" id="searchInput" aria-label="Search requests" placeholder="Search requests..." oninput="searchTable()" style="padding:8px 12px 8px 36px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; width:220px;">
-            </div>
+            <label class="sr-only" for="searchInput">Search requests</label>
+            <input type="search" id="searchInput" class="request-search" aria-label="Search requests" placeholder="Search requests..." oninput="searchTable()">
         </div>
 
         <div style="overflow-x:auto;">
-            <table style="width:100%; border-collapse:collapse;">
+            <table class="table-ui requests-table" style="width:100%; border-collapse:collapse;">
                 <thead>
                     <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Request ID</th>
@@ -74,18 +53,6 @@
                 </thead>
                 <tbody id="requestsTable">
                     @php
-                        $priorityColors = [
-                            'Critical' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
-                            'High'     => ['bg' => '#FFF7ED', 'color' => '#EA580C'],
-                            'Medium'   => ['bg' => '#FFFBEB', 'color' => '#D97706'],
-                            'Low'      => ['bg' => '#F0FDF4', 'color' => '#16A34A'],
-                        ];
-                        $statusColors = [
-                            'Pending'  => ['bg' => '#FFFBEB', 'color' => '#D97706'],
-                            'Approved' => ['bg' => '#ECFDF5', 'color' => '#059669'],
-                            'Rejected' => ['bg' => '#FEF2F2', 'color' => '#DC2626'],
-                            'Released' => ['bg' => '#EEF2FF', 'color' => '#4338CA'],
-                        ];
                     @endphp
 
                     {{-- 1. LOCAL REQUESTS LOOP --}}
@@ -94,8 +61,18 @@
                             @php
                                 $priorityKey = ucfirst(strtolower($req->priority ?? 'Low'));
                                 $statusKey   = ucfirst(strtolower($req->status ?? 'Pending'));
-                                $pc = $priorityColors[$priorityKey] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
-                                $sc = $statusColors[$statusKey] ?? ['bg' => '#F7FAFC', 'color' => '#4A5568'];
+                                $priorityClass = 'priority-'.strtolower($priorityKey);
+                                $statusClass = match ($statusKey) {
+                                    'Pending' => 'status-pending',
+                                    'Approved' => 'status-approved',
+                                    'Partially Released' => 'status-pending',
+                                    'Released' => 'status-released',
+                                    'Rejected' => 'status-rejected',
+                                    default => 'status-neutral',
+                                };
+                                $stock = $stockAvailability[$req->inventory_id] ?? ['on_hand' => 0, 'reserved' => 0, 'available' => 0];
+                                $item = $req->inventory?->item;
+                                $variantLabel = collect([$item?->size_weight, $item?->variant && strtoupper($item->variant) !== 'NONE' ? $item->variant : null])->filter()->join(' / ');
                             @endphp
                             <tr class="req-row" data-status="{{ $statusKey }}" style="border-bottom:1px solid #f1f5f9;">
                                 <td style="padding:14px 16px;">
@@ -115,7 +92,7 @@
                                     {{ number_format($req->quantity ?? 0) }}
                                 </td>
                                 <td style="padding:14px 16px;">
-                                    <span style="background:{{ $pc['bg'] }}; color:{{ $pc['color'] }}; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+                                    <span class="priority-badge {{ $priorityClass }}">
                                         {{ $priorityKey }}
                                     </span>
                                 </td>
@@ -131,29 +108,31 @@
                                     {{ optional($req->created_at)->format('M d, Y') ?? 'N/A' }}
                                 </td>
                                 <td style="padding:14px 16px;">
-                                    <span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">
+                                    <span class="status-badge {{ $statusClass }}">
                                         {{ $statusKey }}
                                     </span>
                                 </td>
                                 <td style="padding:14px 16px;">
                                     <div style="display:flex; align-items:center; gap:8px;">
-                                        <button type="button" title="{{ $req->notification_status ?? 'No notification yet' }}" style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;">
-                                            <i class="fa-regular fa-eye"></i>
+                                        <button type="button" class="users-action" title="Review request" aria-label="Review {{ $req->request_code }}" onclick="showLocalRequest(this)"
+                                            data-request-code="{{ $req->request_code }}"
+                                            data-source="{{ $req->source }}"
+                                            data-requester="{{ $req->responder_email }}"
+                                            data-purpose="{{ $req->purpose }}"
+                                            data-item="{{ $req->inventory?->name }}"
+                                            data-sku="{{ $req->inventory?->sku }}"
+                                            data-variant="{{ $variantLabel }}"
+                                            data-requested="{{ $req->quantity }}"
+                                            data-approved="{{ $req->approved_quantity ?? $req->quantity }}"
+                                            data-available="{{ $stock['available'] }}"
+                                            data-on-hand="{{ $stock['on_hand'] }}"
+                                            data-reserved="{{ $stock['reserved'] }}"
+                                            data-status="{{ $statusKey }}"
+                                            data-approval-notes="{{ $req->approval_notes }}"
+                                            data-approve-url="{{ route('requests.approve', $req) }}"
+                                            data-reject-url="{{ route('requests.reject', $req) }}">
+                                            <i class="fa-regular fa-eye" aria-hidden="true"></i> Review
                                         </button>
-                                        @if($statusKey === 'Pending')
-                                            <form action="{{ route('requests.approve', $req) }}" method="POST" style="margin:0;">
-                                                @csrf
-                                                <button type="submit" title="Approve" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
-                                                    <i class="fa-regular fa-circle-check"></i>
-                                                </button>
-                                            </form>
-                                            <form action="{{ route('requests.reject', $req) }}" method="POST" onsubmit="return confirm('Reject this request?')" style="margin:0;">
-                                                @csrf
-                                                <button type="submit" title="Reject" style="background:none; border:none; cursor:pointer; color:#DC2626; padding:4px; font-size:16px;">
-                                                    <i class="fa-regular fa-circle-xmark"></i>
-                                                </button>
-                                            </form>
-                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -165,21 +144,27 @@
                         @foreach($forwardedRequests as $freq)
                             @php
                                 $urgencyKey = ucfirst(strtolower($freq->urgency ?? 'Medium'));
-                                $pc = $priorityColors[$urgencyKey] ?? ['bg' => '#FFFBEB', 'color' => '#D97706'];
                                 $statusKey = match (strtolower($freq->resqperation_status ?? 'forwarded')) {
                                     'approved' => 'Approved',
                                     'rejected' => 'Rejected',
                                     'released' => 'Released',
                                     default => 'Pending',
                                 };
-                                $sc = $statusColors[$statusKey];
+                                $priorityClass = 'priority-'.strtolower($urgencyKey);
+                                $statusClass = match ($statusKey) {
+                                    'Pending' => 'status-pending',
+                                    'Approved' => 'status-approved',
+                                    'Released' => 'status-released',
+                                    'Rejected' => 'status-rejected',
+                                    default => 'status-neutral',
+                                };
                             @endphp
                             <tr class="req-row" data-status="{{ $statusKey }}" style="border-bottom:1px solid #f1f5f9; background-color:#f0f9ff;">
                                 <td style="padding:14px 16px;">
                                     <span style="font-size:12px; font-weight:600; color:#0369a1; font-family:monospace;">
                                         {{ $freq->tracking_reference }}
                                     </span>
-                                    <span style="display:inline-block; background:#e0f2fe; color:#0369a1; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:700; margin-left:4px;">
+                                    <span class="request-source-tag">
                                         ResQOperation
                                     </span>
                                 </td>
@@ -195,7 +180,7 @@
                                     {{ number_format($freq->quantity ?? 0) }} {{ $freq->unit ?? '' }}
                                 </td>
                                 <td style="padding:14px 16px;">
-                                    <span style="background:{{ $pc['bg'] }}; color:{{ $pc['color'] }}; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">
+                                    <span class="priority-badge {{ $priorityClass }}">
                                         {{ $urgencyKey }}
                                     </span>
                                 </td>
@@ -211,7 +196,7 @@
                                     {{ optional($freq->created_at)->format('M d, Y') ?? 'N/A' }}
                                 </td>
                                 <td style="padding:14px 16px;">
-                                    <span style="background:{{ $sc['bg'] }}; color:{{ $sc['color'] }}; padding:3px 12px; border-radius:6px; font-size:12px; font-weight:700;">
+                                    <span class="status-badge {{ $statusClass }}">
                                         {{ $statusKey }}
                                     </span>
                                 </td>
@@ -247,7 +232,7 @@
                                         @if($statusKey === 'Pending')
                                             <form action="{{ route('requests.forwarded.approve', $freq) }}" method="POST" style="margin:0;">
                                                 @csrf
-                                                <button type="submit" title="Approve" aria-label="Approve {{ $freq->tracking_reference }}" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
+                                                <button type="submit" title="Mark approved in TrackingAid" aria-label="Mark {{ $freq->tracking_reference }} approved in TrackingAid" onclick="return confirm('Mark this forwarded request approved in TrackingAid? No external status sync is configured.')" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
                                                     <i class="fa-regular fa-circle-check"></i>
                                                 </button>
                                             </form>
@@ -277,6 +262,49 @@
             <p id="requestNoResults" role="status" style="display:none; text-align:center; padding:24px; color:#64748b; font-size:13px;">No requests match these filters.</p>
         </div>
     </section>
+
+    <dialog id="localRequestDialog" class="request-review-dialog" aria-labelledby="localRequestDialogTitle">
+        <div class="request-review-header">
+            <div>
+                <h2 id="localRequestDialogTitle">Request review</h2>
+                <p id="localRequestDialogCode" class="request-review-code"></p>
+            </div>
+            <button type="button" class="users-action" onclick="document.getElementById('localRequestDialog').close()" aria-label="Close request review">Close</button>
+        </div>
+        <dl class="request-review-grid">
+            <div><dt>Requesting team / source</dt><dd data-local-detail="source"></dd></div>
+            <div><dt>Requested by</dt><dd data-local-detail="requester"></dd></div>
+            <div><dt>Item</dt><dd data-local-detail="item"></dd></div>
+            <div><dt>SKU and variant</dt><dd data-local-detail="skuVariant"></dd></div>
+            <div><dt>Original requested quantity</dt><dd data-local-detail="requested"></dd></div>
+            <div><dt>Current status</dt><dd data-local-detail="status"></dd></div>
+            <div><dt>Physical stock on hand</dt><dd data-local-detail="onHand"></dd></div>
+            <div><dt>Reserved for approved requests</dt><dd data-local-detail="reserved"></dd></div>
+            <div><dt>Available for new approvals</dt><dd data-local-detail="available"></dd></div>
+            <div><dt>Purpose</dt><dd data-local-detail="purpose"></dd></div>
+            <div class="request-review-full"><dt>Existing approval note</dt><dd data-local-detail="approvalNotes"></dd></div>
+        </dl>
+        <p id="requestShortageWarning" class="alert-box alert-warning" role="status" hidden></p>
+        @if(auth()->user()->role === 'admin')
+            <div id="localPendingActions" class="request-review-actions" hidden>
+                <form id="localApproveForm" method="POST" onsubmit="return confirmLocalApproval()">
+                    @csrf
+                    <label class="form-label" for="approvedQuantity">Quantity to approve</label>
+                    <input id="approvedQuantity" name="approved_quantity" class="form-input" type="number" min="1" required>
+                    <p class="form-help">The original request stays unchanged. Reduce quantity only when stock is limited and give a reason.</p>
+                    <label class="form-label" for="approvalNotes">Decision note</label>
+                    <textarea id="approvalNotes" name="approval_notes" class="form-textarea" maxlength="1000"></textarea>
+                    <div class="request-review-buttons">
+                        <button id="approveRequestButton" class="btn-main" type="submit">Approve quantity</button>
+                    </div>
+                </form>
+                <form id="localRejectForm" method="POST" onsubmit="return confirm('Reject this request?')">
+                    @csrf
+                    <button type="submit" class="btn-danger">Reject request</button>
+                </form>
+            </div>
+        @endif
+    </dialog>
 
     <dialog id="forwardedRequestDialog" aria-labelledby="forwardedRequestDialogTitle" style="width:min(640px, calc(100% - 32px)); max-height:85vh; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; padding:0; box-shadow:0 24px 64px rgb(15 23 42 / 24%);">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid #e2e8f0;">
@@ -309,6 +337,70 @@
     <script>
         let activeRequestStatus = 'all';
 
+        function showLocalRequest(button) {
+            const details = {
+                source: button.dataset.source,
+                requester: button.dataset.requester,
+                item: button.dataset.item,
+                skuVariant: [button.dataset.sku, button.dataset.variant].filter(Boolean).join(' / '),
+                requested: button.dataset.requested,
+                status: button.dataset.status,
+                onHand: button.dataset.onHand,
+                reserved: button.dataset.reserved,
+                available: button.dataset.available,
+                purpose: button.dataset.purpose,
+                approvalNotes: button.dataset.approvalNotes,
+            };
+            Object.entries(details).forEach(([key, value]) => {
+                const field = document.querySelector(`[data-local-detail="${key}"]`);
+                field.textContent = value || 'Not provided';
+            });
+
+            document.getElementById('localRequestDialogCode').textContent = button.dataset.requestCode;
+
+            const pending = button.dataset.status === 'Pending';
+            const actions = document.getElementById('localPendingActions');
+            if (actions) actions.hidden = !pending;
+
+            const quantity = document.getElementById('approvedQuantity');
+            const available = Number(button.dataset.available || 0);
+            const requested = Number(button.dataset.requested || 0);
+            const approvable = Math.min(available, requested);
+            if (quantity) {
+                quantity.max = String(requested);
+                quantity.value = String(approvable || requested);
+                quantity.disabled = available < 1;
+                document.getElementById('approvalNotes').value = '';
+                document.getElementById('localApproveForm').action = button.dataset.approveUrl;
+                document.getElementById('localRejectForm').action = button.dataset.rejectUrl;
+            }
+
+            const warning = document.getElementById('requestShortageWarning');
+            const shortage = Math.max(requested - available, 0);
+            warning.hidden = !pending || shortage === 0;
+            warning.textContent = shortage > 0
+                ? `Requested ${requested}; ${available} available for approval; shortage ${shortage}. Reduce the approved quantity with a reason, or restock before approving the full request.`
+                : '';
+            const approveButton = document.getElementById('approveRequestButton');
+            if (approveButton) approveButton.disabled = available < 1;
+            document.getElementById('localRequestDialog').showModal();
+        }
+
+        function confirmLocalApproval() {
+            const requested = Number(document.getElementById('approvedQuantity').max);
+            const approved = Number(document.getElementById('approvedQuantity').value);
+            const notes = document.getElementById('approvalNotes').value.trim();
+
+            if (approved < requested && notes === '') {
+                document.getElementById('approvalNotes').setCustomValidity('Add a reason for approving less than requested.');
+                document.getElementById('approvalNotes').reportValidity();
+                return false;
+            }
+
+            document.getElementById('approvalNotes').setCustomValidity('');
+            return confirm(`Approve ${approved} of ${requested} requested units?`);
+        }
+
         function showForwardedRequest(button) {
             const details = {
                 trackingReference: button.dataset.trackingReference,
@@ -340,22 +432,14 @@
 
         function filterStatus(status) {
             activeRequestStatus = status;
-            const tabs = ['all', 'Pending', 'Approved', 'Released', 'Rejected'];
+            const tabs = ['all', 'Pending', 'Approved', 'Partially Released', 'Released', 'Rejected'];
             tabs.forEach(t => {
-                const btn = document.getElementById('tab-' + t.toLowerCase());
+                const btn = document.getElementById('tab-' + t.toLowerCase().replaceAll(' ', '-'));
                 if (!btn) return;
 
                 const active = (t === 'all' && status === 'all') || t === status;
                 btn.setAttribute('aria-pressed', String(active));
-                if (active) {
-                    btn.style.background = '#1a202c';
-                    btn.style.color = '#fff';
-                    btn.style.border = 'none';
-                } else {
-                    btn.style.background = '#fff';
-                    btn.style.color = '#374151';
-                    btn.style.border = '1px solid #e2e8f0';
-                }
+                btn.classList.toggle('is-active', active);
             });
             applyRequestFilters();
         }

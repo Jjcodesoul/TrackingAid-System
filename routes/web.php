@@ -10,6 +10,7 @@ use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\UserController;
+use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // 1. Landing Root Route
@@ -35,7 +36,7 @@ Route::middleware('auth')->group(function () {
 
 
     // 3. 🛑 ADMIN-ONLY CONTROL PANEL ROUTES
-    Route::group([], function () {
+    Route::middleware(AdminMiddleware::class)->group(function () {
         
         Route::get('/admin/dashboard', function () {
             if (auth()->user()->role !== 'admin') {
@@ -92,20 +93,3 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
-// ─── TEMPORARY REGISTRATION UTILITY ──────────────────────────────────────────
-Route::get('/force-register-admin', function () {
-    try {
-        $user = \App\Models\User::updateOrCreate(
-            ['email' => 'admin@trackingaid.org'],
-            [
-                'name' => 'Admin User',
-                'password' => bcrypt('password'),
-                'role' => 'admin'
-            ]
-        );
-        return "Success! Admin user configuration injected.";
-    } catch (\Exception $e) {
-        return "Error: " . $e->getMessage();
-    }
-});

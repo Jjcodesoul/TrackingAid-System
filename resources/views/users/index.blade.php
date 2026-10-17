@@ -1,8 +1,9 @@
 <x-app-layout>
-    <div class="p-8 bg-slate-50 min-h-screen text-left relative">
+    @section('title', 'Users & Roles')
+    <div class="users-page">
         
         {{-- Header Bar --}}
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between border-b border-slate-200 pb-6 mb-6 gap-4">
+        <div class="page-header">
             <div>
                 <h1 class="page-title">Users &amp; Roles</h1>
                 <p class="page-subtitle">Manage system access and staff records</p>
@@ -16,10 +17,22 @@
             </div>
         </div>
 
-        {{-- Main Users Output Table Section --}}
-        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
+        @if(session('success'))
+            <div class="alert-box alert-success" role="status">{{ session('success') }}</div>
+        @endif
+        @if($errors->any())
+            <div class="alert-box alert-error" role="alert">
+                <ul class="m-0 pl-5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="card-ui" style="padding:0; overflow:hidden;">
             <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-slate-600 border-collapse">
+                <table class="table-ui">
                     <thead class="text-xs text-slate-700 uppercase bg-slate-50 border-b border-slate-200">
                         <tr>
                             <th scope="col" class="px-4 py-3 font-bold">Name</th>
@@ -29,63 +42,41 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @isset($users)
-                            @foreach($users as $userItem)
+                        @forelse($users as $userItem)
                                 <tr class="hover:bg-slate-50/70 transition-colors">
                                     <td class="px-4 py-3.5 font-medium text-slate-900">{{ $userItem->name }}</td>
                                     <td class="px-4 py-3.5">{{ $userItem->email }}</td>
                                     <td class="px-4 py-3.5">
-                                        <span class="inline-flex px-2 py-0.5 text-xs font-semibold rounded-xl uppercase
-                                            {{ $userItem->role === 'admin' ? 'bg-amber-50 text-amber-800 border border-amber-200' : ($userItem->role === 'staff' ? 'bg-blue-50 text-blue-700' : 'bg-slate-100 text-slate-700') }}">
+                                        <span class="status-badge role-badge role-{{ $userItem->role }}">
                                             {{ $userItem->role }}
                                         </span>
                                     </td>
                                     <td class="px-4 py-3.5 text-right">
                                         <div class="flex items-center justify-end gap-3">
-                                            <a href="{{ route('users.edit', $userItem->id) }}" class="text-slate-400 hover:text-slate-600 font-medium text-xs no-underline">Edit</a>
+                                            <a href="{{ route('users.edit', $userItem->id) }}" class="users-action">Edit</a>
                                             
                                             <form action="{{ route('users.destroy', $userItem->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this user access?');" class="m-0 p-0 inline">
                                                 @csrf
-                                                <button type="submit" class="text-slate-400 hover:text-rose-600 font-medium bg-transparent border-none p-0 cursor-pointer text-xs">Remove</button>
+                                                <button type="submit" class="users-action is-danger">Remove</button>
                                             </form>
                                         </div>
                                     </td>
                                 </tr>
-                            @endforeach
-                        @else
-                            <tr class="hover:bg-slate-50/70 transition-colors">
-                                <td class="px-4 py-3.5 font-medium text-slate-900">Test User</td>
-                                <td class="px-4 py-3.5">test@example.com</td>
-                                <td class="px-4 py-3.5">
-                                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold bg-blue-50 text-blue-700 rounded-xl uppercase">Staff</span>
-                                </td>
-                                <td class="px-4 py-3.5 text-right">
-                                    <span class="text-slate-300 text-xs italic">Static Mode</span>
-                                </td>
-                            </tr>
-                            <tr class="hover:bg-slate-50/70 transition-colors">
-                                <td class="px-4 py-3.5 font-medium text-slate-900">Admin User</td>
-                                <td class="px-4 py-3.5">admin@trackingaid.org</td>
-                                <td class="px-4 py-3.5">
-                                    <span class="inline-flex px-2 py-0.5 text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 rounded-xl uppercase">Admin</span>
-                                </td>
-                                <td class="px-4 py-3.5 text-right">
-                                    <span class="text-slate-300 text-xs italic">Static Mode</span>
-                                </td>
-                            </tr>
-                        @endisset
+                        @empty
+                            <tr><td colspan="4" class="p-8 text-center text-slate-500">No users have been added.</td></tr>
+                        @endforelse
                     </tbody>
                 </table>
             </div>
         </div>
 
         {{-- Fixed Layout: Only 'hidden' is applied initially --}}
-        <div id="user-form-modal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm items-center justify-center p-4">
+        <div id="user-form-modal" class="users-modal-overlay hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="user-modal-title">
             
             <div class="bg-white border border-slate-200 rounded-xl shadow-xl w-full max-w-2xl transform transition-all">
                 
                 <div class="border-b border-slate-100 px-6 py-4 flex items-center justify-between bg-slate-50">
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider m-0 flex items-center gap-2">
+                    <h3 id="user-modal-title" class="text-base font-semibold text-slate-900 m-0 flex items-center gap-2">
                         <i class="fa-solid fa-id-card text-emerald-500"></i>
                         Add New User Record
                     </h3>
@@ -159,6 +150,7 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             document.body.style.overflow = 'hidden';
+            modal.querySelector('input')?.focus();
         }
 
         function closeUserModal() {
@@ -167,5 +159,15 @@
             modal.classList.add('hidden');
             document.body.style.overflow = 'auto';
         }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !document.getElementById('user-form-modal').classList.contains('hidden')) {
+                closeUserModal();
+            }
+        });
+
+        @if($errors->any())
+            openUserModal();
+        @endif
     </script>
 </x-app-layout>

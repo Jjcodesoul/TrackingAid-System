@@ -74,6 +74,13 @@
                             : 'Unassigned';
 
                         $status = $delivery->delivery_status ?: 'Loading';
+                        $statusClass = match ($status) {
+                            'Loading' => 'status-pending',
+                            'Dispatched' => 'status-neutral',
+                            'In Transit' => 'status-info',
+                            'Arrived' => 'status-approved',
+                            default => 'status-neutral',
+                        };
 
                         $statusTimestamp = match ($status) {
                             'Dispatched' => $delivery->dispatched_at,
@@ -118,11 +125,7 @@
                         </td>
 
                         <td>
-                            <span class="dm-status
-                                {{ $status === 'Loading' ? 'status-loading' : '' }}
-                                {{ $status === 'Dispatched' ? 'status-dispatched' : '' }}
-                                {{ $status === 'In Transit' ? 'status-transit' : '' }}
-                                {{ $status === 'Arrived' ? 'status-arrived' : '' }}">
+                            <span class="status-badge dm-status {{ $statusClass }}">
                                 {{ $status }}
                             </span>
                         </td>
@@ -280,34 +283,6 @@
         margin-top: 4px;
         color: #64748b;
         font-size: 12px;
-    }
-
-    .dm-status {
-        display: inline-block;
-        padding: 6px 10px;
-        border-radius: 20px;
-        font-size: 11px;
-        font-weight: 700;
-    }
-
-    .status-loading {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .status-dispatched {
-        background: #dbeafe;
-        color: #1d4ed8;
-    }
-
-    .status-transit {
-        background: #ede9fe;
-        color: #6d28d9;
-    }
-
-    .status-arrived {
-        background: #d1fae5;
-        color: #065f46;
     }
 
     .dm-empty {

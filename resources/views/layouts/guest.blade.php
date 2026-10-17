@@ -7,13 +7,8 @@
     <title>TrackingAid - Login</title>
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        html, body { width: 100%; height: 100%; }
-        body { font-family: 'Instrument Sans', system-ui, -apple-system, sans-serif; background: #f7fafc; color: #1b1b18; }
-    </style>
 </head>
-<body>
+<body class="font-sans antialiased">
 {{ $slot }}
 </body>
 </html>

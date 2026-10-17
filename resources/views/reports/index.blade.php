@@ -2,106 +2,26 @@
 
 @section('content')
 <style>
-    .reports-page {
-        color: #0f172a;
-    }
-
-    .reports-heading {
-        margin-bottom: 24px;
-    }
-
-    .reports-heading h2 {
-        font-size: 22px;
-        margin: 0;
-    }
-
-    .reports-heading p {
-        color: #64748b;
-        font-size: 13px;
-        margin: 4px 0 0;
-    }
-
-    .reports-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .report-tabs {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .report-tab {
-        border: 1px solid transparent;
-        color: #475569;
-        border-radius: 999px;
-        display: inline-flex;
-        align-items: center;
-        min-height: 34px;
-        padding: 7px 16px;
-        font-size: 13px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-
-    .report-tab:hover {
-        color: #059669;
-        background: #ecfdf5;
-    }
-
-    .report-tab.active {
-        color: #ffffff;
-        background: #10b981;
-        border-color: #10b981;
-    }
-
-    .report-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .report-action {
-        border: 1px solid #e2e8f0;
-        background: #ffffff;
-        color: #0f172a;
-        min-height: 34px;
-        border-radius: 12px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 7px 14px;
-        font-size: 13px;
-        font-weight: 700;
-        text-decoration: none;
-    }
-
-    .report-action:hover {
-        background: #f8fafc;
-        color: #047857;
-    }
-
-    .report-current {
-        margin-bottom: 16px;
-    }
-
-    .report-current h3 {
-        font-size: 18px;
-        margin: 0;
-    }
-
-    .report-current p {
-        color: #64748b;
-        font-size: 13px;
-        margin: 4px 0 0;
-    }
+    .reports-page { color: var(--ink); }
+    .reports-heading { margin-bottom: 24px; }
+    .reports-heading h2 { margin: 0; color: var(--ink); font-size: 26px; font-weight: 700; }
+    .reports-heading p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .reports-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+    .report-filter { display: flex; align-items: end; gap: 12px; flex-wrap: wrap; margin: 0 0 20px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-surface); background: #fff; }
+    .report-filter-field { min-width: 160px; }
+    .report-filter-field label { display: block; margin-bottom: 4px; color: var(--muted); font-size: 12px; font-weight: 600; }
+    .report-filter-field input, .report-filter-field select { min-height: 40px; width: 100%; padding: 8px 10px; border: 1px solid #bdcbc5; border-radius: var(--radius-control); background: #fff; color: var(--ink); font: inherit; }
+    .report-tabs { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .report-tab { min-height: 40px; display: inline-flex; align-items: center; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); color: var(--muted); background: #fff; font-size: 14px; font-weight: 600; text-decoration: none; }
+    .report-tab:hover { color: var(--brand-hover); background: var(--brand-soft); }
+    .report-tab.active { border-color: var(--brand); background: var(--brand); color: #fff; }
+    .report-actions { display: flex; align-items: center; gap: 8px; }
+    .report-action { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); background: #fff; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+    .report-action:hover { background: #f7faf8; color: var(--brand-hover); }
+    .report-current { margin-bottom: 16px; }
+    .report-current h3 { margin: 0; color: var(--ink); font-size: 18px; font-weight: 600; }
+    .report-current p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+    .report-period { color: var(--subtle) !important; font-size: 12px !important; }
 
     .report-stats {
         display: grid;
@@ -119,7 +39,7 @@
         align-items: flex-start;
         justify-content: space-between;
         gap: 12px;
-        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        box-shadow: var(--shadow-surface);
     }
 
     .report-stat-label {
@@ -362,7 +282,7 @@
 
     .report-table td {
         color: #0f172a;
-        font-size: 13.5px;
+        font-size: 14px;
         padding: 13px 16px;
         border-bottom: 1px solid #e5edf5;
         vertical-align: middle;
@@ -429,6 +349,8 @@
         .app-sidebar-backdrop,
         .app-header,
         .reports-toolbar,
+        .report-filter,
+        .report-chart-card,
         .report-pagination,
         .screen-report-table-wrap {
             display: none !important;
@@ -483,7 +405,7 @@
         <div class="report-tabs" aria-label="Report types">
             @foreach($tabs as $key => $label)
                 <a
-                    href="{{ route('reports.index', ['report' => $key]) }}"
+                    href="{{ route('reports.index', array_merge(['report' => $key], $filters)) }}"
                     class="report-tab {{ $activeReport === $key ? 'active' : '' }}"
                 >
                     {{ $label }}
@@ -496,16 +418,58 @@
                 <i class="fa-solid fa-print" aria-hidden="true"></i>
                 Print / PDF
             </button>
-            <a class="report-action" href="{{ route('reports.export', ['report' => $activeReport]) }}">
+            <a class="report-action" href="{{ route('reports.export', array_merge(['report' => $activeReport], $filters)) }}">
                 <i class="fa-solid fa-download"></i>
                 CSV
             </a>
         </div>
     </div>
 
+    <form class="report-filter" action="{{ route('reports.index') }}" method="GET">
+        <input type="hidden" name="report" value="{{ $activeReport }}">
+        @if($activeReport !== 'inventory')
+            <div class="report-filter-field">
+                <label for="report-start-date">From</label>
+                <input id="report-start-date" type="date" name="start_date" value="{{ $filters['start_date'] ?? '' }}">
+            </div>
+            <div class="report-filter-field">
+                <label for="report-end-date">To</label>
+                <input id="report-end-date" type="date" name="end_date" value="{{ $filters['end_date'] ?? '' }}">
+            </div>
+        @endif
+        <div class="report-filter-field">
+            <label for="report-category">Category</label>
+            <select id="report-category" name="category">
+                <option value="">All categories</option>
+                @foreach($categories as $category)
+                    <option value="{{ $category }}" {{ ($filters['category'] ?? '') === $category ? 'selected' : '' }}>{{ $category }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="report-filter-field">
+            <label for="report-status">Status</label>
+            <select id="report-status" name="status">
+                <option value="">All statuses</option>
+                @foreach($statusOptions as $status)
+                    <option value="{{ $status }}" {{ ($filters['status'] ?? '') === $status ? 'selected' : '' }}>
+                        {{ $status === 'missing' ? 'Missing / lost' : \Illuminate\Support\Str::headline(str_replace('-', ' ', $status)) }}
+                    </option>
+                @endforeach
+            </select>
+        </div>
+        <button type="submit" class="btn-main">Apply filters</button>
+        <a class="btn-soft" href="{{ route('reports.index', ['report' => $activeReport]) }}">Clear</a>
+    </form>
+
     <div class="report-current">
         <h3>{{ $report['title'] }}</h3>
         <p>{{ $report['subtitle'] }}</p>
+        <p class="report-period">
+            Reporting period:
+            {{ isset($filters['start_date']) ? \Carbon\Carbon::parse($filters['start_date'])->format('M d, Y') : 'Earliest available' }}
+            to
+            {{ isset($filters['end_date']) ? \Carbon\Carbon::parse($filters['end_date'])->format('M d, Y') : 'Today' }}
+        </p>
     </div>
 
     <div class="report-stats">
@@ -523,7 +487,7 @@
         @endforeach
     </div>
 
-    <section class="report-card">
+    <section class="report-card report-chart-card">
         <div class="report-card-header">
             <h3>{{ $report['chartTitle'] }}</h3>
             <p>{{ $report['subtitle'] }}</p>

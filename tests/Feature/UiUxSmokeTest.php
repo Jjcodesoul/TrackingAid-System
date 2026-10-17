@@ -45,8 +45,8 @@ class UiUxSmokeTest extends TestCase
 
         $this->get(route('inventory.index'))
             ->assertOk()
-            ->assertSee('Filter by category')
-            ->assertSee('value="HYGIENE"', false)
+            ->assertSee('role="tablist" aria-label="Inventory categories"', false)
+            ->assertSee('data-tab="hygiene"', false)
             ->assertSee('aria-label="Search inventory items"', false)
             ->assertSee('aria-label="Filter by stock and expiration status"', false)
             ->assertSee('<th scope="col"', false)

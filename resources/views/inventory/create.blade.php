@@ -21,7 +21,7 @@
     </div>
 @endif
 
-<form method="POST" action="/inventory/store">
+<form method="POST" action="/inventory/store" class="inventory-form">
 @csrf
 
 <div style="display:grid; grid-template-columns:1fr 380px; gap:24px; align-items:start;">

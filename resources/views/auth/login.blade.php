@@ -1,7 +1,10 @@
 <x-guest-layout>
 <style>
 .login-wrapper {
+    width: 100%;
+    min-width: 0;
     min-height: 100vh;
+    overflow-x: clip;
     display: grid;
     grid-template-columns: 1fr;
     animation: fadeIn 0.4s ease;
@@ -18,7 +21,7 @@
 
 .login-hero {
     display: none;
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    background: #18332e;
     color: white;
     padding: 60px 40px;
     align-items: center;
@@ -28,26 +31,14 @@
 }
 
 .login-hero::before {
-    content: '';
-    position: absolute;
-    top: -80px;
-    right: -80px;
-    width: 260px;
-    height: 260px;
-    background: rgba(255,255,255,0.06);
-    border-radius: 50%;
+    display: none;
 }
 
 .login-hero::after {
-    content: '';
-    position: absolute;
-    bottom: -100px;
-    left: -60px;
-    width: 220px;
-    height: 220px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 50%;
+    display: none;
 }
+
+.login-form-section { min-width: 0; }
 
 @media (min-width: 768px) {
     .login-hero { display: flex; }
@@ -60,24 +51,23 @@
 }
 
 .hero-logo {
-    width: 64px;
-    height: 64px;
-    background: rgba(255,255,255,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-    border-radius: 16px;
+    width: 56px;
+    height: 56px;
+    background: var(--brand);
+    border: 0;
+    border-radius: var(--radius-surface);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 22px;
     margin: 0 auto 20px;
-    backdrop-filter: blur(10px);
 }
 
 .hero-content h1 {
-    font-size: 42px;
+    font-size: 34px;
     font-weight: 700;
     margin-bottom: 12px;
-    letter-spacing: -1px;
+    letter-spacing: 0;
 }
 
 .hero-content p {
@@ -87,50 +77,6 @@
     margin-bottom: 8px;
 }
 
-.hero-tagline {
-    font-size: 13.5px;
-    opacity: 0.92;
-    margin-bottom: 32px !important;
-}
-
-.hero-features {
-    display: grid;
-    gap: 12px;
-}
-
-.hero-feature {
-    background: rgba(255,255,255,0.12);
-    padding: 14px 16px;
-    border-radius: 10px;
-    backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    border: 1px solid rgba(255,255,255,0.25);
-    transition: all 0.2s ease;
-}
-
-.hero-feature:hover {
-    background: rgba(255,255,255,0.18);
-    transform: translateX(4px);
-}
-
-.hero-feature-icon {
-    width: 36px;
-    height: 36px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 17px;
-    flex-shrink: 0;
-}
-
-.hero-feature-text {
-    font-weight: 600;
-    font-size: 13.5px;
-    text-align: left;
 }
 
 .login-form-section {
@@ -138,7 +84,7 @@
     align-items: center;
     justify-content: center;
     padding: 40px 24px;
-    background: #f7fafc;
+    background: var(--canvas);
 }
 
 @media (min-width: 768px) {
@@ -149,10 +95,10 @@
     width: 100%;
     max-width: 400px;
     background: #ffffff;
-    border: 1px solid #e2e8f0;
-    border-radius: 20px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-surface);
     padding: 36px 32px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.05);
+    box-shadow: var(--shadow-surface);
 }
 
 .form-mobile-logo {
@@ -169,7 +115,7 @@
 .form-mobile-logo-badge {
     width: 36px;
     height: 36px;
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    background: var(--brand);
     border-radius: 9px;
     display: flex;
     align-items: center;
@@ -197,8 +143,8 @@
 }
 
 .form-header p {
-    color: #718096;
-    font-size: 13px;
+    color: var(--muted);
+    font-size: 14px;
     margin: 0;
 }
 
@@ -208,11 +154,9 @@
 
 .form-label {
     display: block;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #4a5568;
+    color: #344541;
     margin-bottom: 8px;
 }
 
@@ -232,9 +176,10 @@
 
 .form-input {
     width: 100%;
+    min-height: 44px;
     padding: 12px 16px 12px 42px;
-    border: 1px solid #e2e8f0;
-    border-radius: 10px;
+    border: 1px solid #bdcbc5;
+    border-radius: var(--radius-control);
     font-size: 14px;
     font-family: inherit;
     transition: all 0.2s ease;
@@ -243,8 +188,8 @@
 
 .form-input:focus {
     outline: none;
-    border-color: #2ecc71;
-    box-shadow: 0 0 0 3px rgba(46,204,113,0.1);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px rgb(23 107 87 / 14%);
 }
 
 .password-toggle {
@@ -277,32 +222,32 @@
     gap: 8px;
 }
 
-.form-checkbox input { width: 17px; height: 17px; cursor: pointer; accent-color: #2ecc71; }
+.form-checkbox input { width: 17px; height: 17px; cursor: pointer; accent-color: var(--brand); }
 .form-checkbox label { cursor: pointer; font-size: 13px; color: #4a5568; font-weight: 500; }
 
-.forgot-link { font-size: 12px; color: #2ecc71; font-weight: 600; text-decoration: none; }
-.forgot-link:hover { color: #27ae60; text-decoration: underline; }
+.forgot-link { font-size: 13px; color: var(--brand); font-weight: 600; text-decoration: none; }
+.forgot-link:hover { color: var(--brand-hover); text-decoration: underline; }
 
 .submit-btn {
     width: 100%;
     padding: 14px 20px;
-    background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+    background: var(--brand);
     color: white;
     border: none;
-    border-radius: 10px;
+    border-radius: var(--radius-control);
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 12px rgba(46,204,113,0.3);
+    transition: background-color 0.15s ease;
+    box-shadow: none;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
 }
 
-.submit-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(46,204,113,0.4); }
-.submit-btn:active { transform: translateY(0); }
+.submit-btn:hover { background: var(--brand-hover); }
+.submit-btn:active { background: var(--brand-hover); }
 .submit-btn:disabled { opacity: 0.75; cursor: not-allowed; transform: none; }
 
 .spinner {
@@ -318,12 +263,12 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .error-alert {
-    background: #fed7d7;
-    color: #c53030;
+    background: var(--danger-soft);
+    color: #912018;
     padding: 12px 16px;
     border-radius: 8px;
     margin-bottom: 20px;
-    border: 1px solid #fc8181;
+    border: 1px solid #e6b8b4;
     font-size: 13px;
     display: flex;
     align-items: center;
@@ -342,25 +287,9 @@
     <!-- Hero Section -->
     <div class="login-hero">
         <div class="hero-content">
-            <div class="hero-logo"><i class="fa-solid fa-cubes"></i></div>
+            <x-brand-mark class="hero-logo" />
             <h1>TrackingAid</h1>
             <p>Disaster Logistics System</p>
-            <p class="hero-tagline">Post-disaster response and inventory management</p>
-
-            <div class="hero-features">
-                <div class="hero-feature">
-                    <span class="hero-feature-icon"><i class="fa-solid fa-shield-halved"></i></span>
-                    <span class="hero-feature-text">Secure Access</span>
-                </div>
-                <div class="hero-feature">
-                    <span class="hero-feature-icon"><i class="fa-solid fa-chart-line"></i></span>
-                    <span class="hero-feature-text">Real-time Tracking</span>
-                </div>
-                <div class="hero-feature">
-                    <span class="hero-feature-icon"><i class="fa-solid fa-bolt"></i></span>
-                    <span class="hero-feature-text">Fast &amp; Reliable</span>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -369,18 +298,18 @@
         <div class="login-form-wrapper">
 
             <div class="form-mobile-logo">
-                <div class="form-mobile-logo-badge"><i class="fa-solid fa-cubes"></i></div>
+                <x-brand-mark class="form-mobile-logo-badge" />
                 <span class="form-mobile-logo-text">TrackingAid</span>
             </div>
 
             <div class="form-header">
-                <h2>Get Started with TrackingAid</h2>
-                <p>Sign in to continue to your dashboard</p>
+                <h2>Sign in</h2>
+                <p>Use your assigned TrackingAid account.</p>
             </div>
 
             @if ($errors->any())
                 @foreach ($errors->all() as $error)
-                    <div class="error-alert">
+                    <div class="error-alert" role="alert">
                         <i class="fa-solid fa-circle-exclamation"></i>
                         <span>{{ $error }}</span>
                     </div>
@@ -420,7 +349,7 @@
                             placeholder="••••••••"
                             style="padding-right:42px;"
                         />
-                        <button type="button" class="password-toggle" onclick="togglePassword()">
+                        <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Show password" title="Show password">
                             <i class="fa-regular fa-eye" id="toggleIcon"></i>
                         </button>
                     </div>
@@ -439,12 +368,12 @@
 
                 <button type="submit" class="submit-btn" id="submitBtn">
                     <span class="spinner" id="btnSpinner"></span>
-                    <span id="btnText">Login</span>
+                    <span id="btnText">Sign in</span>
                 </button>
             </form>
 
             <div class="form-footer">
-                <p>&copy; 2026 TrackingAid. All Rights Reserved.</p>
+                <p>&copy; 2026 TrackingAid</p>
             </div>
         </div>
     </div>
@@ -456,10 +385,14 @@ function togglePassword() {
     const icon = document.getElementById('toggleIcon');
     if (input.type === 'password') {
         input.type = 'text';
+        document.querySelector('.password-toggle').setAttribute('aria-label', 'Hide password');
+        document.querySelector('.password-toggle').title = 'Hide password';
         icon.classList.remove('fa-eye');
         icon.classList.add('fa-eye-slash');
     } else {
         input.type = 'password';
+        document.querySelector('.password-toggle').setAttribute('aria-label', 'Show password');
+        document.querySelector('.password-toggle').title = 'Show password';
         icon.classList.remove('fa-eye-slash');
         icon.classList.add('fa-eye');
     }

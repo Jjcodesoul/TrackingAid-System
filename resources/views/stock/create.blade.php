@@ -22,7 +22,7 @@
     <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
 
-<form method="POST" action="/stock-in/store" id="stockInForm">
+<form method="POST" action="/stock-in/store" id="stockInForm" class="inventory-form">
 @csrf
 
 <div style="display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;">

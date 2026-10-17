@@ -218,8 +218,8 @@
     </div>
 
     {{-- TABLE --}}
-    <div style="overflow-x:auto;">
-        <table style="width:100%; border-collapse:collapse;">
+    <div class="table-wrap">
+        <table class="table-ui inventory-table">
             <caption class="sr-only">Inventory items by category, stock, expiry and location</caption>
             <thead>
                 <tr style="background:#f8fafc; border-bottom:1px solid #e2e8f0;">
@@ -238,22 +238,9 @@
                 </tr>
             </thead>
             <tbody id="inventoryTable">
-            @php
-                $catColors = [
-                    'FOOD'           => ['bg'=>'#F0FFF4','color'=>'#276749'],
-                    'MEDICAL'        => ['bg'=>'#EBF8FF','color'=>'#2B6CB0'],
-                    'HYGIENE'        => ['bg'=>'#FFF0F6','color'=>'#B83280'],
-                    'SHELTER'        => ['bg'=>'#FFFBEB','color'=>'#B7791F'],
-                    'COMMUNICATIONS' => ['bg'=>'#EEF2FF','color'=>'#4338CA'],
-                    'RESCUE'         => ['bg'=>'#FFF5F5','color'=>'#C53030'],
-                    'RELIEF'         => ['bg'=>'#FFFAF0','color'=>'#C05621'],
-                ];
-            @endphp
             @forelse($items as $category => $categoryItems)
 
                 @php
-                    $catUpper = strtoupper($category);
-                    $cc = $catColors[$catUpper] ?? ['bg'=>'#F7FAFC','color'=>'#4A5568'];
                     $catSlug = \Illuminate\Support\Str::slug($category);
                 @endphp
 
@@ -276,7 +263,7 @@
                         data-status="{{ implode(' ', $statusFilters) }}">
 
                         <td style="padding:14px 16px;">
-                            <span style="font-size:11px; font-weight:600; color:#64748b; font-family:monospace;">{{ $item->sku }}</span>
+                            <span class="sku-code">{{ $item->sku }}</span>
                         </td>
 
                         <td style="padding:14px 16px;">
@@ -284,7 +271,7 @@
                         </td>
 
                         <td style="padding:14px 16px;">
-                            <span style="background:{{ $cc['bg'] }}; color:{{ $cc['color'] }}; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">
+                            <span class="category-tag">
                                 {{ ucfirst(strtolower($item->category)) }}
                             </span>
                         </td>
@@ -301,24 +288,24 @@
 
                         <td style="padding:14px 16px;">
                             @if(strtolower($item->type) === 'consumable')
-                                <span style="background:#EBF8FF; color:#2B6CB0; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Consumable</span>
+                                <span class="type-badge type-consumable">Consumable</span>
                             @else
-                                <span style="background:#FAF5FF; color:#6B46C1; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:600;">Reusable</span>
+                                <span class="type-badge type-reusable">Reusable</span>
                             @endif
                         </td>
 
                         <td style="padding:14px 16px;">
                             @if($stockQuantity <= 0)
-                                <span style="background:#FEF2F2; color:#DC2626; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Out of Stock</span>
+                                <span class="status-badge status-out">Out of Stock</span>
                             @elseif($stockQuantity < 10)
-                                <span style="background:#FFFBEB; color:#B45309; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Low Stock</span>
+                                <span class="status-badge status-low">Low Stock</span>
                             @else
-                                <span style="background:#ECFDF5; color:#047857; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">In Stock</span>
+                                <span class="status-badge status-in">In Stock</span>
                             @endif
                             @if($isExpired)
-                                <span style="display:inline-block; margin:2px 0; background:#FEF2F2; color:#B91C1C; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:700;">Expired</span>
+                                <span class="status-badge status-expired">Expired</span>
                             @elseif($isExpiring)
-                                <span style="background:#FFFBEB; color:#D97706; padding:3px 10px; border-radius:6px; font-size:12px; font-weight:600;">Expiring</span>
+                                <span class="status-badge status-expiring">Expiring</span>
                             @endif
                         </td>
 
@@ -333,15 +320,13 @@
                         @if(auth()->user()->role === 'admin')
                             <td style="padding:14px 16px; text-align:right;">
                                 <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
-                                    <a href="{{ route('inventory.edit', $item->id) }}"
-                                        style="padding:5px 12px; background:#EBF8FF; color:#2B6CB0; border-radius:6px; font-size:12px; font-weight:600; text-decoration:none;">
+                                    <a href="{{ route('inventory.edit', $item->id) }}" class="btn-soft btn-compact">
                                         Edit
                                     </a>
                                     <form method="POST" action="{{ route('inventory.delete', $item->id) }}"
                                         onsubmit="return confirm('Delete this item?')" style="margin:0; padding:0; display:inline-block;">
                                         @csrf
-                                        <button type="submit"
-                                            style="padding:5px 12px; background:#FEF2F2; color:#DC2626; border:none; border-radius:6px; font-size:12px; font-weight:600; cursor:pointer;">
+                                        <button type="submit" class="btn-danger btn-compact">
                                             Delete
                                         </button>
                                     </form>

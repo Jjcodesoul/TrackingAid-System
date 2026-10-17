@@ -8,27 +8,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>TrackingAid - Disaster Logistics System</title>
+    <title>@yield('title', 'TrackingAid | Disaster Logistics')</title>
 
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('vendor/bootstrap/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ asset('css/tailwind.css') }}">
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
     <style>
         /* â”€â”€ Shared custom components used across views â”€â”€ */
         .panel {
             background: #ffffff;
-            border: 1px solid #edf2f7;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-surface);
+            box-shadow: var(--shadow-surface);
             padding: 24px;
         }
 
         .card-ui {
             background: #ffffff;
-            border: 1px solid #edf2f7;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-surface);
+            box-shadow: var(--shadow-surface);
         }
 
         /* â”€â”€ Buttons â€” one system, used everywhere â”€â”€ */
@@ -37,22 +36,24 @@
             align-items: center;
             justify-content: center;
             gap: 6px;
-            padding: 10px 20px;
-            font-size: 13px;
+            min-height: 40px;
+            padding: 8px 14px;
+            font-size: 14px;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: var(--radius-control);
             cursor: pointer;
             text-decoration: none;
             transition: background 0.15s ease, border-color 0.15s ease;
             white-space: nowrap;
         }
         .btn-main {
-            background: #10B981;
+            background: var(--brand);
             color: #fff;
-            border: none;
+            border: 1px solid var(--brand);
         }
         .btn-main:hover {
-            background: #059669;
+            background: var(--brand-hover);
+            border-color: var(--brand-hover);
             color: #fff;
         }
 
@@ -90,14 +91,14 @@
         }
 
         .page-title {
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 700;
-            color: #1a202c;
+            color: var(--ink);
             margin: 0;
         }
         .page-subtitle {
-            font-size: 13px;
-            color: #64748B;
+            font-size: 14px;
+            color: var(--muted);
             margin: 4px 0 0;
         }
         .page-header {
@@ -134,7 +135,7 @@
             gap: 10px;
             padding: 12px 16px;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
             margin-bottom: 16px;
         }
         .alert-success {
@@ -156,7 +157,7 @@
         /* â”€â”€ Form fields â€” one system, used everywhere â”€â”€ */
         .form-label {
             display: block;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 600;
             color: #374151;
             margin-bottom: 6px;
@@ -165,10 +166,11 @@
         .form-select,
         .form-textarea {
             width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 13px;
+            min-height: 40px;
+            padding: 8px 11px;
+            border: 1px solid #bdcbc5;
+            border-radius: var(--radius-control);
+            font-size: 14px;
             outline: none;
             background: #fff;
             color: #374151;
@@ -179,8 +181,8 @@
         .form-input:focus,
         .form-select:focus,
         .form-textarea:focus {
-            border-color: #10B981;
-            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgb(23 107 87 / 14%);
         }
         .form-textarea {
             resize: vertical;
@@ -188,9 +190,9 @@
         }
 
         .note {
-            background: #FFFBEB;
-            border: 1px solid #FDE68A;
-            color: #92400E;
+            background: var(--warning-soft);
+            border: 1px solid #e8d2a4;
+            color: #784b12;
             padding: 12px 16px;
             border-radius: 8px;
             font-size: 13px;
@@ -272,12 +274,10 @@
         <aside id="appSidebar" class="app-sidebar w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800" aria-label="Main navigation">
 
             <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
-                <div class="w-9 h-9 bg-emerald-500 flex items-center justify-center text-white text-lg rounded-lg shrink-0 shadow-sm">
-                    <i class="fa-solid fa-cubes"></i>
-                </div>
+                <x-brand-mark class="app-brand-mark" />
                 <div class="flex flex-col min-w-0">
                     <h1 class="text-base font-bold text-white tracking-wide m-0 p-0 leading-tight truncate">TrackingAid</h1>
-                    <span class="text-xs text-slate-400 font-medium mt-0.5 m-0 p-0 truncate">Ã— ResqOperation</span>
+                    <span class="text-xs text-slate-400 font-medium mt-0.5 m-0 p-0 truncate">Disaster response logistics</span>
                 </div>
             </div>
 
@@ -296,7 +296,7 @@
                     </li>
 
                     <li>
-                        <a href="/inventory" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('inventory') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                        <a href="/inventory" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('inventory*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-box w-5 text-center text-base"></i>
                             <span>Inventory</span>
                         </a>
@@ -355,18 +355,6 @@
                     </li>
                     @endif
 
-                    <li>
-                        <a href="/notifications" class="flex items-center justify-between px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('notifications*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
-                            <div class="flex items-center gap-3">
-                                <i class="fa-regular fa-bell w-5 text-center text-base"></i>
-                                <span>Notifications</span>
-                            </div>
-                            @if($unreadCount > 0)
-                                <span class="px-2 py-0.5 text-xs font-bold rounded-full bg-rose-500 text-white">{{ $unreadCount }}</span>
-                            @endif
-                        </a>
-                    </li>
-
                     @if(auth()->user()->role === 'admin')
                     <li>
                         <a href="/users" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('users*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
@@ -387,10 +375,8 @@
                     <button type="button" class="app-sidebar-toggle" id="appSidebarToggle" aria-label="Open navigation menu" aria-controls="appSidebar" aria-expanded="false">
                         <i class="fa-solid fa-bars" id="appSidebarToggleIcon" aria-hidden="true"></i>
                     </button>
-                    <div class="app-header-crumb flex items-center gap-2">
-                    <span>TrackingAid</span>
-                    <span class="text-slate-300 font-normal">/</span>
-                    <span class="text-slate-800 font-semibold capitalize">{{ Request::segment(2) ?? (Request::segment(1) ?? 'Dashboard') }}</span>
+                    <div class="app-header-crumb flex items-center">
+                    <span class="text-slate-800 font-semibold capitalize">{{ str_replace('-', ' ', Request::segment(2) ?? (Request::segment(1) ?? 'Dashboard')) }}</span>
                     </div>
                 </div>
 
@@ -425,6 +411,9 @@
             </header>
 
             <main class="app-main flex-1 overflow-y-auto p-8 box-border" id="mainContent">
+                @isset($header)
+                    <div class="app-content-header">{{ $header }}</div>
+                @endisset
                 @isset($slot)
                     {{ $slot }}
                 @else

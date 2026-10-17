@@ -34,121 +34,127 @@
             <p class="page-subtitle">Release inventory items for field operations</p>
         </div>
 
-        {{-- Stat Cards --}}
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
-                <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Approved Requests</div>
-                <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $approvedRequests->count() }}</div>
-            </div>
-            <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
-                <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Available Items</div>
-                <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $items->count() }}</div>
-            </div>
-            <div class="bg-white border border-[#e2e8f0] p-4 rounded-xl shadow-sm">
-                <div class="text-[#64748b] text-[12px] font-medium uppercase tracking-wider">Recent Releases</div>
-                <div class="text-[28px] font-bold text-[#0f172a] mt-1">{{ $recentReleases->count() }}</div>
-            </div>
-        </div>
-
-        {{-- Form Section --}}
         <section class="bg-white border border-[#e2e8f0] p-6 rounded-xl shadow-sm mb-6">
-            <form action="{{ route('borrow-release.store') }}" method="POST" class="m-0">
-                @csrf
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <div>
-                        <label class="form-label" for="request_id">Approved Request *</label>
-                        <select id="request_id" name="request_id" class="form-select" required>
-                            <option value="">Choose an approved request...</option>
-                            @foreach($approvedRequests as $approvedRequest)
-                                <option
-                                    value="{{ $approvedRequest->id }}"
-                                    data-inventory-id="{{ $approvedRequest->inventory_id }}"
-                                    data-quantity="{{ $approvedRequest->quantity }}"
-                                    data-purpose="{{ $approvedRequest->purpose }}"
-                                    {{ old('request_id') == $approvedRequest->id ? 'selected' : '' }}
-                                >
-                                    {{ $approvedRequest->request_code }} - {{ $approvedRequest->inventory?->sku }} - {{ $approvedRequest->quantity }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="form-label" for="inventory_id">Item (SKU) *</label>
-                        <select id="inventory_id" name="inventory_id" class="form-select" required>
-                            <option value="">Choose an item...</option>
-                            @foreach($items as $item)
-                                <option value="{{ $item->id }}" {{ old('inventory_id') == $item->id ? 'selected' : '' }}>
-                                    {{ $item->sku }} - {{ $item->name }} (Stock: {{ $item->quantity }})
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    {{-- NEW: Delivery Personnel --}}
-<div>
-    <label class="form-label" for="delivery_personnel_id">
-        Delivery Personnel *
-    </label>
-
-    <select
-        id="delivery_personnel_id"
-        name="delivery_personnel_id"
-        class="form-select"
-        required
-    >
-        <option value="">Choose delivery personnel...</option>
-
-        @foreach($deliveryPersonnel as $person)
-            <option
-                value="{{ $person->id }}"
-                {{ old('delivery_personnel_id') == $person->id ? 'selected' : '' }}
-            >
-                {{ $person->name }} - {{ $person->email }}
-            </option>
-        @endforeach
-    </select>
-</div>
-
-                    <div>
-                        <label class="form-label" for="unit">Unit *</label>
-                        <input id="unit" name="unit" type="text" class="form-input" value="{{ old('unit') }}" placeholder="e.g., PCS, BOX, SACK" required>
-                    </div>
-
-                    <div>
-                        <label class="form-label" for="quantity">Quantity *</label>
-                        <input id="quantity" name="quantity" type="number" min="1" class="form-input" value="{{ old('quantity') }}" placeholder="e.g., 50" required>
-                    </div>
-
-                    <div>
-                        <label class="form-label" for="purpose">Purpose / Incident Reference *</label>
-                        <input id="purpose" name="purpose" type="text" class="form-input" value="{{ old('purpose') }}" placeholder="e.g., Emergency Response - Flood 2024" required>
-                    </div>
-
-                    <div>
-                        <label class="form-label" for="location">Location *</label>
-                    <input
-                        id="location"
-                        name="location"
-                        type="text"
-                        class="form-input"
-                        value="{{ old('location') }}"
-                        placeholder="e.g., Disaster Zone A, Relief Center"
-                        required
-                    >
-
-                    <div>
-                        <label class="form-label" for="released_at">Date & Time *</label>
-                        <input id="released_at" name="released_at" type="datetime-local" class="form-input" value="{{ old('released_at', now()->format('Y-m-d\TH:i')) }}" required>
-                    </div>
+            <div class="flex flex-wrap justify-between items-end gap-4 mb-4">
+                <div>
+                    <h2 class="text-[16px] font-semibold text-[#0f172a] m-0">Approved requests awaiting release</h2>
+                    <p class="text-[12px] text-[#64748b] mt-1 mb-0">Items and quantities are loaded from the approved request.</p>
                 </div>
+                <form method="GET" action="{{ route('borrow-release.create') }}" class="flex gap-2 m-0">
+                    <label class="sr-only" for="release-search">Search requests</label>
+                    <input id="release-search" name="search" type="search" value="{{ $search }}" class="form-input" placeholder="Search request or SKU">
+                    <button type="submit" class="btn-soft">Search</button>
+                </form>
+            </div>
 
-                <div class="flex flex-wrap gap-3 mt-5">
-                    <button type="submit" class="btn-main">Release Items</button>
-                    <button type="reset" class="btn-soft">Clear Form</button>
-                </div>
-            </form>
+            <div class="w-full overflow-x-auto">
+                <table class="w-full border-collapse text-left m-0">
+                    <thead>
+                        <tr class="bg-[#f8fafc] border-b border-[#e2e8f0]">
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Request</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Approved item</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Quantity progress</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Stock</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Status</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#f1f5f9]">
+                        @forelse($approvedRequests as $approvedRequest)
+                            @php
+                                $inventory = $approvedRequest->inventory;
+                                $item = $inventory?->item;
+                                $releasedQuantity = (int) ($approvedRequest->released_quantity ?? 0);
+                                $approvedQuantity = (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity);
+                                $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
+                                $availableQuantity = max((int) ($inventory?->quantity ?? 0), 0);
+                                $releasableQuantity = min($remainingQuantity, $availableQuantity);
+                                $isPartial = $releasedQuantity > 0;
+                                $isOldInput = old('request_id') == $approvedRequest->id;
+                            @endphp
+                            <tr class="align-top">
+                                <td class="p-3 text-[13px] text-[#1e293b]">
+                                    <strong>{{ $approvedRequest->request_code }}</strong>
+                                    <div class="text-[12px] text-[#64748b]">{{ $approvedRequest->source }}</div>
+                                    <div class="text-[12px] text-[#64748b]">{{ $approvedRequest->responder_email ?: 'No requester email' }}</div>
+                                    <div class="text-[11px] text-[#94a3b8]">{{ $approvedRequest->created_at?->format('M d, Y') }}</div>
+                                </td>
+                                <td class="p-3 text-[13px] text-[#1e293b]">
+                                    <strong>{{ $inventory?->sku ?? 'Inventory unavailable' }}</strong>
+                                    <div>{{ $inventory?->name ?? 'Item no longer available' }}</div>
+                                    <div class="text-[12px] text-[#64748b]">
+                                        {{ collect([$item?->size_weight, $item?->variant !== 'NONE' ? $item?->variant : null])->filter()->join(' / ') ?: ($item?->unit_type ?? '') }}
+                                    </div>
+                                </td>
+                                <td class="p-3 text-[13px] text-[#1e293b]">
+                                    <div>Requested: {{ number_format($approvedRequest->quantity) }}</div>
+                                    <div>Approved: {{ number_format($approvedQuantity) }}</div>
+                                    <div>Released: {{ number_format($releasedQuantity) }}</div>
+                                    <div class="font-semibold">Remaining: {{ number_format($remainingQuantity) }}</div>
+                                </td>
+                                <td class="p-3 text-[13px] text-[#1e293b]">
+                                    <div>Available: {{ number_format($availableQuantity) }}</div>
+                                    @if($availableQuantity < $remainingQuantity)
+                                        <div class="text-[12px] text-amber-700">Short by {{ number_format($remainingQuantity - $availableQuantity) }}; partial releases are limited to current stock.</div>
+                                    @endif
+                                </td>
+                                <td class="p-3">
+                                    <span class="inline-flex px-2 py-1 rounded text-[11px] font-semibold {{ $isPartial ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
+                                        {{ $isPartial ? 'Partially Released' : 'Approved / Awaiting Release' }}
+                                    </span>
+                                </td>
+                                <td class="p-3 min-w-[260px]">
+                                    @if($inventory && $releasableQuantity > 0)
+                                        <details>
+                                            <summary class="btn-main cursor-pointer text-center">Process Release</summary>
+                                            <form action="{{ route('borrow-release.store') }}" method="POST" class="release-form mt-3 space-y-3"
+                                                data-request="{{ $approvedRequest->request_code }}"
+                                                data-item="{{ $inventory->name }}"
+                                                data-sku="{{ $inventory->sku }}"
+                                                data-variant="{{ collect([$item?->size_weight, $item?->variant && strtoupper($item->variant) !== 'NONE' ? $item->variant : null])->filter()->join(' / ') }}"
+                                                data-requested="{{ $approvedRequest->quantity }}"
+                                                data-approved="{{ $approvedQuantity }}"
+                                                data-released="{{ $releasedQuantity }}"
+                                                data-remaining="{{ $remainingQuantity }}"
+                                                data-available="{{ $availableQuantity }}">
+                                                @csrf
+                                                <input type="hidden" name="request_id" value="{{ $approvedRequest->id }}">
+                                                <input type="hidden" name="idempotency_key" value="{{ $isOldInput ? old('idempotency_key') : (string) \Illuminate\Support\Str::uuid() }}">
+
+                                                <div>
+                                                    <label class="form-label" for="quantity-{{ $approvedRequest->id }}">Release quantity</label>
+                                                    <input id="quantity-{{ $approvedRequest->id }}" name="quantity" type="number" min="1" max="{{ $releasableQuantity }}" value="{{ $isOldInput ? old('quantity', $releasableQuantity) : $releasableQuantity }}" class="form-input" required>
+                                                </div>
+                                                <div>
+                                                    <label class="form-label" for="delivery-{{ $approvedRequest->id }}">Delivery personnel</label>
+                                                    <select id="delivery-{{ $approvedRequest->id }}" name="delivery_personnel_id" class="form-select" required>
+                                                        <option value="">Choose delivery personnel...</option>
+                                                        @foreach($deliveryPersonnel as $person)
+                                                            <option value="{{ $person->id }}" {{ $isOldInput && old('delivery_personnel_id') == $person->id ? 'selected' : '' }}>{{ $person->name }}</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label class="form-label" for="location-{{ $approvedRequest->id }}">Destination</label>
+                                                    <input id="location-{{ $approvedRequest->id }}" name="location" type="text" value="{{ $isOldInput ? old('location') : '' }}" class="form-input" maxlength="255" required>
+                                                </div>
+                                                <button type="button" class="btn-main w-full review-release-button">Review release</button>
+                                            </form>
+                                        </details>
+                                    @else
+                                        <span class="text-[12px] text-rose-700">No stock available to release.</span>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-[#64748b] text-[13px]">No approved requests are awaiting release.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+            <div class="mt-4">{{ $approvedRequests->links() }}</div>
         </section>
 
         {{-- Activity Table Section --}}
@@ -167,6 +173,7 @@
                             <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Quantity</th>
                             <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Location</th>
                             <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Released At</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Processed By</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-[#f1f5f9]">
@@ -177,10 +184,11 @@
                                 <td class="p-3 text-[13px] text-[#475569]">{{ number_format($release->quantity) }}</td>
                                 <td class="p-3 text-[13px] text-[#475569]">{{ $release->location ?? '—' }}</td>
                                 <td class="p-3 text-[13px] text-[#64748b]">{{ $release->released_at?->format('M d, Y H:i') ?? '—' }}</td>
+                                <td class="p-3 text-[13px] text-[#64748b]">{{ $release->processedBy?->name ?? '—' }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="p-8 text-center text-[#94a3b8] text-[13px]">No recent releases recorded yet.</td>
+                                <td colspan="6" class="p-8 text-center text-[#94a3b8] text-[13px]">No recent releases recorded yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -188,33 +196,78 @@
             </div>
         </section>
     </div>
+
+    <dialog id="releaseReviewDialog" class="request-review-dialog" aria-labelledby="releaseReviewTitle">
+        <div class="request-review-header">
+            <div>
+                <h2 id="releaseReviewTitle">Review release</h2>
+                <p class="request-review-code">Confirm these values before inventory is deducted.</p>
+            </div>
+            <button type="button" class="users-action" id="closeReleaseReview" aria-label="Close release review">Close</button>
+        </div>
+        <dl class="request-review-grid">
+            <div><dt>Approved request</dt><dd id="reviewReleaseRequest"></dd></div>
+            <div><dt>Item / variant</dt><dd id="reviewReleaseItem"></dd></div>
+            <div><dt>Original requested</dt><dd id="reviewReleaseRequested"></dd></div>
+            <div><dt>Approved quantity</dt><dd id="reviewReleaseApproved"></dd></div>
+            <div><dt>Previously released</dt><dd id="reviewReleasePrevious"></dd></div>
+            <div><dt>Remaining approved</dt><dd id="reviewReleaseRemaining"></dd></div>
+            <div><dt>Available stock</dt><dd id="reviewReleaseAvailable"></dd></div>
+            <div><dt>Quantity in this release</dt><dd id="reviewReleaseQuantity"></dd></div>
+            <div><dt>Delivery personnel</dt><dd id="reviewReleaseDelivery"></dd></div>
+            <div><dt>Destination</dt><dd id="reviewReleaseLocation"></dd></div>
+        </dl>
+        <p class="alert-box alert-warning mx-5" id="releaseReviewShortage" hidden></p>
+        <div class="request-review-buttons px-5 pb-5">
+            <button type="button" class="btn-main" id="confirmReleaseButton">Confirm release</button>
+        </div>
+    </dialog>
 @endsection
 
 @push('scripts')
     <script>
-        const requestSelect = document.getElementById('request_id');
-        const itemSelect = document.getElementById('inventory_id');
-        const quantityInput = document.getElementById('quantity');
-        const purposeInput = document.getElementById('purpose');
+        let releaseFormToSubmit = null;
+        const releaseDialog = document.getElementById('releaseReviewDialog');
 
-        requestSelect?.addEventListener('change', function () {
-            const selected = this.options[this.selectedIndex];
-            if (!selected?.value) {
-                return;
-            }
+        document.querySelectorAll('.release-form').forEach((form) => {
+            form.querySelector('.review-release-button')?.addEventListener('click', () => {
+                if (!form.reportValidity()) return;
 
-            itemSelect.value = selected.dataset.inventoryId || '';
-            quantityInput.value = selected.dataset.quantity || '';
-            purposeInput.value = selected.dataset.purpose || '';
+                const delivery = form.querySelector('[name="delivery_personnel_id"]');
+                const deliveryName = delivery.options[delivery.selectedIndex]?.text || 'Not selected';
+                const quantity = Number(form.querySelector('[name="quantity"]').value);
+                const available = Number(form.dataset.available);
+
+                document.getElementById('reviewReleaseRequest').textContent = form.dataset.request;
+                document.getElementById('reviewReleaseItem').textContent = `${form.dataset.sku} - ${form.dataset.item}${form.dataset.variant ? ` (${form.dataset.variant})` : ''}`;
+                document.getElementById('reviewReleaseRequested').textContent = form.dataset.requested;
+                document.getElementById('reviewReleaseApproved').textContent = form.dataset.approved;
+                document.getElementById('reviewReleasePrevious').textContent = form.dataset.released;
+                document.getElementById('reviewReleaseRemaining').textContent = form.dataset.remaining;
+                document.getElementById('reviewReleaseAvailable').textContent = form.dataset.available;
+                document.getElementById('reviewReleaseQuantity').textContent = String(quantity);
+                document.getElementById('reviewReleaseDelivery').textContent = deliveryName;
+                document.getElementById('reviewReleaseLocation').textContent = form.querySelector('[name="location"]').value;
+
+                const shortage = document.getElementById('releaseReviewShortage');
+                shortage.hidden = quantity <= available;
+                shortage.textContent = quantity > available ? `Available stock is ${available}; reduce the release quantity before confirming.` : '';
+                releaseFormToSubmit = form;
+                releaseDialog.showModal();
+            });
         });
 
-        document.querySelector('form')?.addEventListener('submit', function (e) {
-            const submitBtn = this.querySelector('button[type="submit"]');
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
-                submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
-            }
+        document.getElementById('closeReleaseReview').addEventListener('click', () => releaseDialog.close());
+        document.getElementById('confirmReleaseButton').addEventListener('click', () => {
+            if (!releaseFormToSubmit || !releaseFormToSubmit.reportValidity()) return;
+
+            const form = releaseFormToSubmit;
+            releaseFormToSubmit = null;
+            releaseDialog.close();
+            const button = form.querySelector('.review-release-button');
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin" aria-hidden="true"></i> Processing...';
+            form.requestSubmit();
         });
     </script>
 @endpush

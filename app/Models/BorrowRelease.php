@@ -10,6 +10,8 @@ class BorrowRelease extends Model
     'request_id',
     'inventory_id',
     'delivery_personnel_id',
+    'processed_by_user_id',
+    'idempotency_key',
     'unit',
     'quantity',
     'purpose',
@@ -42,4 +44,14 @@ class BorrowRelease extends Model
 {
     return $this->belongsTo(User::class, 'delivery_personnel_id');
 }
+
+    public function processedBy()
+    {
+        return $this->belongsTo(User::class, 'processed_by_user_id');
+    }
+
+    public function returns()
+    {
+        return $this->hasMany(ReturnItem::class);
+    }
 }

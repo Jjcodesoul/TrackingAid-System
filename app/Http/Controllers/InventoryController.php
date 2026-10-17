@@ -49,38 +49,59 @@ class InventoryController extends Controller
         return view('inventory.index', compact('items', 'inventoryStats'));
     }
 
-    public function create()
-    {
-        $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
-        $defaultUnits = ['BOX', 'PACK', 'PCS', 'SACK', 'BOTTLE'];
-        $defaultSizes = ['SM', 'MD', 'LG', '50KG', '25KG', '500ML', '1L', 'REG'];
-        $defaultTargets = ['ADULT', 'CHILD', 'ALL'];
-        $defaultVariants = ['NONE', 'REG', 'SPICY', 'SWEET'];
+    
+public function create()
+{
+    $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
+    $defaultUnits = ['BOX', 'PACK', 'PCS', 'SACK', 'BOTTLE'];
+    $defaultSizes = ['SM', 'MD', 'LG', '50KG', '25KG', '500ML', '1L', 'REG'];
+    $defaultTargets = ['ADULT', 'CHILD', 'ALL'];
+    $defaultVariants = ['NONE', 'REG', 'SPICY', 'SWEET'];
 
-        $customCategories = Item::whereNotIn('category', $defaultCategories)
-            ->distinct()->pluck('category');
+    // Get every distinct category already saved in the items table.
+    $customCategories = Item::whereNotNull('category')
+        ->where('category', '!=', '')
+        ->whereNotIn('category', $defaultCategories)
+        ->distinct()
+        ->orderBy('category')
+        ->pluck('category');
 
-        $customUnits = Item::whereNotNull('unit_type')->where('unit_type', '!=', '')
-            ->whereNotIn('unit_type', $defaultUnits)
-            ->distinct()->pluck('unit_type');
+    $customUnits = Item::whereNotNull('unit_type')
+        ->where('unit_type', '!=', '')
+        ->whereNotIn('unit_type', $defaultUnits)
+        ->distinct()
+        ->orderBy('unit_type')
+        ->pluck('unit_type');
 
-        $customSizes = Item::whereNotNull('size_weight')->where('size_weight', '!=', '')
-            ->whereNotIn('size_weight', $defaultSizes)
-            ->distinct()->pluck('size_weight');
+    $customSizes = Item::whereNotNull('size_weight')
+        ->where('size_weight', '!=', '')
+        ->whereNotIn('size_weight', $defaultSizes)
+        ->distinct()
+        ->orderBy('size_weight')
+        ->pluck('size_weight');
 
-        $customTargets = Item::whereNotNull('target_beneficiary')->where('target_beneficiary', '!=', '')
-            ->whereNotIn('target_beneficiary', $defaultTargets)
-            ->distinct()->pluck('target_beneficiary');
+    $customTargets = Item::whereNotNull('target_beneficiary')
+        ->where('target_beneficiary', '!=', '')
+        ->whereNotIn('target_beneficiary', $defaultTargets)
+        ->distinct()
+        ->orderBy('target_beneficiary')
+        ->pluck('target_beneficiary');
 
-        $customVariants = Item::whereNotNull('variant')->where('variant', '!=', '')
-            ->whereNotIn('variant', $defaultVariants)
-            ->distinct()->pluck('variant');
+    $customVariants = Item::whereNotNull('variant')
+        ->where('variant', '!=', '')
+        ->whereNotIn('variant', $defaultVariants)
+        ->distinct()
+        ->orderBy('variant')
+        ->pluck('variant');
 
-        return view('inventory.create', compact(
-            'customCategories', 'customUnits', 'customSizes', 'customTargets', 'customVariants'
-        ));
-    }
-
+    return view('inventory.create', compact(
+        'customCategories',
+        'customUnits',
+        'customSizes',
+        'customTargets',
+        'customVariants'
+    ));
+}
     public function store(Request $request, InventorySyncService $inventorySync)
     {
         $validated = $request->validate([

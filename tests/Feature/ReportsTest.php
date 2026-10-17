@@ -250,9 +250,9 @@ class ReportsTest extends TestCase
 
                 return $report['stats'][0]['value'] === '10'
                     && $report['stats'][1]['value'] === '9'
-                    && $report['stats'][2]['value'] === '4'
+                    && $report['stats'][2]['value'] === '1'
                     && $report['stats'][3]['value'] === '3'
-                    && $row[2] === '10' && $row[3] === '6' && $row[4] === '3' && $row[5] === '4';
+                    && $row[2] === '10' && $row[3] === '6' && $row[4] === '3' && $row[5] === '1';
             });
     }
 
@@ -287,5 +287,145 @@ class ReportsTest extends TestCase
                     && $report['rows'][0]['csv'][3] === '12'
                     && $report['rows'][0]['csv'][4] === 'Water';
             });
+    }
+
+    public function test_inventory_report_filters_category_and_stock_status_in_page_and_csv(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        foreach ([
+            ['FILTER-FOOD-LOW', 'FOOD', 'Low item', 4],
+            ['FILTER-MEDICAL-IN', 'MEDICAL', 'Available item', 20],
+        ] as [$sku, $category, $name, $quantity]) {
+            $item = Item::create([
+                'name' => $name, 'category' => $category, 'unit_type' => 'BOX',
+                'target_beneficiary' => 'ALL', 'type' => 'consumable',
+                'storage_location' => 'Warehouse A', 'sku' => $sku,
+            ]);
+            StockBatch::create([
+                'item_id' => $item->id, 'quantity' => $quantity, 'supplier' => 'Test source',
+                'date_received' => now()->toDateString(),
+            ]);
+        }
+
+        $filters = ['report' => 'inventory', 'category' => 'FOOD', 'status' => 'Low Stock'];
+        $this->get(route('reports.index', $filters))
+            ->assertOk()
+            ->assertSee('FILTER-FOOD-LOW')
+            ->assertDontSee('FILTER-MEDICAL-IN');
+
+        $csv = $this->get(route('reports.export', $filters))->assertOk()->streamedContent();
+        $this->assertStringContainsString('FILTER-FOOD-LOW', $csv);
+        $this->assertStringNotContainsString('FILTER-MEDICAL-IN', $csv);
+    }
+
+    public function test_request_report_filters_by_date_category_and_status(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $food = Inventory::create([
+            'name' => 'Food box', 'category' => 'FOOD', 'sku' => 'FILTER-REQUEST-FOOD',
+            'type' => 'Consumable', 'quantity' => 10,
+        ]);
+        $medical = Inventory::create([
+            'name' => 'Medical kit', 'category' => 'MEDICAL', 'sku' => 'FILTER-REQUEST-MED',
+            'type' => 'Consumable', 'quantity' => 10,
+        ]);
+        $rejected = SupplyRequest::create([
+            'request_code' => 'REQ-FILTER-REJECTED', 'inventory_id' => $food->id,
+            'quantity' => 2, 'priority' => 'High', 'status' => 'Rejected',
+        ]);
+        $rejected->forceFill(['created_at' => now()->startOfDay()->addHour()])->saveQuietly();
+        SupplyRequest::create([
+            'request_code' => 'REQ-FILTER-APPROVED', 'inventory_id' => $food->id,
+            'quantity' => 2, 'priority' => 'High', 'status' => 'Approved',
+        ]);
+        SupplyRequest::create([
+            'request_code' => 'REQ-FILTER-MEDICAL', 'inventory_id' => $medical->id,
+            'quantity' => 2, 'priority' => 'High', 'status' => 'Rejected',
+        ]);
+
+        $this->get(route('reports.index', [
+            'report' => 'request',
+            'category' => 'FOOD',
+            'status' => 'Rejected',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+        ]))
+            ->assertOk()
+            ->assertViewHas('report', function (array $report): bool {
+                $rows = $report['rows']->getCollection();
+
+                return $rows->count() === 1
+                    && $rows[0]['csv'][1] === '1'
+                    && $rows[0]['csv'][3] === '1';
+            });
+    }
+
+    public function test_stock_movement_report_filters_and_exports_recorded_ledger_events(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $item = Item::create([
+            'name' => 'Medical kit', 'category' => 'MEDICAL', 'unit_type' => 'BOX',
+            'target_beneficiary' => 'ALL', 'type' => 'returnable',
+            'storage_location' => 'Warehouse B', 'sku' => 'MED-KIT-MOVEMENT',
+        ]);
+        StockBatch::create([
+            'item_id' => $item->id, 'quantity' => 20, 'supplier' => 'Verified donor',
+            'date_received' => now()->toDateString(),
+        ]);
+        $inventory = Inventory::create([
+            'name' => $item->name, 'category' => $item->category, 'sku' => $item->sku,
+            'type' => 'Returnable', 'quantity' => 20, 'storage_location' => 'Warehouse B',
+        ]);
+        $request = SupplyRequest::create([
+            'request_code' => 'REQ-MOVEMENT-1', 'inventory_id' => $inventory->id,
+            'quantity' => 3, 'priority' => 'High', 'status' => 'Released',
+        ]);
+        $release = BorrowRelease::create([
+            'request_id' => $request->id, 'inventory_id' => $inventory->id,
+            'unit' => 'BOX', 'quantity' => 3, 'purpose' => 'Clinic', 'location' => 'Zone 2',
+            'released_at' => now(),
+        ]);
+        ReturnItem::create([
+            'inventory_id' => $inventory->id, 'borrow_release_id' => $release->id,
+            'quantity' => 2, 'condition' => 'Good',
+        ]);
+        ReturnItem::create([
+            'inventory_id' => $inventory->id, 'borrow_release_id' => $release->id,
+            'quantity' => 1, 'condition' => 'Damaged',
+        ]);
+
+        $filters = [
+            'report' => 'stock-movements',
+            'category' => 'MEDICAL',
+            'start_date' => now()->toDateString(),
+            'end_date' => now()->toDateString(),
+        ];
+        $response = $this->get(route('reports.index', $filters));
+
+        $response->assertOk()
+            ->assertSee('Stock Movement Ledger')
+            ->assertSee('Reporting period:');
+        $response->assertViewHas('report', function (array $report): bool {
+            $rows = $report['rows']->getCollection();
+
+            return $report['stats'][0]['value'] === '20'
+                && $report['stats'][1]['value'] === '3'
+                && $report['stats'][2]['value'] === '2'
+                && $report['stats'][3]['value'] === '1'
+                && $rows->count() === 4;
+        });
+
+        $csv = $this->get(route('reports.export', $filters))
+            ->assertOk()
+            ->streamedContent();
+        $this->assertStringContainsString('MED-KIT-MOVEMENT', $csv);
+        $this->assertStringContainsString('Good Return', $csv);
+        $this->assertStringContainsString('Damaged Return', $csv);
+
+        $releaseOnly = $this->get(route('reports.index', $filters + ['status' => 'release']));
+        $releaseOnly->assertOk()
+            ->assertViewHas('report', fn (array $report): bool => $report['rows']->total() === 1
+                && $report['rows']->first()['csv'][1] === 'Release');
     }
 }

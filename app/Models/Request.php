@@ -11,6 +11,9 @@ class Request extends Model
         'inventory_id',
         'source',
         'quantity',
+        'approved_quantity',
+        'approved_by_user_id',
+        'approval_notes',
         'priority',
         'status',
         'purpose',
@@ -33,5 +36,10 @@ class Request extends Model
     public function borrowReleases()
     {
         return $this->hasMany(BorrowRelease::class);
+    }
+
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by_user_id');
     }
 }

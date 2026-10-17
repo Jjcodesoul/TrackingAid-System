@@ -30,6 +30,11 @@ class Inventory extends Model
         return $this->hasMany(Request::class);
     }
 
+    public function item()
+    {
+        return $this->belongsTo(Item::class, 'sku', 'sku');
+    }
+
     public function borrowReleases()
     {
         return $this->hasMany(BorrowRelease::class);

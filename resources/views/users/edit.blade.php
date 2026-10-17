@@ -1,14 +1,15 @@
 <x-app-layout>
-    <div class="p-8 bg-slate-50 min-h-screen text-left relative">
+    @section('title', 'Edit User')
+    <div class="users-page">
         
         {{-- Header Bar --}}
-        <div class="border-b border-slate-200 pb-6 mb-6">
+        <div class="page-header">
             <h1 class="page-title">Edit User</h1>
             <p class="page-subtitle">Update credentials and access level for this account</p>
         </div>
 
         {{-- Form Card Layout --}}
-        <div class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm max-w-2xl">
+        <div class="card-ui p-6 max-w-2xl">
             <form method="POST" action="{{ route('users.update', $user->id) }}" class="m-0 p-0">
                 @csrf
 

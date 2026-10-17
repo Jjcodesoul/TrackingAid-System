@@ -8,6 +8,7 @@ use App\Models\Item;
 use App\Models\ReportRequest;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
+use App\Models\StockBatch;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -29,10 +30,19 @@ class ReportController extends Controller
         'distribution' => 'Supply Distribution',
     ];
 
+    private const UI_REPORTS = [
+        'inventory' => 'Inventory Report',
+        'request' => 'Request Report',
+        'borrow-return' => 'Borrowed / Returned',
+        'distribution' => 'Supply Distribution',
+        'stock-movements' => 'Stock Movements',
+    ];
+
     public function index(HttpRequest $request)
     {
         $activeReport = $this->activeReport($request);
-        $report = $this->buildReport($activeReport);
+        $filters = $this->validatedFilters($request);
+        $report = $this->buildReport($activeReport, $filters);
         $allRows = collect($report['rows']);
         $perPage = 15;
         $lastPage = max(1, (int) ceil($allRows->count() / $perPage));
@@ -50,17 +60,21 @@ class ReportController extends Controller
         );
 
         return view('reports.index', [
-            'tabs' => self::REPORTS,
+            'tabs' => self::UI_REPORTS,
             'activeReport' => $activeReport,
             'report' => $report,
             'allRows' => $allRows,
+            'filters' => $filters,
+            'categories' => Item::query()->whereNotNull('category')->where('category', '!=', '')->distinct()->orderBy('category')->pluck('category'),
+            'statusOptions' => $this->statusOptions($activeReport),
         ]);
     }
 
     public function exportCsv(HttpRequest $request)
     {
         $activeReport = $this->activeReport($request);
-        $report = $this->buildReport($activeReport);
+        $filters = $this->validatedFilters($request);
+        $report = $this->buildReport($activeReport, $filters);
         $filename = $activeReport.'-report-'.now()->format('Ymd-His').'.csv';
 
         return Response::streamDownload(function () use ($report) {
@@ -80,7 +94,7 @@ class ReportController extends Controller
 
     public function apiIndex(HttpRequest $request)
     {
-        $reportType = $this->activeReport($request);
+        $reportType = $this->reportNameFromRequest((string) $request->query('report', 'inventory'));
         $report = $this->buildReport($reportType);
         $payload = $this->externalReportPayload($reportType, $report);
         $payload['report'] = $payload['report_type'];
@@ -217,7 +231,7 @@ class ReportController extends Controller
 
     public function apiExport(HttpRequest $request)
     {
-        $reportType = $this->activeReport($request);
+        $reportType = $this->reportNameFromRequest((string) $request->query('report', 'inventory'));
         $report = $this->buildReport($reportType);
         $filename = $reportType.'-report-'.now()->format('Ymd-His').'.csv';
 
@@ -239,7 +253,7 @@ class ReportController extends Controller
     {
         $report = (string) $request->query('report', $request->input('report', 'inventory'));
 
-        return $this->reportNameFromRequest($report);
+        return array_key_exists($report, self::UI_REPORTS) ? $report : 'inventory';
     }
 
     private function reportNameFromRequest(string $report): string
@@ -292,22 +306,54 @@ class ReportController extends Controller
         return $contents;
     }
 
-    private function buildReport(string $report): array
+    private function validatedFilters(HttpRequest $request): array
     {
-        return match ($report) {
-            'request' => $this->requestReport(),
-            'borrow-return' => $this->borrowReturnReport(),
-            'distribution' => $this->distributionReport(),
-            default => $this->inventoryReport(),
+        $filters = $request->validate([
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date', 'after_or_equal:start_date'],
+            'category' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'string', 'max:80'],
+        ]);
+
+        return array_filter($filters, fn ($value): bool => $value !== null && $value !== '');
+    }
+
+    private function statusOptions(string $reportType): array
+    {
+        return match ($reportType) {
+            'request' => ['Pending', 'Approved', 'Partially Released', 'Released', 'Rejected', 'Cancelled'],
+            'borrow-return', 'distribution' => ['Loading', 'Dispatched', 'In Transit', 'Arrived'],
+            'stock-movements' => ['stock-in', 'release', 'good-return', 'damaged-return', 'missing'],
+            default => ['In Stock', 'Low Stock', 'Out of Stock', 'Expiring', 'Expired'],
         };
     }
 
-    private function inventoryReport(): array
+    private function buildReport(string $report, array $filters = []): array
     {
-        $items = Item::with('stockBatches')
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get();
+        return match ($report) {
+    private function inventoryReport(array $filters = []): array
+    {
+        $itemsQuery = Item::with('stockBatches')->orderBy('category')->orderBy('name');
+
+    }
+
+    private function inventoryReport(array $filters = []): array
+    {
+        $itemsQuery = Item::with('stockBatches')->orderBy('category')->orderBy('name');
+
+        if (! empty($filters['category'])) {
+            $itemsQuery->where('category', $filters['category']);
+        }
+
+        $items = $itemsQuery->get();
+
+        if (! empty($filters['status'])) {
+            $items = $items->filter(fn (Item $item): bool => in_array(
+                $filters['status'],
+                $this->inventoryStatuses($item),
+                true
+            ))->values();
+        }
 
         $stockFor = fn (Item $item): int => (int) $item->stockBatches->sum('quantity');
         $totalStock = $items->sum(fn (Item $item): int => $stockFor($item));
@@ -376,11 +422,40 @@ class ReportController extends Controller
         ];
     }
 
-    private function requestReport(): array
+    private function inventoryStatuses(Item $item): array
     {
-        $requests = SupplyRequest::with('inventory')->latest()->get();
-        $months = $this->monthBuckets();
-        $approvedStatuses = ['Approved', 'Released'];
+        $stock = (int) $item->total_stock;
+        $statuses = [$stock <= 0 ? 'Out of Stock' : ($stock < 10 ? 'Low Stock' : 'In Stock')];
+
+        if ($stock > 0 && $item->next_expiration_date) {
+            $expiration = Carbon::parse($item->next_expiration_date)->startOfDay();
+            $today = now()->startOfDay();
+
+            if ($expiration->lt($today)) {
+                $statuses[] = 'Expired';
+            } elseif ($expiration->between($today, $today->copy()->addDays(30), true)) {
+                $statuses[] = 'Expiring';
+            }
+        }
+
+        return $statuses;
+    }
+
+    private function requestReport(array $filters = []): array
+    {
+        $requestsQuery = SupplyRequest::with('inventory')->latest();
+
+        if (! empty($filters['category'])) {
+            $requestsQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        if (! empty($filters['status'])) {
+            $requestsQuery->where('status', $filters['status']);
+        }
+        $this->applyDateFilters($requestsQuery, 'created_at', $filters);
+
+        $requests = $requestsQuery->get();
+        $months = $this->monthBucketsFor($filters);
+        $approvedStatuses = ['Approved', 'Partially Released', 'Released'];
 
         $approvedValues = [];
         $rejectedValues = [];
@@ -431,11 +506,25 @@ class ReportController extends Controller
         ];
     }
 
-    private function borrowReturnReport(): array
+    private function borrowReturnReport(array $filters = []): array
     {
-        $releases = BorrowRelease::with(['inventory', 'request'])->get();
-        $returns = ReturnItem::with('inventory')->get();
-        $months = $this->monthBuckets();
+        $releasesQuery = BorrowRelease::with(['inventory', 'request']);
+        if (! empty($filters['category'])) {
+            $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        if (! empty($filters['status'])) {
+            $releasesQuery->where('delivery_status', $filters['status']);
+        }
+        $this->applyDateFilters($releasesQuery, 'released_at', $filters);
+        $releases = $releasesQuery->get();
+
+        $returnsQuery = ReturnItem::with('inventory');
+        if (! empty($filters['category'])) {
+            $returnsQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        $this->applyDateFilters($returnsQuery, 'created_at', $filters);
+        $returns = $returnsQuery->get();
+        $months = $this->monthBucketsFor($filters);
 
         $borrowedValues = [];
         $returnedValues = [];
@@ -464,7 +553,8 @@ class ReportController extends Controller
             $borrowed = (int) $itemReleases->sum('quantity');
             $goodReturns = (int) $itemReturns->where('condition', 'Good')->sum('quantity');
             $otherReturns = (int) $itemReturns->whereIn('condition', ['Damaged', 'Missing'])->sum('quantity');
-            $outstanding = max($borrowed - $goodReturns, 0);
+            $processedReturns = (int) $itemReturns->sum('quantity');
+            $outstanding = max($borrowed - $processedReturns, 0);
             $lastActivity = $this->latestDate([
                 $itemReleases->max('released_at'),
                 $itemReturns->max('created_at'),
@@ -499,7 +589,7 @@ class ReportController extends Controller
             'stats' => [
                 $this->stat('Borrowed', number_format($totalBorrowed), 'Released quantity', 'fa-solid fa-arrow-up-right-from-square', 'danger'),
                 $this->stat('Returned', number_format($totalReturned), 'All returned items', 'fa-solid fa-rotate-left', 'success'),
-                $this->stat('Outstanding', number_format(max($totalBorrowed - $returns->where('condition', 'Good')->sum('quantity'), 0)), 'Borrowed minus good returns', 'fa-solid fa-scale-balanced', 'warning'),
+                $this->stat('Outstanding', number_format(max($totalBorrowed - $totalReturned, 0)), 'Not yet processed as returned, damaged, or missing', 'fa-solid fa-scale-balanced', 'warning'),
                 $this->stat('Damaged/Missing', number_format($damagedOrMissing), 'Logged return issues', 'fa-solid fa-triangle-exclamation', 'danger'),
             ],
             'headers' => ['SKU', 'Item', 'Borrowed', 'Returned Good', 'Damaged/Missing', 'Outstanding', 'Last Activity'],
@@ -508,11 +598,135 @@ class ReportController extends Controller
         ];
     }
 
-    private function distributionReport(): array
+    private function stockMovementReport(array $filters = []): array
     {
-        $releases = BorrowRelease::with(['inventory', 'request'])
-            ->latest('released_at')
-            ->get();
+        $events = collect();
+
+        $batchesQuery = StockBatch::with('item');
+        if (! empty($filters['category'])) {
+            $batchesQuery->whereHas('item', fn ($query) => $query->where('category', $filters['category']));
+        }
+        $this->applyDateFilters($batchesQuery, 'date_received', $filters);
+        foreach ($batchesQuery->get() as $batch) {
+            $events->push([
+                'date' => Carbon::parse($batch->date_received),
+                'kind' => 'stock-in',
+                'label' => 'Stock In',
+                'reference' => $batch->supplier ?: 'Receiving',
+                'name' => $batch->item?->name ?? 'Unknown item',
+                'sku' => $batch->item?->sku ?? '—',
+                'change' => (int) $batch->quantity,
+                'detail' => 'Received',
+                'location' => $batch->item?->storage_location ?? '—',
+            ]);
+        }
+
+        $releasesQuery = BorrowRelease::with(['inventory', 'request']);
+        if (! empty($filters['category'])) {
+            $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        $this->applyDateFilters($releasesQuery, 'released_at', $filters);
+        foreach ($releasesQuery->get() as $release) {
+            $events->push([
+                'date' => Carbon::parse($release->released_at),
+                'kind' => 'release',
+                'label' => 'Release',
+                'reference' => $release->request?->request_code ?? 'Release #'.$release->id,
+                'name' => $release->inventory?->name ?? 'Unknown item',
+                'sku' => $release->inventory?->sku ?? '—',
+                'change' => -((int) $release->quantity),
+                'detail' => $release->delivery_status ?: 'Released',
+                'location' => $release->location ?: '—',
+            ]);
+        }
+
+        $returnsQuery = ReturnItem::with(['inventory', 'borrowRelease.request']);
+        if (! empty($filters['category'])) {
+            $returnsQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        $this->applyDateFilters($returnsQuery, 'created_at', $filters);
+        foreach ($returnsQuery->get() as $return) {
+            $kind = match ($return->condition) {
+                'Good' => 'good-return',
+                'Damaged' => 'damaged-return',
+                default => 'missing',
+            };
+            $events->push([
+                'date' => Carbon::parse($return->created_at),
+                'kind' => $kind,
+                'label' => match ($kind) {
+                    'good-return' => 'Good Return',
+                    'damaged-return' => 'Damaged Return',
+                    default => 'Missing / Lost',
+                },
+                'reference' => $return->borrowRelease?->request?->request_code ?? 'Unlinked legacy return',
+                'name' => $return->inventory?->name ?? 'Unknown item',
+                'sku' => $return->inventory?->sku ?? '—',
+                'quantity' => (int) $return->quantity,
+                'change' => $return->condition === 'Good' ? (int) $return->quantity : 0,
+                'detail' => $return->condition,
+                'location' => $return->borrowRelease?->location ?? '—',
+            ]);
+        }
+
+        if (! empty($filters['status'])) {
+            $events = $events->where('kind', $filters['status']);
+        }
+
+        $events = $events->sortByDesc(fn (array $event): int => $event['date']->getTimestamp())->values();
+        $monthly = $events->groupBy(fn (array $event): string => $event['date']->format('Y-m'));
+        $labels = $monthly->keys()->map(fn (string $month): string => Carbon::createFromFormat('Y-m', $month)->format('M Y'))->all();
+        $received = $monthly->map(fn (Collection $group): int => (int) $group->where('kind', 'stock-in')->sum('change'))->values()->all();
+        $released = $monthly->map(fn (Collection $group): int => (int) abs($group->where('kind', 'release')->sum('change')))->values()->all();
+        $restocked = $monthly->map(fn (Collection $group): int => (int) $group->where('kind', 'good-return')->sum('change'))->values()->all();
+        $rows = $events->map(fn (array $event): array => $this->tableRow([
+            $this->cell($event['date']->format('M d, Y')),
+            $this->cell($event['label']),
+            $this->cell($event['reference']),
+            $this->cell($event['name']),
+            $this->cell($event['sku'], mono: true),
+            $this->cell($event['change'] > 0 ? '+'.number_format($event['change']) : number_format($event['change']), $event['change'] > 0 ? 'success' : ($event['change'] < 0 ? 'danger' : 'warning')),
+            $this->cell($event['detail']),
+            $this->cell($event['location']),
+        ]))->all();
+
+        $totalReceived = (int) $events->where('kind', 'stock-in')->sum('change');
+        $totalReleased = (int) abs($events->where('kind', 'release')->sum('change'));
+        $totalRestocked = (int) $events->where('kind', 'good-return')->sum('change');
+        $nonRestocked = (int) $events->whereIn('kind', ['damaged-return', 'missing'])->sum('quantity');
+
+        return [
+            'title' => 'Stock Movement Ledger',
+            'subtitle' => 'Receipts, releases, and returns from recorded batch and transaction history.',
+            'chartTitle' => 'Monthly Quantity Movement',
+            'chart' => $this->chart($labels, [
+                ['name' => 'Received', 'color' => '#176b57', 'values' => $received],
+                ['name' => 'Released', 'color' => '#b42318', 'values' => $released],
+                ['name' => 'Good Returns', 'color' => '#175c75', 'values' => $restocked],
+            ]),
+            'stats' => [
+                $this->stat('Received', number_format($totalReceived), 'Stock batches', 'fa-solid fa-arrow-down', 'success'),
+                $this->stat('Released', number_format($totalReleased), 'Recorded releases', 'fa-solid fa-arrow-up-right-from-square', 'danger'),
+                $this->stat('Restocked', number_format($totalRestocked), 'Good returns only', 'fa-solid fa-rotate-left', 'success'),
+                $this->stat('Not Restocked', number_format(abs($nonRestocked)), 'Damaged or missing', 'fa-solid fa-triangle-exclamation', 'warning'),
+            ],
+            'headers' => ['Date', 'Movement', 'Reference', 'Item', 'SKU', 'Stock Effect', 'Condition / Status', 'Location'],
+            'rows' => $rows,
+            'empty' => 'No stock movements match the selected filters.',
+        ];
+    }
+
+    private function distributionReport(array $filters = []): array
+    {
+        $releasesQuery = BorrowRelease::with(['inventory', 'request'])->latest('released_at');
+        if (! empty($filters['category'])) {
+            $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        if (! empty($filters['status'])) {
+            $releasesQuery->where('delivery_status', $filters['status']);
+        }
+        $this->applyDateFilters($releasesQuery, 'released_at', $filters);
+        $releases = $releasesQuery->get();
 
         $locationTotals = $releases
             ->groupBy(fn (BorrowRelease $release): string => trim($release->location ?: 'Unassigned'))
@@ -589,6 +803,44 @@ class ReportController extends Controller
                 'end' => $month->copy()->endOfMonth(),
             ];
         });
+    }
+
+    private function monthBucketsFor(array $filters): Collection
+    {
+        if (empty($filters['start_date']) && empty($filters['end_date'])) {
+            return $this->monthBuckets();
+        }
+
+        $start = ! empty($filters['start_date'])
+            ? Carbon::parse($filters['start_date'])->startOfMonth()
+            : Carbon::parse($filters['end_date'])->subMonths(5)->startOfMonth();
+        $end = ! empty($filters['end_date'])
+            ? Carbon::parse($filters['end_date'])->endOfMonth()
+            : now()->endOfMonth();
+        $months = collect();
+
+        while ($start->lte($end) && $months->count() < 120) {
+            $month = $start->copy();
+            $months->push([
+                'label' => $month->format('M'),
+                'fullLabel' => $month->format('M Y'),
+                'start' => $month->copy()->startOfMonth(),
+                'end' => $month->copy()->endOfMonth(),
+            ]);
+            $start->addMonth();
+        }
+
+        return $months;
+    }
+
+    private function applyDateFilters($query, string $column, array $filters): void
+    {
+        if (! empty($filters['start_date'])) {
+            $query->whereDate($column, '>=', $filters['start_date']);
+        }
+        if (! empty($filters['end_date'])) {
+            $query->whereDate($column, '<=', $filters['end_date']);
+        }
     }
 
     private function dateInRange($date, CarbonInterface $start, CarbonInterface $end): bool

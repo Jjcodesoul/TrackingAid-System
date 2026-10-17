@@ -2,27 +2,6 @@
 
 @section('content')
 
-<style>
-    .dashboard-kpi-grid,
-    .dashboard-lower-grid {
-        display: grid;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    .dashboard-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-    .dashboard-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-
-    @media (max-width: 1100px) {
-        .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-
-    @media (max-width: 680px) {
-        .dashboard-kpi-grid,
-        .dashboard-lower-grid { grid-template-columns: minmax(0, 1fr); }
-    }
-</style>
-
 {{-- HEADER --}}
 <div class="page-header">
     <h2 class="page-title">Dashboard</h2>
@@ -31,75 +10,75 @@
 {{-- TOP KPI ROW --}}
 <div class="dashboard-kpi-grid">
 
-    <a href="/inventory" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #BFDBFE; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+    <a href="/inventory" class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Total Inventory Stock</p>
-            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ number_format($totalStock) }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Across all warehouses</p>
+            <p class="dashboard-stat-label">Total Inventory Stock</p>
+            <h3 class="dashboard-stat-value">{{ number_format($totalStock) }}</h3>
+            <p class="dashboard-stat-hint">Across all warehouses</p>
         </div>
-        <div style="background:#EBF8FF; color:#3182ce; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon tone-info" aria-hidden="true">
             <i class="fa-solid fa-boxes-stacked"></i>
-        </div>
+        </span>
     </a>
 
-    <a href="/requests" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #A7F3D0; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+    <a href="/requests" class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Active Requests</p>
-            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ $activeRequests }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Awaiting review</p>
+            <p class="dashboard-stat-label">Active Requests</p>
+            <h3 class="dashboard-stat-value">{{ $activeRequests }}</h3>
+            <p class="dashboard-stat-hint">Awaiting review</p>
         </div>
-        <div style="background:#F0FFF4; color:#38a169; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon" aria-hidden="true">
             <i class="fa-solid fa-list-check"></i>
-        </div>
+        </span>
     </a>
 
-    <a href="/requests" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #A7F3D0; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+    <a href="/requests" class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Approved Requests</p>
-            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ $approvedRequests }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">All-time approved</p>
+            <p class="dashboard-stat-label">Approved Requests</p>
+            <h3 class="dashboard-stat-value">{{ $approvedRequests }}</h3>
+            <p class="dashboard-stat-hint">All-time approved</p>
         </div>
-        <div style="background:#F0FFF4; color:#38a169; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon" aria-hidden="true">
             <i class="fa-regular fa-circle-check"></i>
-        </div>
+        </span>
     </a>
 
 </div>
 
 {{-- BOTTOM KPI ROW --}}
-<div class="dashboard-kpi-grid" style="margin-bottom:24px;">
+<div class="dashboard-kpi-grid dashboard-kpi-grid--bottom">
 
-    <a href="/inventory" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #FDBA74; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+    <a href="/inventory" class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Low Stock Alerts</p>
-            <h3 style="font-size:32px; font-weight:700; color:#EA580C; margin:0 0 4px;">{{ $lowStockAlerts }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Below minimum threshold</p>
+            <p class="dashboard-stat-label">Low Stock Alerts</p>
+            <h3 class="dashboard-stat-value">{{ $lowStockAlerts }}</h3>
+            <p class="dashboard-stat-hint">Below minimum threshold</p>
         </div>
-        <div style="background:#FFF7ED; color:#EA580C; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon tone-warning" aria-hidden="true">
             <i class="fa-solid fa-triangle-exclamation"></i>
-        </div>
+        </span>
     </a>
 
-    <a href="/inventory" style="text-decoration:none; color:inherit; background:#fff; border:2px solid #FCD34D; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start; transition:box-shadow .15s;" onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='none'">
+    <a href="/inventory" class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Expiring Items</p>
-            <h3 style="font-size:32px; font-weight:700; color:#D97706; margin:0 0 4px;">{{ $expiringItems }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Expired or expiring within 30 days</p>
+            <p class="dashboard-stat-label">Expiring Items</p>
+            <h3 class="dashboard-stat-value">{{ $expiringItems }}</h3>
+            <p class="dashboard-stat-hint">Expired or expiring within 30 days</p>
         </div>
-        <div style="background:#FFFBEB; color:#D97706; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon tone-warning" aria-hidden="true">
             <i class="fa-regular fa-clock"></i>
-        </div>
+        </span>
     </a>
 
-    <div style="background:#fff; border:2px solid #BFDBFE; border-radius:16px; padding:24px; display:flex; justify-content:space-between; align-items:flex-start;">
+    <div class="dashboard-stat-card">
         <div>
-            <p style="font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em; margin:0 0 8px;">Completed Deliveries</p>
-            <h3 style="font-size:32px; font-weight:700; color:#1a202c; margin:0 0 4px;">{{ number_format($completedDeliveries) }}</h3>
-            <p style="font-size:12px; color:#94a3b8; margin:0;">Arrived this month</p>
+            <p class="dashboard-stat-label">Completed Deliveries</p>
+            <h3 class="dashboard-stat-value">{{ number_format($completedDeliveries) }}</h3>
+            <p class="dashboard-stat-hint">Arrived this month</p>
         </div>
-        <div style="background:#EBF8FF; color:#3182ce; width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+        <span class="dashboard-stat-icon tone-info" aria-hidden="true">
             <i class="fa-solid fa-truck"></i>
-        </div>
+        </span>
     </div>
 
 </div>
@@ -108,8 +87,8 @@
 <div class="dashboard-lower-grid">
 
     {{-- REQUEST STATUS OVERVIEW (now first) --}}
-    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px; display:flex; flex-direction:column;">
-        <h4 style="font-size:14px; font-weight:700; color:#1a202c; margin:0 0 20px;">Request Status Overview</h4>
+    <section class="panel dashboard-panel">
+        <h4 class="dashboard-section-title">Request Status Overview</h4>
         @php
             $total = max($totalRequests, 1);
             $pendingPct  = round(($activeRequests / $total) * 100);
@@ -117,78 +96,78 @@
             $releasedPct = round(($releasedRequests / $total) * 100);
             $rejectedPct = round(($rejectedRequests / $total) * 100);
         @endphp
-        <div style="display:flex; flex-direction:column; gap:16px; flex:1;">
-            <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span style="font-size:13px; color:#4a5568;">Pending</span>
-                    <span style="font-size:13px; font-weight:700; color:#1a202c;">{{ $activeRequests }}</span>
+        <div class="dashboard-progress-list">
+            <div class="dashboard-progress-item">
+                <div class="dashboard-progress-label">
+                    <span>Pending</span>
+                    <strong>{{ $activeRequests }}</strong>
                 </div>
-                <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
-                    <div style="width:{{ $pendingPct }}%; background:#F59E0B; height:100%; border-radius:999px;"></div>
-                </div>
-            </div>
-            <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span style="font-size:13px; color:#4a5568;">Approved</span>
-                    <span style="font-size:13px; font-weight:700; color:#1a202c;">{{ $approvedRequests }}</span>
-                </div>
-                <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
-                    <div style="width:{{ $approvedPct }}%; background:#10B981; height:100%; border-radius:999px;"></div>
+                <div class="dashboard-progress-track">
+                    <span class="dashboard-progress-fill is-pending" style="width:{{ $pendingPct }}%"></span>
                 </div>
             </div>
-            <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span style="font-size:13px; color:#4a5568;">Released</span>
-                    <span style="font-size:13px; font-weight:700; color:#1a202c;">{{ $releasedRequests }}</span>
+            <div class="dashboard-progress-item">
+                <div class="dashboard-progress-label">
+                    <span>Approved</span>
+                    <strong>{{ $approvedRequests }}</strong>
                 </div>
-                <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
-                    <div style="width:{{ $releasedPct }}%; background:#6366F1; height:100%; border-radius:999px;"></div>
+                <div class="dashboard-progress-track">
+                    <span class="dashboard-progress-fill" style="width:{{ $approvedPct }}%"></span>
                 </div>
             </div>
-            <div>
-                <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-                    <span style="font-size:13px; color:#4a5568;">Rejected</span>
-                    <span style="font-size:13px; font-weight:700; color:#1a202c;">{{ $rejectedRequests }}</span>
+            <div class="dashboard-progress-item">
+                <div class="dashboard-progress-label">
+                    <span>Released</span>
+                    <strong>{{ $releasedRequests }}</strong>
                 </div>
-                <div style="background:#f1f5f9; height:8px; border-radius:999px; overflow:hidden;">
-                    <div style="width:{{ $rejectedPct }}%; background:#EF4444; height:100%; border-radius:999px;"></div>
+                <div class="dashboard-progress-track">
+                    <span class="dashboard-progress-fill" style="width:{{ $releasedPct }}%"></span>
+                </div>
+            </div>
+            <div class="dashboard-progress-item">
+                <div class="dashboard-progress-label">
+                    <span>Rejected</span>
+                    <strong>{{ $rejectedRequests }}</strong>
+                </div>
+                <div class="dashboard-progress-track">
+                    <span class="dashboard-progress-fill is-rejected" style="width:{{ $rejectedPct }}%"></span>
                 </div>
             </div>
         </div>
-        <a href="/requests" style="display:block; text-align:right; font-size:12px; color:#10B981; margin-top:20px; text-decoration:none; font-weight:600;">View all requests →</a>
-    </div>
+        <a href="/requests" class="dashboard-view-link">View all requests</a>
+    </section>
 
     {{-- ACTIVITY FEED (now second) --}}
-    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px; display:flex; flex-direction:column;">
-        <h4 style="font-size:14px; font-weight:700; color:#1a202c; margin:0 0 20px;">Activity Feed</h4>
-        <div style="display:flex; flex-direction:column; gap:14px; flex:1;">
+    <section class="panel dashboard-panel">
+        <h4 class="dashboard-section-title">Activity Feed</h4>
+        <div class="dashboard-activity-list">
             @forelse($activities as $activity)
                 @php
-                    $dotColor = match($activity->status) {
-                        'Approved' => '#10B981',
-                        'Rejected' => '#EF4444',
-                        default    => '#F59E0B',
+                    $dotClass = match($activity->status) {
+                        'Approved' => 'is-approved',
+                        'Rejected' => 'is-rejected',
+                        default    => '',
                     };
                 @endphp
-                <div style="display:flex; align-items:flex-start; gap:12px;">
-                    <div style="width:8px; height:8px; border-radius:999px; background:{{ $dotColor }}; margin-top:5px; flex-shrink:0;"></div>
+                <div class="dashboard-activity-item">
+                    <span class="dashboard-activity-dot {{ $dotClass }}" aria-hidden="true"></span>
                     <div>
-                        <p style="font-size:13px; color:#1a202c; margin:0 0 2px;">
+                        <p class="dashboard-activity-copy">
                             {{ $activity->request_code }} — {{ $activity->status }} —
                             {{ $activity->quantity }} {{ $activity->inventory?->unit_type ?? 'units' }}
                             of {{ $activity->inventory?->name ?? 'item' }}
                             @if($activity->source) — {{ $activity->source }} @endif
                         </p>
-                        <p style="font-size:11px; color:#94a3b8; margin:0;">
+                        <p class="dashboard-activity-time">
                             {{ \Carbon\Carbon::parse($activity->updated_at)->diffForHumans() }}
                         </p>
                     </div>
                 </div>
             @empty
-                <p style="font-size:13px; color:#94a3b8;">No recent activity.</p>
+                <p class="text-sm text-slate-500">No recent activity.</p>
             @endforelse
         </div>
-    </div>
+    </section>
 
 </div>
 
