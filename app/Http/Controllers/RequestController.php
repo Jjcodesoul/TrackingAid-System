@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Request as SupplyRequest;
 use App\Models\Inventory;
+use App\Models\Item;
 use App\Models\ResqoperationForwardedRequest;
 use App\Services\InventorySyncService;
 use Illuminate\Http\Request;
@@ -24,6 +25,9 @@ class RequestController extends Controller
 
         // 2. Fetch external forwarded requests sent by ResQOperation
         $forwardedRequests = ResqoperationForwardedRequest::latest()->get();
+        $forwardedAvailability = $forwardedRequests->mapWithKeys(fn (ResqoperationForwardedRequest $forwardedRequest): array => [
+            $forwardedRequest->id => $this->externalStockAvailability($forwardedRequest->item_name ?: $forwardedRequest->resource_type, (int) $forwardedRequest->quantity),
+        ]);
 
         $forwardedStatusGroup = fn ($forwardedRequest) => match (strtolower($forwardedRequest->resqperation_status ?? 'forwarded')) {
             'approved' => 'approved',
@@ -41,7 +45,7 @@ class RequestController extends Controller
         ];
 
         // 4. Pass all variables to view
-        return view('requests.index', compact('requests', 'forwardedRequests', 'stats', 'stockAvailability'));
+        return view('requests.index', compact('requests', 'forwardedRequests', 'stats', 'stockAvailability', 'forwardedAvailability'));
     }
 
     public function approve(Request $httpRequest, SupplyRequest $request, InventorySyncService $inventorySync)
@@ -103,7 +107,9 @@ class RequestController extends Controller
             ]);
         });
 
-        return back()->with('success', 'Request approved and stock reserved.');
+        return redirect()
+            ->route('borrow-release.create')
+            ->with('success', 'Request approved and stock reserved. It is ready for release review.');
     }
 
     public function reject(SupplyRequest $request)
@@ -190,10 +196,16 @@ class RequestController extends Controller
             $validated
         );
 
+        $stockAvailability = $this->externalStockAvailability(
+            $validated['item_name'] ?? $validated['resource_type'] ?? null,
+            isset($validated['quantity']) ? (int) $validated['quantity'] : null,
+        );
+
         return response()->json([
             'status'  => 'success',
             'message' => 'Forwarded request successfully received by TrackingAid!',
-            'data'    => $forwardedRequest
+            'data'    => $forwardedRequest,
+            'stock_availability' => $stockAvailability,
         ], $forwardedRequest->wasRecentlyCreated ? 201 : 200);
     }
 
@@ -254,5 +266,79 @@ class RequestController extends Controller
             ));
 
         return max((int) $inventory->quantity - $reserved, 0);
+    }
+
+    private function externalStockAvailability(?string $itemReference, ?int $requestedQuantity): array
+    {
+        $reference = trim((string) $itemReference);
+
+        if ($reference === '') {
+            return [
+                'status' => 'unverified',
+                'message' => 'Stock availability could not be verified because no item name or SKU was provided.',
+                'requested_quantity' => $requestedQuantity,
+                'available_quantity' => null,
+                'shortage' => null,
+            ];
+        }
+
+        $item = Item::with('stockBatches')->where('sku', $reference)->first();
+        if (! $item) {
+            $matches = Item::with('stockBatches')
+                ->whereRaw('LOWER(name) = ?', [mb_strtolower($reference)])
+                ->limit(2)
+                ->get();
+
+            if ($matches->count() !== 1) {
+                return [
+                    'status' => $matches->isEmpty() ? 'unverified' : 'ambiguous_item',
+                    'message' => $matches->isEmpty()
+                        ? 'Stock availability could not be verified because this item does not exactly match an inventory item.'
+                        : 'Stock availability could not be verified because this item name matches multiple inventory records. Send its exact SKU.',
+                    'requested_quantity' => $requestedQuantity,
+                    'available_quantity' => null,
+                    'shortage' => null,
+                ];
+            }
+
+            $item = $matches->first();
+        }
+
+        $onHand = max((int) $item->stockBatches->sum('quantity'), 0);
+        $inventoryId = Inventory::where('sku', $item->sku)->value('id');
+        $reserved = 0;
+
+        if ($inventoryId) {
+            $reserved = SupplyRequest::where('inventory_id', $inventoryId)
+                ->whereIn('status', ['Approved', 'Partially Released'])
+                ->withSum('borrowReleases as released_quantity', 'quantity')
+                ->get(['id', 'quantity', 'approved_quantity'])
+                ->sum(fn (SupplyRequest $approvedRequest): int => max(
+                    (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity)
+                        - (int) ($approvedRequest->released_quantity ?? 0),
+                    0
+                ));
+        }
+
+        $available = max($onHand - $reserved, 0);
+        $shortage = $requestedQuantity === null ? null : max($requestedQuantity - $available, 0);
+        $status = $requestedQuantity === null
+            ? 'unverified_quantity'
+            : ($shortage === 0 ? 'available' : ($available > 0 ? 'partially_available' : 'insufficient'));
+
+        return [
+            'status' => $status,
+            'message' => $requestedQuantity === null
+                ? 'Item matched, but stock fulfillment cannot be checked because the requested quantity was not provided.'
+                : ($shortage === 0
+                    ? "Requested {$requestedQuantity}; {$available} available."
+                    : "Requested {$requestedQuantity}; {$available} available; shortage {$shortage}."),
+            'matched_item' => ['name' => $item->name, 'sku' => $item->sku],
+            'requested_quantity' => $requestedQuantity,
+            'on_hand_quantity' => $onHand,
+            'reserved_quantity' => $reserved,
+            'available_quantity' => $available,
+            'shortage' => $shortage,
+        ];
     }
 }

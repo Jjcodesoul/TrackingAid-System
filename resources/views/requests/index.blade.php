@@ -63,6 +63,7 @@
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Requested By</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Date</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Status</th>
+                        <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Stock availability</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Actions</th>
                     </tr>
                 </thead>
@@ -127,6 +128,12 @@
                                         {{ $statusKey }}
                                     </span>
                                 </td>
+                                <td style="padding:14px 16px; font-size:12px; color:#4a5568;">
+                                    <span>Available: {{ number_format($stock['available']) }}</span>
+                                    @if($req->status === 'Pending' && $req->quantity > $stock['available'])
+                                        <span style="display:block; color:#92400e; font-weight:600;">Short by {{ number_format($req->quantity - $stock['available']) }}</span>
+                                    @endif
+                                </td>
                                 <td style="padding:14px 16px;">
                                     <div style="display:flex; align-items:center; gap:8px;">
                                         <button type="button" class="users-action" title="Review request" aria-label="Review {{ $req->request_code }}" onclick="showLocalRequest(this)"
@@ -173,6 +180,7 @@
                                     'Rejected' => 'status-rejected',
                                     default => 'status-neutral',
                                 };
+                                $externalStock = $forwardedAvailability[$freq->id] ?? ['status' => 'unverified', 'message' => 'Stock availability could not be verified.'];
                             @endphp
                             <tr class="req-row" data-status="{{ $statusKey }}" style="border-bottom:1px solid #f1f5f9; background-color:#f0f9ff;">
                                 <td style="padding:14px 16px;">
@@ -215,6 +223,16 @@
                                         {{ $statusKey }}
                                     </span>
                                 </td>
+                                <td style="padding:14px 16px; font-size:12px; color:#4a5568;">
+                                    @if(isset($externalStock['available_quantity']))
+                                        <span>Available: {{ number_format($externalStock['available_quantity']) }}</span>
+                                        @if(($externalStock['shortage'] ?? 0) > 0)
+                                            <span style="display:block; color:#92400e; font-weight:600;">Short by {{ number_format($externalStock['shortage']) }}</span>
+                                        @endif
+                                    @else
+                                        <span class="status-badge status-neutral">Unverified</span>
+                                    @endif
+                                </td>
                                 <td style="padding:14px 16px;">
                                     <div style="display:flex; align-items:center; gap:8px;">
                                         <button
@@ -238,6 +256,7 @@
                                             data-area-note="{{ $freq->area_note }}"
                                             data-description="{{ $freq->description }}"
                                             data-validation-notes="{{ $freq->validation_notes }}"
+                                            data-stock-message="{{ $externalStock['message'] }}"
                                             data-forwarded-at="{{ optional($freq->forwarded_at)->format('M d, Y H:i') }}"
                                             data-status="{{ $statusKey }}"
                                             style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;"
@@ -267,7 +286,7 @@
                     {{-- 3. EMPTY STATE --}}
                     @if((!isset($requests) || count($requests) == 0) && (!isset($forwardedRequests) || count($forwardedRequests) == 0))
                         <tr>
-                            <td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+                            <td colspan="9" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
                                 No requests found.
                             </td>
                         </tr>
@@ -341,6 +360,7 @@
             <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Request source</dt><dd data-request-detail="requestSource" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
             <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area</dt><dd data-request-detail="areaLabel" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
             <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Status</dt><dd data-request-detail="status" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Stock availability</dt><dd data-request-detail="stockMessage" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
             <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area notes</dt><dd data-request-detail="areaNote" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
             <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Description</dt><dd data-request-detail="description" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
             <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Validation notes</dt><dd data-request-detail="validationNotes" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
@@ -435,6 +455,7 @@
                 validationNotes: button.dataset.validationNotes,
                 forwardedAt: button.dataset.forwardedAt,
                 status: button.dataset.status,
+                stockMessage: button.dataset.stockMessage,
             };
 
             Object.entries(details).forEach(([key, value]) => {

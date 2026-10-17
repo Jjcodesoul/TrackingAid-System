@@ -32,6 +32,17 @@
         </span>
     </a>
 
+    <a href="/borrow-release" class="dashboard-stat-card">
+        <div>
+            <p class="dashboard-stat-label">Items Released</p>
+            <h3 class="dashboard-stat-value">{{ number_format($releasedItems) }}</h3>
+            <p class="dashboard-stat-hint">Total units released</p>
+        </div>
+        <span class="dashboard-stat-icon tone-info" aria-hidden="true">
+            <i class="fa-solid fa-box-open"></i>
+        </span>
+    </a>
+
     <a href="/requests" class="dashboard-stat-card">
         <div>
             <p class="dashboard-stat-label">Approved Requests</p>
@@ -80,6 +91,17 @@
             <i class="fa-solid fa-truck"></i>
         </span>
     </div>
+
+    <a href="/returns" class="dashboard-stat-card">
+        <div>
+            <p class="dashboard-stat-label">Items Returned</p>
+            <h3 class="dashboard-stat-value">{{ number_format($returnedItems) }}</h3>
+            <p class="dashboard-stat-hint">All recorded return conditions</p>
+        </div>
+        <span class="dashboard-stat-icon" aria-hidden="true">
+            <i class="fa-solid fa-rotate-left"></i>
+        </span>
+    </a>
 
 </div>
 

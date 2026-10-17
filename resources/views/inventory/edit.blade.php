@@ -111,7 +111,7 @@
                 <select name="type" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
                     <option value="consumable" {{ $item->type == 'consumable' ? 'selected' : '' }}>Consumable</option>
-                    <option value="returnable" {{ $item->type == 'returnable' ? 'selected' : '' }}>Reusable</option>
+                    <option value="reusable" {{ $item->type == 'returnable' ? 'selected' : '' }}>Reusable</option>
                 </select>
             </div>
         </div>
@@ -139,7 +139,7 @@
     <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:24px;">
 
         <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
-            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Generated SKU</h4>
+            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Item SKU</h4>
 
             <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:16px 20px; margin-bottom:16px;">
                 <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:15px; margin:0; word-break:break-all; letter-spacing:.03em;">
@@ -184,8 +184,8 @@
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
                 <div>
                     <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY-ITEM-UNIT-SIZE-TARGET[-VARIANT]</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">Variant segment is omitted when set to None. SKU updates automatically as you edit fields above.</p>
+                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CAT-XXXXXXXX</p>
+                    <p style="font-size:11px; color:#6B7280; margin:0;">Existing SKUs stay fixed when item details are edited.</p>
                 </div>
             </div>
         </div>
@@ -242,12 +242,6 @@ function generateSKU() {
     document.getElementById('bd-target').innerText = target || '—';
     document.getElementById('bd-variant').innerText = (variant && variant !== 'NONE') ? variant : '—';
 
-    let parts = [category, name, unit, size, target];
-    if (variant && variant !== 'NONE') parts.push(variant);
-
-    let sku = parts.filter(p => p).join('-').replace(/--+/g, '-').replace(/-$/, '');
-
-    document.getElementById('skuPreview').innerText = sku || 'CATEGORY-ITEM-UNIT-SIZE-TARGET';
 }
 
 function copySKU() {

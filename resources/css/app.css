@@ -483,7 +483,7 @@ a {
     margin-bottom: 16px;
 }
 
-.dashboard-kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dashboard-kpi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .dashboard-lower-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .dashboard-kpi-grid--bottom { margin-bottom: 24px; }
 
@@ -658,4 +658,252 @@ a {
         transition-duration: .01ms !important;
         animation-duration: .01ms !important;
     }
+}
+
+.theme-toggle {
+    display: inline-flex;
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+}
+
+.theme-toggle:hover { color: var(--ink); background: var(--canvas); }
+.theme-toggle:focus-visible { outline: 3px solid rgb(23 107 87 / 38%); outline-offset: 2px; }
+
+@media screen {
+    html[data-theme="dark"] {
+        color-scheme: dark;
+        --brand: #51b795;
+        --brand-hover: #6cc9a8;
+        --brand-soft: #1c3b31;
+        --ink: #e5eeea;
+        --muted: #b0beb8;
+        --subtle: #8d9f97;
+        --surface: #17231f;
+        --canvas: #101916;
+        --line: #34463f;
+        --line-soft: #293a34;
+        --success: #73c69b;
+        --success-soft: #1b392b;
+        --warning: #e9bd70;
+        --warning-soft: #3a3020;
+        --danger: #ef9388;
+        --danger-soft: #402522;
+        --info: #85c6dc;
+        --info-soft: #1d3740;
+        --shadow-surface: 0 1px 3px rgb(0 0 0 / 25%);
+        --color-slate-50: #101916;
+        --color-slate-100: #17231f;
+        --color-slate-200: #293a34;
+        --color-slate-300: #34463f;
+        --color-slate-400: #8d9f97;
+        --color-slate-500: #a0b0a9;
+        --color-slate-600: #b0beb8;
+        --color-slate-700: #c4d0ca;
+        --color-slate-800: #d6e0da;
+        --color-slate-900: #e5eeea;
+        --color-gray-50: #101916;
+        --color-gray-100: #17231f;
+        --color-gray-200: #293a34;
+        --color-gray-300: #34463f;
+        --color-gray-400: #8d9f97;
+        --color-gray-500: #a0b0a9;
+        --color-gray-600: #b0beb8;
+        --color-gray-700: #c4d0ca;
+        --color-gray-800: #d6e0da;
+        --color-gray-900: #e5eeea;
+    }
+
+    html[data-theme="dark"] body {
+        color: var(--ink) !important;
+        background: var(--canvas) !important;
+    }
+
+    html[data-theme="dark"] .app-sidebar {
+        color: #e5eeea;
+        background: #0c1512 !important;
+        border-color: #293a34 !important;
+    }
+
+    html[data-theme="dark"] .app-sidebar .app-brand-mark + div,
+    html[data-theme="dark"] .app-sidebar .app-brand-mark + div h1 { color: #f0f7f3 !important; }
+
+    html[data-theme="dark"] .app-sidebar a[class*="bg-slate-800"] {
+        color: #8fe0bd !important;
+        background-color: #1b3b31 !important;
+        border-color: #51b795 !important;
+    }
+
+    html[data-theme="dark"] .app-sidebar a:not([class*="bg-slate-800"]):hover,
+    html[data-theme="dark"] .app-sidebar button:hover {
+        color: #f0f7f3 !important;
+        background-color: #1b2b25 !important;
+    }
+
+    html[data-theme="dark"] .app-sidebar a:not([class*="bg-slate-800"]) { color: #c4d0ca; }
+
+    html[data-theme="dark"] .app-header,
+    html[data-theme="dark"] main .bg-white,
+    html[data-theme="dark"] main .report-filter,
+    html[data-theme="dark"] main .report-tab,
+    html[data-theme="dark"] main .report-action,
+    html[data-theme="dark"] main .dm-card,
+    html[data-theme="dark"] main .inventory-summary-card {
+        color: var(--ink);
+        background-color: var(--surface) !important;
+        border-color: var(--line) !important;
+    }
+
+    html[data-theme="dark"] main .report-tab:hover,
+    html[data-theme="dark"] main .report-action:hover { color: #9be2c0 !important; background-color: #22372f !important; }
+    html[data-theme="dark"] main .report-tab.active { color: #fff !important; background-color: var(--brand) !important; border-color: var(--brand) !important; }
+
+    html[data-theme="dark"] main .request-filter-tab {
+        color: #c4d0ca !important;
+        background-color: #17231f !important;
+        border-color: var(--line) !important;
+    }
+    html[data-theme="dark"] main .request-filter-tab:hover { color: #f0f7f3 !important; background-color: #22372f !important; }
+    html[data-theme="dark"] main .request-filter-tab.is-active { color: #fff !important; background-color: var(--brand) !important; border-color: var(--brand) !important; }
+
+    html[data-theme="dark"] main .inv-tab { color: #b8c8c0 !important; }
+    html[data-theme="dark"] main .inv-tab:hover { color: #f0f7f3 !important; background-color: #22372f !important; }
+    html[data-theme="dark"] main .inv-tab.is-active { color: #55d4a1 !important; border-color: #55d4a1 !important; }
+
+    html[data-theme="dark"] main .dm-info,
+    html[data-theme="dark"] main .dm-footer { color: var(--muted) !important; background-color: var(--surface) !important; border-color: var(--line) !important; }
+
+    html[data-theme="dark"] main .dm-table th { color: var(--muted) !important; background-color: #22372f !important; }
+    html[data-theme="dark"] main .dm-table td,
+    html[data-theme="dark"] main .dm-table td strong,
+    html[data-theme="dark"] main .dm-empty p { color: var(--ink) !important; }
+    html[data-theme="dark"] main .dm-table tbody tr:hover { background-color: #20332c !important; }
+
+    html[data-theme="dark"] .app-sidebar-toggle { background: var(--surface); color: var(--ink); }
+
+    html[data-theme="dark"] .panel,
+    html[data-theme="dark"] .card-ui,
+    html[data-theme="dark"] .dashboard-stat-card,
+    html[data-theme="dark"] .stat-card,
+    html[data-theme="dark"] .report-card,
+    html[data-theme="dark"] .report-stat,
+    html[data-theme="dark"] .users-modal,
+    html[data-theme="dark"] dialog {
+        color: var(--ink) !important;
+        background-color: var(--surface) !important;
+        border-color: var(--line) !important;
+    }
+
+    html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+    html[data-theme="dark"] select,
+    html[data-theme="dark"] textarea {
+        color: var(--ink) !important;
+        background-color: #111c18 !important;
+        border-color: var(--line) !important;
+    }
+
+    html[data-theme="dark"] input::placeholder,
+    html[data-theme="dark"] textarea::placeholder { color: var(--subtle) !important; }
+
+    html[data-theme="dark"] table { color: var(--ink); }
+    html[data-theme="dark"] th { color: var(--muted) !important; border-color: var(--line) !important; }
+    html[data-theme="dark"] td { border-color: var(--line-soft) !important; }
+    html[data-theme="dark"] tr:hover td { background-color: rgb(255 255 255 / 3%); }
+
+    html[data-theme="dark"] main [style*="background:#fff"],
+    html[data-theme="dark"] main [style*="background: #fff"],
+    html[data-theme="dark"] main [style*="background-color:#fff"],
+    html[data-theme="dark"] main [style*="background-color: #fff"],
+    html[data-theme="dark"] main [style*="background:#ffffff"],
+    html[data-theme="dark"] main [style*="background: #ffffff"],
+    html[data-theme="dark"] main [style*="background-color:#ffffff"],
+    html[data-theme="dark"] main [style*="background-color: #ffffff"],
+    html[data-theme="dark"] main [style*="background:white"],
+    html[data-theme="dark"] main [style*="background: white"] { background-color: var(--surface) !important; }
+
+    html[data-theme="dark"] main [style*="background:#f8fafc"],
+    html[data-theme="dark"] main [style*="background: #f8fafc"],
+    html[data-theme="dark"] main [style*="background:#f1f5f9"],
+    html[data-theme="dark"] main [style*="background: #f1f5f9"],
+    html[data-theme="dark"] main [style*="background:#f9fafb"],
+    html[data-theme="dark"] main [style*="background: #f9fafb"] { background-color: #202e29 !important; }
+
+    /* Many existing pages use Tailwind arbitrary colors instead of theme tokens. */
+    html[data-theme="dark"] main [class*="bg-[#f8fafc]"],
+    html[data-theme="dark"] main [class*="bg-[#f9fafb]"],
+    html[data-theme="dark"] main [class*="bg-[#f1f5f9]"],
+    html[data-theme="dark"] main [class*="bg-[#f4f7f5]"],
+    html[data-theme="dark"] main [class*="bg-[#fff]"],
+    html[data-theme="dark"] main [class*="bg-[#ffffff]"],
+    html[data-theme="dark"] main [class*="bg-[#FFFFFF]"] { background-color: var(--surface) !important; }
+
+    html[data-theme="dark"] main [class*="border-[#e2e8f0]"],
+    html[data-theme="dark"] main [class*="border-[#e5e7eb]"],
+    html[data-theme="dark"] main [class*="border-[#f1f5f9]"] { border-color: var(--line) !important; }
+
+    html[data-theme="dark"] main [class*="text-[#0f172a]"],
+    html[data-theme="dark"] main [class*="text-[#111827]"],
+    html[data-theme="dark"] main [class*="text-[#1a202c]"],
+    html[data-theme="dark"] main [class*="text-[#1e293b]"],
+    html[data-theme="dark"] main [class*="text-[#334155]"],
+    html[data-theme="dark"] main [class*="text-[#374151]"],
+    html[data-theme="dark"] main [class*="text-[#475569]"],
+    html[data-theme="dark"] main [class*="text-[#4a5568]"],
+    html[data-theme="dark"] main [class*="text-[#64748b]"],
+    html[data-theme="dark"] main [class*="text-[#6b7280]"],
+    html[data-theme="dark"] main [class*="text-[#94a3b8]"] { color: var(--muted) !important; }
+
+    html[data-theme="dark"] main [style*="color:#1a202c"],
+    html[data-theme="dark"] main [style*="color: #1a202c"],
+    html[data-theme="dark"] main [style*="color:#4a5568"],
+    html[data-theme="dark"] main [style*="color: #4a5568"],
+    html[data-theme="dark"] main [style*="color:#94a3b8"],
+    html[data-theme="dark"] main [style*="color: #94a3b8"] { color: var(--muted) !important; }
+
+    html[data-theme="dark"] main [style*="background:#fff"],
+    html[data-theme="dark"] main [style*="background: #fff"],
+    html[data-theme="dark"] main [style*="background:#f8fafc"],
+    html[data-theme="dark"] main [style*="background: #f8fafc"],
+    html[data-theme="dark"] main [style*="background:#f1f5f9"],
+    html[data-theme="dark"] main [style*="background: #f1f5f9"] { background-color: var(--surface) !important; }
+
+    html[data-theme="dark"] main th,
+    html[data-theme="dark"] main thead { background-color: #202e29 !important; }
+
+    html[data-theme="dark"] main option { color: var(--ink); background-color: var(--surface); }
+
+    html[data-theme="dark"] main .table-ui tbody tr:hover { background-color: #22372f !important; }
+    html[data-theme="dark"] main .inv-tabs-arrow,
+    html[data-theme="dark"] main .inv-page-btn { color: #c4d0ca !important; background-color: #17231f !important; border-color: var(--line) !important; }
+    html[data-theme="dark"] main .inv-tabs-arrow:hover,
+    html[data-theme="dark"] main .inv-page-btn:hover:not(:disabled):not(.is-current) { color: #f0f7f3 !important; background-color: #22372f !important; }
+    html[data-theme="dark"] main .inv-page-btn.is-current { color: #fff !important; background-color: var(--brand) !important; border-color: var(--brand) !important; }
+
+    html[data-theme="dark"] main [style*="color:#0f172a"],
+    html[data-theme="dark"] main [style*="color: #0f172a"],
+    html[data-theme="dark"] main [style*="color:#1e293b"],
+    html[data-theme="dark"] main [style*="color: #1e293b"],
+    html[data-theme="dark"] main [style*="color:#334155"],
+    html[data-theme="dark"] main [style*="color: #334155"],
+    html[data-theme="dark"] main [style*="color:#374151"],
+    html[data-theme="dark"] main [style*="color: #374151"],
+    html[data-theme="dark"] main [style*="color:#475569"],
+    html[data-theme="dark"] main [style*="color: #475569"],
+    html[data-theme="dark"] main [style*="color:#64748b"],
+    html[data-theme="dark"] main [style*="color: #64748b"],
+    html[data-theme="dark"] main [style*="color:#6b7280"],
+    html[data-theme="dark"] main [style*="color: #6b7280"] { color: var(--muted) !important; }
+
+    html[data-theme="dark"] .btn-soft,
+    html[data-theme="dark"] .btn-secondary { color: var(--ink) !important; background-color: #24332d !important; border-color: var(--line) !important; }
+    html[data-theme="dark"] .note { color: #f1ce8d; border-color: #69552e; }
+    html[data-theme="dark"] .dropdown-menu,
+    html[data-theme="dark"] [role="menu"] { color: var(--ink); background-color: var(--surface); border-color: var(--line); }
 }

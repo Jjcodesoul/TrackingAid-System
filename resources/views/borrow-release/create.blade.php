@@ -68,7 +68,7 @@
                                 $approvedQuantity = (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity);
                                 $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
                                 $availableQuantity = max((int) ($inventory?->quantity ?? 0), 0);
-                                $releasableQuantity = min($remainingQuantity, $availableQuantity);
+                                $canReleaseApprovedQuantity = $remainingQuantity > 0 && $availableQuantity >= $remainingQuantity;
                                 $isPartial = $releasedQuantity > 0;
                                 $isOldInput = old('request_id') == $approvedRequest->id;
                             @endphp
@@ -104,7 +104,7 @@
                                     </span>
                                 </td>
                                 <td class="p-3 min-w-[260px]">
-                                    @if($inventory && $releasableQuantity > 0)
+                                    @if($inventory && $canReleaseApprovedQuantity)
                                         <details>
                                             <summary class="btn-main cursor-pointer text-center">Process Release</summary>
                                             <form action="{{ route('borrow-release.store') }}" method="POST" class="release-form mt-3 space-y-3"
@@ -123,15 +123,18 @@
 
                                                 <div>
                                                     <label class="form-label" for="quantity-{{ $approvedRequest->id }}">Release quantity</label>
-                                                    <input id="quantity-{{ $approvedRequest->id }}" name="quantity" type="number" min="1" max="{{ $releasableQuantity }}" value="{{ $isOldInput ? old('quantity', $releasableQuantity) : $releasableQuantity }}" class="form-input" required>
+                                                    <input id="quantity-{{ $approvedRequest->id }}" name="quantity" type="number" min="{{ $remainingQuantity }}" max="{{ $remainingQuantity }}" value="{{ $remainingQuantity }}" class="form-input" readonly aria-readonly="true" required>
+                                                    <p class="form-help">Fixed to the remaining approved quantity. To release a different amount, update the request approval first.</p>
                                                 </div>
                                                 <div>
                                                     <label class="form-label" for="delivery-{{ $approvedRequest->id }}">Delivery personnel</label>
                                                     <select id="delivery-{{ $approvedRequest->id }}" name="delivery_personnel_id" class="form-select" required>
                                                         <option value="">Choose delivery personnel...</option>
-                                                        @foreach($deliveryPersonnel as $person)
+                                                        @forelse($deliveryPersonnel as $person)
                                                             <option value="{{ $person->id }}" {{ $isOldInput && old('delivery_personnel_id') == $person->id ? 'selected' : '' }}>{{ $person->name }}</option>
-                                                        @endforeach
+                                                        @empty
+                                                            <option value="" disabled>No delivery personnel accounts found. Ask an admin to add one in Users &amp; Roles.</option>
+                                                        @endforelse
                                                     </select>
                                                 </div>
                                                 <div>
@@ -142,7 +145,11 @@
                                             </form>
                                         </details>
                                     @else
-                                        <span class="text-[12px] text-rose-700">No stock available to release.</span>
+                                        @if($inventory && $remainingQuantity > 0)
+                                            <span class="text-[12px] text-rose-700">Cannot release yet: {{ number_format($remainingQuantity) }} approved units remain, but only {{ number_format($availableQuantity) }} are available. Restock before releasing.</span>
+                                        @else
+                                            <span class="text-[12px] text-rose-700">No stock available to release.</span>
+                                        @endif
                                     @endif
                                 </td>
                             </tr>

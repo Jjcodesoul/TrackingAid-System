@@ -10,6 +10,18 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'TrackingAid | Disaster Logistics')</title>
 
+    <script>
+        (() => {
+            try {
+                const savedTheme = localStorage.getItem('trackingaid-theme');
+                const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+                document.documentElement.dataset.theme = savedTheme || (prefersDark ? 'dark' : 'light');
+            } catch (_) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
+
     <link rel="stylesheet" href="{{ asset('vendor/fontawesome/css/all.min.css') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
@@ -378,6 +390,10 @@
 
                 <div class="app-header-actions flex items-center gap-6">
 
+                    <button type="button" id="themeToggle" class="theme-toggle" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
+                        <i class="fa-solid fa-moon" aria-hidden="true"></i>
+                    </button>
+
                     <a href="{{ route('notifications.index') }}" class="text-slate-400 hover:text-slate-600 relative border-none bg-transparent cursor-pointer p-1.5 flex items-center justify-center" title="Notifications">
                         <i class="fa-regular fa-bell text-lg"></i>
                         @if($unreadCount > 0)
@@ -421,6 +437,33 @@
     </div>
 
     @stack('scripts')
+
+    <script>
+        (function () {
+            const button = document.getElementById('themeToggle');
+            if (!button) return;
+
+            const icon = button.querySelector('i');
+            function applyTheme(theme, persist = false) {
+                const isDark = theme === 'dark';
+                document.documentElement.dataset.theme = isDark ? 'dark' : 'light';
+                button.setAttribute('aria-pressed', String(isDark));
+                button.setAttribute('aria-label', isDark ? 'Switch to light mode' : 'Switch to dark mode');
+                button.title = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+                icon.classList.toggle('fa-moon', !isDark);
+                icon.classList.toggle('fa-sun', isDark);
+
+                if (persist) {
+                    try { localStorage.setItem('trackingaid-theme', isDark ? 'dark' : 'light'); } catch (_) {}
+                }
+            }
+
+            applyTheme(document.documentElement.dataset.theme || 'light');
+            button.addEventListener('click', () => {
+                applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+            });
+        })();
+    </script>
 
     <script>
         (function () {

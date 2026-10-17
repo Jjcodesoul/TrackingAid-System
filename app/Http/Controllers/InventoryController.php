@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Models\Inventory;
 use App\Models\Item;
 use App\Services\InventorySyncService;
+use App\Services\SkuGenerator;
 
 class InventoryController extends Controller
 {
@@ -102,7 +104,7 @@ public function create()
         'customVariants'
     ));
 }
-    public function store(Request $request, InventorySyncService $inventorySync)
+    public function store(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -111,41 +113,30 @@ public function create()
             'size_weight' => 'nullable|string|max:100',
             'target_beneficiary' => 'required|string|max:100',
             'variant' => 'nullable|string|max:100',
-            'type' => 'required|in:consumable,returnable',
+            'type' => 'required|in:consumable,reusable,returnable',
             'storage_location' => 'required|string|max:255',
             'expiration_date' => 'nullable|date',
         ]);
 
+        // "Reusable" is the user-facing term; keep the established database
+        // value so existing inventory and API consumers remain compatible.
+        $validated['type'] = $validated['type'] === 'reusable' ? 'returnable' : $validated['type'];
         $category = strtoupper($validated['category']);
         $unitType = strtoupper($validated['unit_type']);
+        $sku = $skuGenerator->generate(
+            $category,
+            $validated['name'],
+            $validated['size_weight'] ?? null,
+            $validated['variant'] ?? null,
+            $validated['target_beneficiary'] ?? null,
+            $validated['type'],
+        );
 
-        // SKU format: [2-letter category code][3-letter item code][3-digit sequence]
-        // e.g. "FDCOR001" — keeps every SKU at a fixed, short 8 characters,
-        // well inside the 7-12 character range.
-        $categoryCode = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $validated['category']), 0, 2));
-        $firstWord = preg_split('/\s+/', trim($validated['name']))[0] ?? '';
-        $itemCode = strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $firstWord), 0, 3));
-
-        // Pad codes that end up shorter than expected (e.g. a 1-letter category
-        // or item name) so the format stays consistent.
-        $categoryCode = str_pad($categoryCode, 2, 'X');
-        $itemCode = str_pad($itemCode, 3, 'X');
-
-        $prefix = $categoryCode . $itemCode;
-
-        // Next sequence number for this exact category+item code combination —
-        // this is what guarantees uniqueness, not text matching, so two items
-        // with the same name/category (e.g. different sizes of the same
-        // product) simply get 001, 002, 003 automatically.
-        $existingCount = Item::where('sku', 'like', $prefix . '%')->count();
-        $sequence = $existingCount + 1;
-        $sku = $prefix . str_pad($sequence, 3, '0', STR_PAD_LEFT);
-
-        // Safety net in case of a race condition (two people saving at the
-        // same instant) — keep bumping until we find a free slot.
-        while (Item::where('sku', $sku)->exists()) {
-            $sequence++;
-            $sku = $prefix . str_pad($sequence, 3, '0', STR_PAD_LEFT);
+        if (Item::withTrashed()->where('sku', $sku)->exists()
+            || Inventory::withTrashed()->where('sku', $sku)->exists()) {
+            return back()->withInput()->withErrors([
+                'sku' => "The generated SKU {$sku} already exists. Use a distinct item name, size, variant, or beneficiary, or update the existing item.",
+            ]);
         }
 
         $item = Item::create([
@@ -188,10 +179,14 @@ public function create()
             'size_weight' => 'nullable|string|max:100',
             'target_beneficiary' => 'nullable|string|max:100',
             'variant' => 'nullable|string|max:100',
-            'type' => 'required|in:consumable,returnable',
+            'type' => 'required|in:consumable,reusable,returnable',
             'storage_location' => 'nullable|string|max:255',
             'expiration_date' => 'nullable|date',
         ]);
+
+        if (($validated['type'] ?? null) === 'reusable') {
+            $validated['type'] = 'returnable';
+        }
 
         if (isset($validated['category'])) {
             $validated['category'] = strtoupper($validated['category']);

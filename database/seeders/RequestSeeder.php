@@ -11,36 +11,47 @@ class RequestSeeder extends Seeder
     public function run(): void
     {
         $requests = [
-            ['REQ-2024-091', 'MEDICAL-MEDKIT-BOX-SM-ALL', 200, 'High',   'Pending',  'Typhoon Carina Relief',     'responder1@resqoperation.org', '2026-05-26'],
-            ['REQ-2024-090', 'FOOD-RICE-SACK-50KG-ALL',   150, 'High',   'Pending',  'Flood Ops - Pampanga',      'responder2@resqoperation.org', '2026-05-25'],
-            ['REQ-2024-089', 'RELIEF-BLANKET-PCS-REG-ALL', 60, 'High',   'Approved', 'Coastal Rescue - Batangas', 'responder3@resqoperation.org', '2026-05-24'],
-            ['REQ-2024-088', 'FOOD-NOODLES-PACK-REG-ALL', 500, 'Medium', 'Rejected', 'Barangay Poblacion',        'responder4@resqoperation.org', '2026-05-23'],
-            ['REQ-2024-087', 'MEDICAL-MEDKIT-BOX-SM-ALL',  30, 'High',   'Pending',  'Community Health Center',   'responder5@resqoperation.org', '2026-05-23'],
-            ['REQ-2024-086', 'RELIEF-BLANKET-PCS-REG-ALL',100, 'Low',    'Approved', 'DSWD Shelter - Cavite',     'responder6@resqoperation.org', '2026-05-22'],
+            ['REQ-2024-091', 'MED-381AB4AC', 200, 'High',   'Pending',  'Typhoon Carina Relief',     'responder1@resqoperation.org', 1, null, null],
+            ['REQ-2024-090', 'FOO-669FB372',   150, 'High',   'Pending',  'Flood Ops - Pampanga',      'responder2@resqoperation.org', 2, null, null],
+            ['REQ-2024-089', 'REL-02B4AA7D', 60, 'High',   'Approved', 'Coastal Rescue - Batangas', 'responder3@resqoperation.org', 3, 6, 'Adjusted to the 6 units available in seeded stock.'],
+            ['REQ-2024-088', 'FOO-EF61C25B', 500, 'Medium', 'Rejected', 'Barangay Poblacion',        'responder4@resqoperation.org', 4, null, null],
+            ['REQ-2024-087', 'MED-381AB4AC',  30, 'High',   'Pending',  'Community Health Center',   'responder5@resqoperation.org', 5, null, null],
+            ['REQ-2024-086', 'REL-02B4AA7D',100, 'Low',    'Pending',  'DSWD Shelter - Cavite',     'responder6@resqoperation.org', 6, null, null],
         ];
 
-        foreach ($requests as [$code, $inventorySku, $qty, $priority, $status, $purpose, $email, $date]) {
+        $adminId = \App\Models\User::query()->where('role', 'admin')->value('id');
+
+        foreach ($requests as [$code, $inventorySku, $qty, $priority, $status, $purpose, $email, $ageInDays, $approvedQuantity, $approvalNotes]) {
             $inventoryId = Inventory::query()->where('sku', $inventorySku)->value('id');
 
             if (! $inventoryId) {
                 throw new \RuntimeException("Cannot seed {$code}: inventory SKU {$inventorySku} was not found.");
             }
 
-            DB::table('requests')->insertOrIgnore([
+            $createdAt = now()->subDays($ageInDays)->setTime(8, 0);
+            $decisionAt = $createdAt->copy()->addHours(2);
+
+            DB::table('requests')->updateOrInsert(
+                ['request_code' => $code],
+                [
                 'request_code'        => $code,
                 'inventory_id'        => $inventoryId,
                 'source'              => $purpose,
                 'quantity'            => $qty,
+                'approved_quantity'   => $approvedQuantity,
+                'approved_by_user_id' => $status === 'Approved' ? $adminId : null,
+                'approval_notes'      => $approvalNotes,
                 'priority'            => $priority,
                 'status'              => $status,
                 'purpose'             => $purpose,
                 'responder_email'     => $email,
-                'notification_status' => $status === 'Pending' ? null : "Responder notified: request {$status}",
-                'approved_at'         => $status === 'Approved' ? now() : null,
-                'rejected_at'         => $status === 'Rejected' ? now() : null,
-                'created_at'          => $date . ' 08:00:00',
-                'updated_at'          => now(),
-            ]);
+                'notification_status' => null,
+                'approved_at'         => $status === 'Approved' ? $decisionAt : null,
+                'rejected_at'         => $status === 'Rejected' ? $decisionAt : null,
+                'created_at'          => $createdAt,
+                'updated_at'          => $status === 'Pending' ? $createdAt : $decisionAt,
+                ]
+            );
         }
     }
 }

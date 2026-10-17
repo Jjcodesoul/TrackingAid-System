@@ -322,7 +322,8 @@ class ReportController extends Controller
     {
         return match ($reportType) {
             'request' => ['Pending', 'Approved', 'Partially Released', 'Released', 'Rejected', 'Cancelled'],
-            'borrow-return', 'distribution' => ['Loading', 'Dispatched', 'In Transit', 'Arrived'],
+            'borrow-return' => ['Good', 'Damaged', 'Missing'],
+            'distribution' => ['Loading', 'Dispatched', 'In Transit', 'Arrived'],
             'stock-movements' => ['stock-in', 'release', 'good-return', 'damaged-return', 'missing'],
             default => ['In Stock', 'Low Stock', 'Out of Stock', 'Expiring', 'Expired'],
         };
@@ -514,15 +515,15 @@ class ReportController extends Controller
         if (! empty($filters['category'])) {
             $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
         }
-        if (! empty($filters['status'])) {
-            $releasesQuery->where('delivery_status', $filters['status']);
-        }
         $this->applyDateFilters($releasesQuery, 'released_at', $filters);
         $releases = $releasesQuery->get();
 
         $returnsQuery = ReturnItem::with('inventory');
         if (! empty($filters['category'])) {
             $returnsQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
+        }
+        if (! empty($filters['status'])) {
+            $returnsQuery->where('condition', $filters['status']);
         }
         $this->applyDateFilters($returnsQuery, 'created_at', $filters);
         $returns = $returnsQuery->get();

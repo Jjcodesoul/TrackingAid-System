@@ -119,7 +119,7 @@ class WorkflowManagementTest extends TestCase
                 'approved_quantity' => 3,
                 'approval_notes' => 'Approve available quantity; restock remaining need.',
             ])
-            ->assertRedirect();
+            ->assertRedirect(route('borrow-release.create'));
 
         $request->refresh();
         $this->assertSame(4, (int) $request->quantity);
@@ -217,24 +217,20 @@ class WorkflowManagementTest extends TestCase
         $this->assertSame('Released', $request->fresh()->status);
     }
 
-    public function test_partial_releases_cannot_cumulatively_exceed_the_approved_quantity(): void
+    public function test_release_quantity_must_match_remaining_approved_quantity(): void
     {
         $staff = User::factory()->create(['role' => 'staff']);
         [$inventory, $request, $deliveryPerson] = $this->createReleaseFixture();
 
         $this->actingAs($staff)
             ->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 2))
-            ->assertRedirect(route('borrow-release.create'));
-
-        $this->assertSame('Partially Released', $request->fresh()->status);
-
-        $this->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 2))
             ->assertSessionHasErrors('quantity');
 
-        $this->assertDatabaseCount('borrow_releases', 1);
-        $this->assertSame(8, (int) $inventory->fresh()->quantity);
+        $this->assertSame('Approved', $request->fresh()->status);
+        $this->assertDatabaseCount('borrow_releases', 0);
+        $this->assertSame(10, (int) $inventory->fresh()->quantity);
 
-        $this->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 1))
+        $this->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 3))
             ->assertRedirect(route('borrow-release.create'));
 
         $this->assertSame('Released', $request->fresh()->status);

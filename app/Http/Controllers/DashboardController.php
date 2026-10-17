@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Request as SupplyRequest;
 use App\Models\BorrowRelease;
+use App\Models\ReturnItem;
 use App\Services\NotificationService;
 use Illuminate\Support\Facades\DB;
 
@@ -28,6 +29,8 @@ class DashboardController extends Controller
         $activeRequests   = SupplyRequest::where('status', 'Pending')->count();
         $approvedRequests = SupplyRequest::where('status', 'Approved')->count();
         $releasedRequests = SupplyRequest::where('status', 'Released')->count();
+        $releasedItems = BorrowRelease::sum('quantity');
+        $returnedItems = ReturnItem::sum('quantity');
         $rejectedRequests = SupplyRequest::where('status', 'Rejected')->count();
         $lowStockAlerts   = $notificationService->lowStockAlerts()->count();
         $expiringItems    = $notificationService->expiringItemAlerts()->count();
@@ -50,6 +53,8 @@ class DashboardController extends Controller
             'activeRequests',
             'approvedRequests',
             'releasedRequests',
+            'releasedItems',
+            'returnedItems',
             'rejectedRequests',
             'lowStockAlerts',
             'expiringItems',

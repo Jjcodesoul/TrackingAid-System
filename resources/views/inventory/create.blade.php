@@ -20,6 +20,15 @@
         {{ session('error') }}
     </div>
 @endif
+@if($errors->any())
+    <div class="alert-box alert-warning" role="alert">
+        <ul class="m-0 pl-5">
+            @foreach($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 
 <form method="POST" action="/inventory/store" class="inventory-form">
 @csrf
@@ -46,9 +55,9 @@
                     </div>
                 </label>
 
-                <label id="typeCard_returnable" onclick="selectItemType('returnable')"
+                <label id="typeCard_returnable" onclick="selectItemType('reusable')"
                     style="cursor:pointer; border:2px solid #e2e8f0; background:#fff; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; transition:all .15s;">
-                    <input type="radio" name="type" value="returnable" style="display:none;">
+                    <input type="radio" name="type" value="reusable" style="display:none;">
                     <div style="width:36px; height:36px; border-radius:8px; background:#F1F5F9; color:#64748b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <i class="fa-solid fa-arrow-rotate-left"></i>
                     </div>
@@ -225,7 +234,7 @@
         <div id="returnableNote" style="display:none; background:#F8FAFC; border:1px solid #e2e8f0; border-radius:10px; padding:14px 16px;">
             <p style="margin:0; font-size:12px; color:#64748b; display:flex; align-items:center; gap:8px;">
                 <i class="fa-solid fa-circle-info" style="color:#94a3b8;"></i>
-                This item will be tracked as returnable equipment — no expiration or flavor variant needed.
+                This reusable equipment will be tracked for return after release.
             </p>
         </div>
 
@@ -235,11 +244,11 @@
     <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:24px;">
 
         <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
-            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Generated SKU</h4>
+            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Compact SKU preview</h4>
 
             <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:16px 20px; margin-bottom:16px;">
                 <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:20px; margin:0; letter-spacing:.06em;">
-                    FDITM001
+                    Generated on save
                 </p>
             </div>
 
@@ -247,16 +256,16 @@
                 <table style="width:100%; border-collapse:collapse;">
                     <thead>
                         <tr style="border-bottom:1px solid #f1f5f9;">
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Category Code</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Item Code</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Sequence</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Category</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Item</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Details</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr>
                             <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-category">—</td>
                             <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-item">—</td>
-                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-seq">001*</td>
+                            <td style="padding:8px; font-size:12px; font-weight:700; color:#1a202c;" id="bd-details">—</td>
                         </tr>
                     </tbody>
                 </table>
@@ -274,8 +283,8 @@
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
                 <div>
                     <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">[2-letter Category][3-letter Item][3-digit Number]</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">8 characters total — e.g. FDCOR001 for the 1st Food/Corned Beef item. *The sequence number shown here is a preview only; the final number is assigned when you save, to guarantee it's never a duplicate.</p>
+                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY-ITEM-SIZE-TYPE-VARIANT</p>
+                    <p style="font-size:11px; color:#6B7280; margin:0;">The SKU describes the item and its size, type, and variant where applicable. Quantity is tracked separately. Matching item details produce the same SKU and are rejected so stock stays on one item record.</p>
                 </div>
             </div>
         </div>
@@ -367,26 +376,43 @@ function handleDynamicNewInput(field) {
 function generateSKU() {
     const category = document.getElementById('category_final').value;
     const rawName = document.getElementById('name').value.trim();
-
-    // 2-letter category code (e.g. "Food" -> "FD")
-    const categoryCode = category.replace(/[^A-Za-z]/g, '').substring(0, 2).toUpperCase();
-    // 3-letter item code from the first word (e.g. "Corned Beef" -> "COR")
-    const firstWord = rawName.split(/\s+/)[0] || '';
-    const itemCode = firstWord.replace(/[^A-Za-z]/g, '').substring(0, 3).toUpperCase();
+    const categoryCodes = { FOOD: 'FOO', MEDICAL: 'MED', RESCUE: 'RES', RELIEF: 'REL', HYGIENE: 'HYG', SHELTER: 'SHE', COMMUNICATIONS: 'COM' };
+    const categoryKey = category.trim().toUpperCase();
+    const categoryCode = categoryCodes[categoryKey] || (categoryKey.replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'GEN');
+    const variantValue = document.getElementById('variant_final').value;
+    const targetValue = document.getElementById('target_beneficiary_final').value;
+    const selectedType = document.querySelector('input[name="type"]:checked')?.value;
+    const storedType = selectedType === 'reusable' ? 'returnable' : 'consumable';
+    const identity = [categoryKey, rawName, document.getElementById('size_weight_final').value, variantValue, targetValue, storedType]
+        .map(value => (value || '').trim().toUpperCase()).join('|');
+    const preview = document.getElementById('skuPreview');
+    const generation = ++skuGeneration;
 
     document.getElementById('bd-category').innerText = categoryCode || '—';
-    document.getElementById('bd-item').innerText = itemCode || '—';
+    document.getElementById('bd-item').innerText = rawName || '—';
+    document.getElementById('bd-details').innerText = [document.getElementById('size_weight_final').value, variantValue, targetValue]
+        .filter(value => value && value.toUpperCase() !== 'NONE').join(' · ') || '—';
+    preview.innerText = 'Generating…';
+    document.getElementById('sku').value = '';
 
-    let sku = '';
-    if (categoryCode && itemCode) {
-        // "001" is a placeholder preview only — the real sequence number is
-        // assigned server-side on save, guaranteed never to collide.
-        sku = categoryCode + itemCode + '001';
+    if (!category || !rawName || !window.crypto?.subtle) {
+        preview.innerText = 'Generated on save';
+        return;
     }
 
-    document.getElementById('skuPreview').innerText = sku || 'FDITM001';
-    document.getElementById('sku').value = sku;
+    crypto.subtle.digest('SHA-256', new TextEncoder().encode(identity)).then(hash => {
+        if (generation !== skuGeneration) return;
+        const suffix = Array.from(new Uint8Array(hash)).slice(0, 4)
+            .map(byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
+        const sku = `${categoryCode}-${suffix}`;
+        preview.innerText = sku;
+        document.getElementById('sku').value = sku;
+    }).catch(() => {
+        if (generation === skuGeneration) preview.innerText = 'Generated on save';
+    });
 }
+
+let skuGeneration = 0;
 
 function copySKU() {
     const sku = document.getElementById('sku').value;
@@ -400,7 +426,7 @@ function copySKU() {
 
 function clearForm() {
     document.querySelector('form').reset();
-    document.getElementById('skuPreview').innerText = 'FDITM001';
+    document.getElementById('skuPreview').innerText = 'Generated on save';
     document.getElementById('sku').value = '';
 
     ['category', 'unit_type', 'size_weight', 'target_beneficiary', 'variant'].forEach(field => {
@@ -409,7 +435,7 @@ function clearForm() {
         document.getElementById(field + '_newInput').value = '';
     });
 
-    ['bd-category','bd-item'].forEach(id => {
+    ['bd-category','bd-item','bd-details'].forEach(id => {
         document.getElementById(id).innerText = '—';
     });
 

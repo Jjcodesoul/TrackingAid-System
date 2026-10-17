@@ -223,6 +223,7 @@
     }
 
     .print-report-table-wrap { display: none; }
+    .print-report-header { display: none; }
 
     .report-pagination {
         display: flex;
@@ -345,12 +346,16 @@
     }
 
     @media print {
+        @page { size: landscape; margin: 12mm; }
+
         .app-sidebar,
         .app-sidebar-backdrop,
         .app-header,
         .reports-toolbar,
+        .reports-heading,
         .report-filter,
         .report-chart-card,
+        .report-current,
         .report-pagination,
         .screen-report-table-wrap {
             display: none !important;
@@ -391,11 +396,63 @@
 
         .reports-page {
             background: #ffffff;
+            color: #111827;
+            font-size: 9pt;
+        }
+
+        .print-report-header {
+            display: block !important;
+            margin-bottom: 10mm;
+            padding-bottom: 5mm;
+            border-bottom: 2px solid #334155;
+        }
+
+        .print-report-header h1 {
+            margin: 2mm 0;
+            font-size: 18pt;
+        }
+
+        .print-report-header p {
+            margin: 1mm 0;
+            font-size: 9pt;
+        }
+
+        .report-table {
+            width: 100%;
+            table-layout: fixed;
+            font-size: 8pt;
+        }
+
+        .report-table th,
+        .report-table td {
+            padding: 5px 6px !important;
+            overflow-wrap: anywhere;
+        }
+
+        .report-table thead { display: table-header-group; }
+        .report-table tr { break-inside: avoid; }
+        .report-current,
+        .report-stat,
+        .report-card { break-inside: avoid; }
+        .print-report-table caption {
+            padding: 0 0 4mm;
+            text-align: left;
+            font-size: 12pt;
+            font-weight: 700;
         }
     }
 </style>
 
 <div class="reports-page">
+    <header class="print-report-header">
+        <strong>TrackingAid — Disaster Response Logistics</strong>
+        <h1>{{ $report['title'] }}</h1>
+        <p>Reporting period: {{ isset($filters['start_date']) ? \Carbon\Carbon::parse($filters['start_date'])->format('M d, Y') : 'Earliest available' }} to {{ isset($filters['end_date']) ? \Carbon\Carbon::parse($filters['end_date'])->format('M d, Y') : 'Today' }}</p>
+        @if(!empty($filters['category']))<p>Category: {{ $filters['category'] }}</p>@endif
+        @if(!empty($filters['status']))<p>Status / condition: {{ \Illuminate\Support\Str::headline($filters['status']) }}</p>@endif
+        <p>Generated: {{ now()->format('M d, Y H:i') }}</p>
+    </header>
+
     <div class="reports-heading">
         <h2>Reports</h2>
         <p>Analytics and export for all system modules</p>
@@ -469,6 +526,8 @@
             {{ isset($filters['start_date']) ? \Carbon\Carbon::parse($filters['start_date'])->format('M d, Y') : 'Earliest available' }}
             to
             {{ isset($filters['end_date']) ? \Carbon\Carbon::parse($filters['end_date'])->format('M d, Y') : 'Today' }}
+            @if(!empty($filters['category'])) · Category: {{ $filters['category'] }}@endif
+            @if(!empty($filters['status'])) · Status / condition: {{ \Illuminate\Support\Str::headline($filters['status']) }}@endif
         </p>
     </div>
 

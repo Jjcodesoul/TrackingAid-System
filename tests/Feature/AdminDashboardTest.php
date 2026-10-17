@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Request as SupplyRequest;
+use App\Models\ReturnItem;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -98,12 +99,19 @@ class AdminDashboardTest extends TestCase
             'delivery_status' => 'Arrived',
             'arrived_at' => now(),
         ]);
+        ReturnItem::create([
+            'inventory_id' => $inventory->id,
+            'quantity' => 2,
+            'condition' => 'Good',
+        ]);
 
         $response = $this->actingAs($admin)->get('/admin/dashboard');
 
         $response->assertOk()
             ->assertSee('Request Status Overview')
             ->assertSee('Released')
+            ->assertSee('Items Released')
+            ->assertSee('Items Returned')
             ->assertSee('Arrived this month')
             ->assertSee('>1</h3>', false);
     }

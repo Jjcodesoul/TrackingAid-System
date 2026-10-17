@@ -139,9 +139,9 @@ class BorrowReleaseController extends Controller
                 ]);
             }
 
-            if ((int) $validated['quantity'] > $remainingQuantity) {
+            if ((int) $validated['quantity'] !== $remainingQuantity) {
                 throw ValidationException::withMessages([
-                    'quantity' => 'Release quantity cannot exceed the remaining approved quantity.',
+                    'quantity' => "Release quantity must equal the remaining approved quantity of {$remainingQuantity}.",
                 ]);
             }
 

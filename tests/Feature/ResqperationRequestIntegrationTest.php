@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Models\ResqoperationForwardedRequest;
+use App\Models\Item;
+use App\Models\StockBatch;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -107,6 +109,48 @@ class ResqperationRequestIntegrationTest extends TestCase
             'tracking_reference' => 'TA-TEST-DUPLICATE',
             'quantity' => 8,
         ]);
+    }
+
+    public function test_incoming_request_response_reports_a_matched_item_shortage_and_staff_can_review_it(): void
+    {
+        $item = Item::create([
+            'name' => 'Medical Kit',
+            'category' => 'MEDICAL',
+            'unit_type' => 'BOX',
+            'size_weight' => 'STD',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'NONE',
+            'type' => 'consumable',
+            'storage_location' => 'Warehouse A',
+            'sku' => 'MED-KIT-STD-CON',
+        ]);
+        StockBatch::create([
+            'item_id' => $item->id,
+            'quantity' => 65,
+            'supplier' => 'Fixture stock',
+            'date_received' => now()->toDateString(),
+        ]);
+
+        $response = $this->postJson('/api/incoming-requests', [
+            'tracking_reference' => 'TA-STOCK-CHECK-001',
+            'resqperation_request_id' => 'RR-STOCK-CHECK-001',
+            'item_name' => 'MED-KIT-STD-CON',
+            'quantity' => 100,
+            'requested_by' => 'Medical Response Team',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('stock_availability.status', 'partially_available')
+            ->assertJsonPath('stock_availability.requested_quantity', 100)
+            ->assertJsonPath('stock_availability.available_quantity', 65)
+            ->assertJsonPath('stock_availability.shortage', 35);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->get(route('requests.index'))
+            ->assertOk()
+            ->assertSee('TA-STOCK-CHECK-001')
+            ->assertSee('Available: 65')
+            ->assertSee('Short by 35');
     }
 
     private function createForwardedRequest(string $trackingReference): ResqoperationForwardedRequest
