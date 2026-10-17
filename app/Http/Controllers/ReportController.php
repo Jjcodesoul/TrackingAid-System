@@ -331,10 +331,12 @@ class ReportController extends Controller
     private function buildReport(string $report, array $filters = []): array
     {
         return match ($report) {
-    private function inventoryReport(array $filters = []): array
-    {
-        $itemsQuery = Item::with('stockBatches')->orderBy('category')->orderBy('name');
-
+            'inventory' => $this->inventoryReport($filters),
+            'request' => $this->requestReport($filters),
+            'borrow-return' => $this->borrowReturnReport($filters),
+            'stock-movements' => $this->stockMovementReport($filters),
+            'distribution' => $this->distributionReport($filters),
+        };
     }
 
     private function inventoryReport(array $filters = []): array

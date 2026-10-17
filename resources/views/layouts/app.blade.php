@@ -277,7 +277,6 @@
                 <x-brand-mark class="app-brand-mark" />
                 <div class="flex flex-col min-w-0">
                     <h1 class="text-base font-bold text-white tracking-wide m-0 p-0 leading-tight truncate">TrackingAid</h1>
-                    <span class="text-xs text-slate-400 font-medium mt-0.5 m-0 p-0 truncate">Disaster response logistics</span>
                 </div>
             </div>
 
@@ -375,9 +374,6 @@
                     <button type="button" class="app-sidebar-toggle" id="appSidebarToggle" aria-label="Open navigation menu" aria-controls="appSidebar" aria-expanded="false">
                         <i class="fa-solid fa-bars" id="appSidebarToggleIcon" aria-hidden="true"></i>
                     </button>
-                    <div class="app-header-crumb flex items-center">
-                    <span class="text-slate-800 font-semibold capitalize">{{ str_replace('-', ' ', Request::segment(2) ?? (Request::segment(1) ?? 'Dashboard')) }}</span>
-                    </div>
                 </div>
 
                 <div class="app-header-actions flex items-center gap-6">

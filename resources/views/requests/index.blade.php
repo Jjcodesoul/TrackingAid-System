@@ -7,7 +7,22 @@
     </div>
 
     @if(session('success'))
-        <div class="alert-box alert-success">{{ session('success') }}</div>
+        <div class="alert-box alert-success" role="status">{{ session('success') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert-box alert-error" role="alert">{{ session('error') }}</div>
+    @endif
+    @if($errors->any())
+        <div class="alert-box alert-warning" role="alert">
+            <div>
+                <strong>Request action needs attention.</strong>
+                <ul class="m-0 pl-5">
+                    @foreach($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        </div>
     @endif
 
     <div class="stat-grid stat-grid--four">

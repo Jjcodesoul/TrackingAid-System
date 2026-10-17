@@ -40,6 +40,7 @@
                         <th>Released</th>
                         <th>Returned</th>
                         <th>Outstanding</th>
+                        <th>Return status</th>
                         <th>Release date</th>
                         <th>Record return</th>
                     </tr>
@@ -49,6 +50,7 @@
                         @php
                             $returnedQuantity = (int) ($release->returned_quantity ?? 0);
                             $outstandingQuantity = max((int) $release->quantity - $returnedQuantity, 0);
+                            $returnStatus = $returnedQuantity > 0 ? 'Partially returned' : 'Awaiting return';
                             $item = $release->inventory?->item;
                             $variant = collect([$item?->size_weight, $item?->variant && strtoupper($item->variant) !== 'NONE' ? $item->variant : null])->filter()->join(' / ');
                         @endphp
@@ -68,6 +70,7 @@
                             <td>{{ number_format($release->quantity) }} {{ $release->unit }}</td>
                             <td>{{ number_format($returnedQuantity) }}</td>
                             <td><span class="status-badge status-pending">{{ number_format($outstandingQuantity) }}</span></td>
+                            <td><span class="status-badge {{ $returnedQuantity > 0 ? 'status-info' : 'status-pending' }}">{{ $returnStatus }}</span></td>
                             <td>{{ $release->released_at?->format('M d, Y') ?? '—' }}</td>
                             <td class="min-w-[280px]">
                                 <details>
@@ -99,7 +102,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center text-slate-600 py-8">No reusable releases currently have a return balance outstanding.</td>
+                            <td colspan="8" class="text-center text-slate-600 py-8">No reusable releases currently have a return balance outstanding.</td>
                         </tr>
                     @endforelse
                 </tbody>
