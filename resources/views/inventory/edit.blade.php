@@ -184,7 +184,7 @@
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
                 <div>
                     <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CAT-XXXXXXXX</p>
+                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY + ITEM + SIZE + TYPE + VARIANT + SEQUENCE</p>
                     <p style="font-size:11px; color:#6B7280; margin:0;">Existing SKUs stay fixed when item details are edited.</p>
                 </div>
             </div>

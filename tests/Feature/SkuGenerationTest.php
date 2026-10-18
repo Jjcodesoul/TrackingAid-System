@@ -21,7 +21,7 @@ class SkuGenerationTest extends TestCase
             ->assertRedirect('/inventory');
 
         $item = Item::firstOrFail();
-        $this->assertMatchesRegularExpression('/^FOO-[A-F0-9]{8}$/', $item->sku);
+        $this->assertSame('FOORICE5KGCST01', $item->sku);
         $this->assertDatabaseHas('inventory', ['sku' => $item->sku]);
     }
 

@@ -283,8 +283,8 @@
                 <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
                 <div>
                     <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY-ITEM-SIZE-TYPE-VARIANT</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">The SKU describes the item and its size, type, and variant where applicable. Quantity is tracked separately. Matching item details produce the same SKU and are rejected so stock stays on one item record.</p>
+                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY + ITEM + SIZE + TYPE + VARIANT + SEQUENCE</p>
+                    <p style="font-size:11px; color:#6B7280; margin:0;">Short readable codes with no dashes. Example: Rice (50 kg) is FOORICE50KGCST01. Quantity is tracked separately.</p>
                 </div>
             </div>
         </div>
@@ -382,37 +382,33 @@ function generateSKU() {
     const variantValue = document.getElementById('variant_final').value;
     const targetValue = document.getElementById('target_beneficiary_final').value;
     const selectedType = document.querySelector('input[name="type"]:checked')?.value;
-    const storedType = selectedType === 'reusable' ? 'returnable' : 'consumable';
-    const identity = [categoryKey, rawName, document.getElementById('size_weight_final').value, variantValue, targetValue, storedType]
-        .map(value => (value || '').trim().toUpperCase()).join('|');
     const preview = document.getElementById('skuPreview');
-    const generation = ++skuGeneration;
+    const sizeValue = document.getElementById('size_weight_final').value;
 
     document.getElementById('bd-category').innerText = categoryCode || '—';
     document.getElementById('bd-item').innerText = rawName || '—';
     document.getElementById('bd-details').innerText = [document.getElementById('size_weight_final').value, variantValue, targetValue]
         .filter(value => value && value.toUpperCase() !== 'NONE').join(' · ') || '—';
-    preview.innerText = 'Generating…';
-    document.getElementById('sku').value = '';
-
-    if (!category || !rawName || !window.crypto?.subtle) {
+    if (!category || !rawName) {
         preview.innerText = 'Generated on save';
+        document.getElementById('sku').value = '';
         return;
     }
 
-    crypto.subtle.digest('SHA-256', new TextEncoder().encode(identity)).then(hash => {
-        if (generation !== skuGeneration) return;
-        const suffix = Array.from(new Uint8Array(hash)).slice(0, 4)
-            .map(byte => byte.toString(16).padStart(2, '0')).join('').toUpperCase();
-        const sku = `${categoryCode}-${suffix}`;
-        preview.innerText = sku;
-        document.getElementById('sku').value = sku;
-    }).catch(() => {
-        if (generation === skuGeneration) preview.innerText = 'Generated on save';
-    });
+    const words = rawName.toUpperCase().match(/[A-Z0-9]+/g) || [];
+    const itemWords = words.filter(word => !/^\d+(ML|L|KG|G|CM|M|PCS|CT)$/.test(word));
+    const itemCode = itemWords.length > 1
+        ? `${itemWords[0].slice(0, 3)}${itemWords[1].slice(0, 2)}`
+        : (itemWords[0] || 'ITEM').slice(0, 4);
+    const compact = (value, length, fallback) => {
+        const cleaned = (value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+        return (cleaned && cleaned !== 'NONE' ? cleaned : fallback).slice(0, length);
+    };
+    const typeCode = selectedType === 'reusable' ? 'R' : 'C';
+    const sku = `${categoryCode}${itemCode}${compact(sizeValue, 5, 'STD')}${typeCode}${compact(variantValue, 2, 'ST')}01`;
+    preview.innerText = sku;
+    document.getElementById('sku').value = sku;
 }
-
-let skuGeneration = 0;
 
 function copySKU() {
     const sku = document.getElementById('sku').value;

@@ -30,8 +30,9 @@ class SeederDataIntegrityTest extends TestCase
             ->assertSeeText('Demo Delivery Personnel');
 
         $this->assertGreaterThan(0, Item::count());
+        $this->assertSame(Item::count(), Item::query()->distinct('sku')->count('sku'));
         foreach (Item::all() as $item) {
-            $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}-[A-F0-9]{8}$/', $item->sku);
+            $this->assertMatchesRegularExpression('/^[A-Z0-9]{12,20}$/', $item->sku);
             $this->assertSame($skuGenerator->generate(
                 $item->category,
                 $item->name,
@@ -44,7 +45,7 @@ class SeederDataIntegrityTest extends TestCase
         }
 
         foreach (Inventory::all() as $inventory) {
-            $this->assertMatchesRegularExpression('/^[A-Z0-9]{3}-[A-F0-9]{8}$/', $inventory->sku);
+            $this->assertMatchesRegularExpression('/^[A-Z0-9]{12,20}$/', $inventory->sku);
             $this->assertDatabaseHas('items', ['sku' => $inventory->sku]);
         }
 
@@ -54,10 +55,10 @@ class SeederDataIntegrityTest extends TestCase
     public function test_request_seeder_links_requests_to_the_declared_inventory_skus(): void
     {
         foreach ([
-            'MED-381AB4AC' => 'Medical Kit (Small)',
-            'FOO-669FB372' => 'Rice (50kg)',
-            'REL-02B4AA7D' => 'Blankets',
-            'FOO-EF61C25B' => 'Instant Noodles',
+            'MEDMEDKISMCST01' => 'Medical Kit (Small)',
+            'FOORICE50KGCST01' => 'Rice (50kg)',
+            'RELBLANREGRST01' => 'Blankets',
+            'FOOINSNOREGCST01' => 'Instant Noodles',
         ] as $sku => $name) {
             Inventory::create([
                 'name' => $name, 'category' => 'Test', 'sku' => $sku,
@@ -70,12 +71,12 @@ class SeederDataIntegrityTest extends TestCase
         $requests = SupplyRequest::with('inventory')->orderBy('request_code')->get();
 
         $this->assertSame([
-            'REQ-2024-086' => 'REL-02B4AA7D',
-            'REQ-2024-087' => 'MED-381AB4AC',
-            'REQ-2024-088' => 'FOO-EF61C25B',
-            'REQ-2024-089' => 'REL-02B4AA7D',
-            'REQ-2024-090' => 'FOO-669FB372',
-            'REQ-2024-091' => 'MED-381AB4AC',
+            'REQ-2024-086' => 'RELBLANREGRST01',
+            'REQ-2024-087' => 'MEDMEDKISMCST01',
+            'REQ-2024-088' => 'FOOINSNOREGCST01',
+            'REQ-2024-089' => 'RELBLANREGRST01',
+            'REQ-2024-090' => 'FOORICE50KGCST01',
+            'REQ-2024-091' => 'MEDMEDKISMCST01',
         ], $requests->mapWithKeys(fn (SupplyRequest $request): array => [$request->request_code => $request->inventory->sku])->all());
 
         $this->assertSame(['High', 'Low', 'Medium'], $requests->pluck('priority')->unique()->sort()->values()->all());

@@ -24,15 +24,41 @@ class SkuGenerator
     ): string {
         $categoryKey = strtoupper(trim($category));
         $categoryCode = self::CATEGORY_CODES[$categoryKey]
-            ?? strtoupper(substr(preg_replace('/[^A-Z0-9]/', '', $categoryKey) ?: 'GEN', 0, 3));
+            ?? substr(preg_replace('/[^A-Z0-9]/', '', $categoryKey) ?: 'GEN', 0, 3);
+        $typeCode = in_array(strtoupper($type), ['RETURNABLE', 'REUSABLE'], true) ? 'R' : 'C';
 
-        // Retain a stable, compact identifier. The metadata-derived suffix keeps
-        // identical items together while distinguishing size, variant and type.
-        $identity = implode('|', array_map(
-            static fn (?string $value): string => strtoupper(trim((string) $value)),
-            [$categoryKey, $name, $size, $variant, $beneficiary, $type]
+        return $categoryCode
+            .$this->nameCode($name)
+            .$this->attributeCode($size, 5, 'STD')
+            .$typeCode
+            .$this->attributeCode($variant, 2, 'ST')
+            .'01';
+    }
+
+    private function nameCode(string $name): string
+    {
+        $words = preg_split('/[^A-Z0-9]+/i', strtoupper(trim($name)), -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $words = array_values(array_filter(
+            $words,
+            static fn (string $word): bool => ! preg_match('/^\d+(ML|L|KG|G|CM|M|PCS|CT)$/', $word)
         ));
 
-        return $categoryCode.'-'.strtoupper(substr(hash('sha256', $identity), 0, 8));
+        if (count($words) > 1) {
+            return substr($words[0], 0, 3).substr($words[1], 0, 2);
+        }
+
+        return substr($words[0] ?? 'ITEM', 0, 4);
+    }
+
+    private function attributeCode(?string $value, int $length, string $default): string
+    {
+        $value = strtoupper(trim((string) $value));
+        if ($value === '' || $value === 'NONE') {
+            return $default;
+        }
+
+        $value = preg_replace('/[^A-Z0-9]/', '', $value) ?: $default;
+
+        return substr($value, 0, $length);
     }
 }
