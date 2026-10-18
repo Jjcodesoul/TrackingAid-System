@@ -237,8 +237,9 @@
                                     <div style="display:flex; align-items:center; gap:8px;">
                                         <button
                                             type="button"
-                                            title="View request details"
-                                            aria-label="View {{ $freq->tracking_reference }} details"
+                                            class="users-action"
+                                            title="Review request"
+                                            aria-label="Review {{ $freq->tracking_reference }}"
                                             onclick="showForwardedRequest(this)"
                                             data-tracking-reference="{{ $freq->tracking_reference }}"
                                             data-request-id="{{ $freq->resqperation_request_id }}"
@@ -259,24 +260,11 @@
                                             data-stock-message="{{ $externalStock['message'] }}"
                                             data-forwarded-at="{{ optional($freq->forwarded_at)->format('M d, Y H:i') }}"
                                             data-status="{{ $statusKey }}"
-                                            style="background:none; border:none; cursor:pointer; color:#94a3b8; padding:4px;"
+                                            data-approve-url="{{ route('requests.forwarded.approve', $freq) }}"
+                                            data-reject-url="{{ route('requests.forwarded.reject', $freq) }}"
                                         >
-                                            <i class="fa-regular fa-eye"></i>
+                                            <i class="fa-regular fa-eye" aria-hidden="true"></i> Review
                                         </button>
-                                        @if($statusKey === 'Pending')
-                                            <form action="{{ route('requests.forwarded.approve', $freq) }}" method="POST" style="margin:0;">
-                                                @csrf
-                                                <button type="submit" title="Mark approved in TrackingAid" aria-label="Mark {{ $freq->tracking_reference }} approved in TrackingAid" onclick="return confirm('Mark this forwarded request approved in TrackingAid? No external status sync is configured.')" style="background:none; border:none; cursor:pointer; color:#059669; padding:4px; font-size:16px;">
-                                                    <i class="fa-regular fa-circle-check"></i>
-                                                </button>
-                                            </form>
-                                            <form action="{{ route('requests.forwarded.reject', $freq) }}" method="POST" onsubmit="return confirm('Reject this ResQperation request?')" style="margin:0;">
-                                                @csrf
-                                                <button type="submit" title="Reject" aria-label="Reject {{ $freq->tracking_reference }}" style="background:none; border:none; cursor:pointer; color:#DC2626; padding:4px; font-size:16px;">
-                                                    <i class="fa-regular fa-circle-xmark"></i>
-                                                </button>
-                                            </form>
-                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -297,7 +285,7 @@
         </div>
     </section>
 
-    <dialog id="localRequestDialog" class="request-review-dialog" aria-labelledby="localRequestDialogTitle">
+    <dialog id="localRequestDialog" class="request-review-dialog request-review-dialog--side" aria-labelledby="localRequestDialogTitle">
         <div class="request-review-header">
             <div>
                 <h2 id="localRequestDialogTitle">Request review</h2>
@@ -319,6 +307,7 @@
             <div class="request-review-full"><dt>Existing approval note</dt><dd data-local-detail="approvalNotes"></dd></div>
         </dl>
         <p id="requestShortageWarning" class="alert-box alert-warning" role="status" hidden></p>
+        <p id="localReviewedMessage" class="alert-box alert-info" role="status" style="margin:0 20px 20px;" hidden></p>
         @if(auth()->user()->role === 'admin')
             <div id="localPendingActions" class="request-review-actions" hidden>
                 <form id="localApproveForm" method="POST" onsubmit="return confirmLocalApproval()">
@@ -340,33 +329,50 @@
         @endif
     </dialog>
 
-    <dialog id="forwardedRequestDialog" aria-labelledby="forwardedRequestDialogTitle" style="width:min(640px, calc(100% - 32px)); max-height:85vh; overflow:auto; border:1px solid #e2e8f0; border-radius:8px; padding:0; box-shadow:0 24px 64px rgb(15 23 42 / 24%);">
-        <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; padding:18px 20px; border-bottom:1px solid #e2e8f0;">
-            <h2 id="forwardedRequestDialogTitle" style="margin:0; font-size:18px; color:#1a202c;">ResQperation request details</h2>
-            <button type="button" onclick="document.getElementById('forwardedRequestDialog').close()" aria-label="Close request details" title="Close" style="background:none; border:0; color:#64748b; cursor:pointer; font-size:20px;">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+    <dialog id="forwardedRequestDialog" class="request-review-dialog request-review-dialog--side" aria-labelledby="forwardedRequestDialogTitle">
+        <div class="request-review-header">
+            <div>
+                <h2 id="forwardedRequestDialogTitle">Request review</h2>
+                <p id="forwardedRequestDialogCode" class="request-review-code"></p>
+            </div>
+            <button type="button" class="users-action" onclick="document.getElementById('forwardedRequestDialog').close()" aria-label="Close request review">Close</button>
         </div>
-        <dl style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px 20px; margin:0; padding:20px;">
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Tracking reference</dt><dd data-request-detail="trackingReference" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">ResQperation request ID</dt><dd data-request-detail="requestId" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Source reference</dt><dd data-request-detail="sourceReference" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Item</dt><dd data-request-detail="item" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Category</dt><dd data-request-detail="category" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Resource type</dt><dd data-request-detail="resourceType" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Quantity</dt><dd data-request-detail="quantity" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Urgency</dt><dd data-request-detail="urgency" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Requested by</dt><dd data-request-detail="requestedBy" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Request source</dt><dd data-request-detail="requestSource" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area</dt><dd data-request-detail="areaLabel" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Status</dt><dd data-request-detail="status" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Stock availability</dt><dd data-request-detail="stockMessage" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Area notes</dt><dd data-request-detail="areaNote" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
-            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Description</dt><dd data-request-detail="description" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
-            <div style="grid-column:1/-1;"><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Validation notes</dt><dd data-request-detail="validationNotes" style="margin:4px 0 0; white-space:pre-wrap; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Forwarded at</dt><dd data-request-detail="forwardedAt" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
-            <div><dt style="font-size:11px; color:#64748b; text-transform:uppercase;">Source system</dt><dd data-request-detail="sourceSystem" style="margin:4px 0 0; overflow-wrap:anywhere;"></dd></div>
+        <dl class="request-review-grid">
+            <div><dt>Tracking reference</dt><dd data-request-detail="trackingReference"></dd></div>
+            <div><dt>ResQperation request ID</dt><dd data-request-detail="requestId"></dd></div>
+            <div><dt>Source reference</dt><dd data-request-detail="sourceReference"></dd></div>
+            <div><dt>Item</dt><dd data-request-detail="item"></dd></div>
+            <div><dt>Category</dt><dd data-request-detail="category"></dd></div>
+            <div><dt>Resource type</dt><dd data-request-detail="resourceType"></dd></div>
+            <div><dt>Quantity</dt><dd data-request-detail="quantity"></dd></div>
+            <div><dt>Urgency</dt><dd data-request-detail="urgency"></dd></div>
+            <div><dt>Requested by</dt><dd data-request-detail="requestedBy"></dd></div>
+            <div><dt>Request source</dt><dd data-request-detail="requestSource"></dd></div>
+            <div><dt>Area</dt><dd data-request-detail="areaLabel"></dd></div>
+            <div><dt>Status</dt><dd data-request-detail="status"></dd></div>
+            <div class="request-review-full"><dt>Stock availability</dt><dd data-request-detail="stockMessage"></dd></div>
+            <div class="request-review-full"><dt>Area notes</dt><dd data-request-detail="areaNote"></dd></div>
+            <div class="request-review-full"><dt>Description</dt><dd data-request-detail="description"></dd></div>
+            <div class="request-review-full"><dt>Validation notes</dt><dd data-request-detail="validationNotes"></dd></div>
+            <div><dt>Forwarded at</dt><dd data-request-detail="forwardedAt"></dd></div>
+            <div><dt>Source system</dt><dd data-request-detail="sourceSystem"></dd></div>
         </dl>
+        <p id="forwardedReviewedMessage" class="alert-box alert-info" role="status" style="margin:0 20px 20px;" hidden></p>
+        @if(auth()->user()->role === 'admin')
+            <div id="forwardedPendingActions" class="request-review-actions request-review-actions--sticky" hidden>
+                <p class="form-help" style="margin:0;">This updates the request status in TrackingAid. No external status sync is configured.</p>
+                <div class="request-review-buttons" style="gap:8px;">
+                    <form id="forwardedApproveForm" method="POST" onsubmit="return confirm('Mark this forwarded request approved in TrackingAid?')">
+                        @csrf
+                        <button type="submit" class="btn-main">Approve request</button>
+                    </form>
+                    <form id="forwardedRejectForm" method="POST" onsubmit="return confirm('Reject this ResQperation request?')">
+                        @csrf
+                        <button type="submit" class="btn-danger">Reject request</button>
+                    </form>
+                </div>
+            </div>
+        @endif
     </dialog>
 
     <script>
@@ -396,6 +402,9 @@
             const pending = button.dataset.status === 'Pending';
             const actions = document.getElementById('localPendingActions');
             if (actions) actions.hidden = !pending;
+            const reviewedMessage = document.getElementById('localReviewedMessage');
+            reviewedMessage.hidden = pending;
+            reviewedMessage.textContent = `This request is already ${button.dataset.status.toLowerCase()} and cannot be approved or rejected again.`;
 
             const quantity = document.getElementById('approvedQuantity');
             const available = Number(button.dataset.available || 0);
@@ -462,6 +471,19 @@
                 const field = document.querySelector(`[data-request-detail="${key}"]`);
                 field.textContent = value || 'Not provided';
             });
+
+            document.getElementById('forwardedRequestDialogCode').textContent = button.dataset.trackingReference || 'Forwarded request';
+
+            const pendingActions = document.getElementById('forwardedPendingActions');
+            const pending = button.dataset.status === 'Pending';
+            const reviewedMessage = document.getElementById('forwardedReviewedMessage');
+            reviewedMessage.hidden = pending;
+            reviewedMessage.textContent = `This request is already ${button.dataset.status.toLowerCase()} and cannot be approved or rejected again.`;
+            if (pendingActions) {
+                pendingActions.hidden = !pending;
+                document.getElementById('forwardedApproveForm').action = button.dataset.approveUrl;
+                document.getElementById('forwardedRejectForm').action = button.dataset.rejectUrl;
+            }
 
             document.getElementById('forwardedRequestDialog').showModal();
         }

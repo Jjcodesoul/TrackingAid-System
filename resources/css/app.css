@@ -350,6 +350,7 @@ a {
 .request-source-tag { display: inline-flex; margin-left: 4px; padding: 2px 6px; border-radius: 4px; background: var(--info-soft); color: var(--info); font-size: 11px; font-weight: 600; }
 .alert-box[hidden] { display: none; }
 .request-review-dialog { width: min(760px, calc(100% - 32px)); max-height: 88vh; overflow: auto; padding: 0; border: 1px solid var(--line); border-radius: var(--radius-surface); background: var(--surface); color: var(--ink); box-shadow: 0 20px 60px rgb(24 51 46 / 20%); }
+.request-review-dialog--side { inset: 22px auto auto 48px; width: min(680px, calc(100vw - 64px)); max-height: calc(100vh - 44px); margin: 0; }
 .request-review-dialog::backdrop { background: rgb(24 51 46 / 45%); }
 .request-review-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
 .request-review-header h2 { margin: 0; color: var(--ink); font-size: 20px; font-weight: 700; }
@@ -359,12 +360,14 @@ a {
 .request-review-grid dd { margin: 3px 0 0; color: var(--ink); font-size: 14px; overflow-wrap: anywhere; }
 .request-review-full { grid-column: 1 / -1; }
 .request-review-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: end; padding: 0 20px 20px; }
+.request-review-actions--sticky { position: sticky; bottom: 0; z-index: 1; padding-top: 12px; border-top: 1px solid var(--line); background: var(--surface); }
 .request-review-actions form:first-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
 .request-review-actions form:first-child .form-help { grid-column: 1 / -1; margin: -6px 0 2px; color: var(--muted); font-size: 12px; }
 .request-review-actions form:first-child .request-review-buttons { grid-column: 1 / -1; }
 .request-review-buttons { display: flex; justify-content: flex-end; }
 
 @media (max-width: 640px) {
+    .request-review-dialog--side { inset: 16px auto auto 16px; width: calc(100vw - 32px); max-height: calc(100vh - 32px); }
     .request-review-grid,
     .request-review-actions,
     .request-review-actions form:first-child { grid-template-columns: minmax(0, 1fr); }
