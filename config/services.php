@@ -36,7 +36,6 @@ return [
     ],
 
     'trackingaid_reports' => [
-        'api_key' => env('TRACKINGAID_REPORT_API_KEY'),
+        'api_key' => env('TRACKINGAID_REPORT_API_KEY', ''),
     ],
-
 ];

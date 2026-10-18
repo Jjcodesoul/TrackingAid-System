@@ -167,7 +167,6 @@ class ReportController extends Controller
 
         $fileName = "trackingaid-{$reportType}-{$record->id}.{$extension}";
         $filePath = "external_reports/{$fileName}";
-        $expiresAt = now()->addMinutes(30);
 
         try {
             $contents = match ($format) {
@@ -197,9 +196,8 @@ class ReportController extends Controller
 
         URL::forceRootUrl(config('app.url'));
 
-        $downloadUrl = URL::temporarySignedRoute(
+        $downloadUrl = URL::signedRoute(
             'api.external-reports.download',
-            $expiresAt,
             ['reportRequest' => $record->id]
         );
 
@@ -212,7 +210,6 @@ class ReportController extends Controller
             'format' => $format,
             'file_name' => $fileName,
             'download_url' => $downloadUrl,
-            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 
