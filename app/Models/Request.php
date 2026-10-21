@@ -14,7 +14,6 @@ class Request extends Model
         'approved_quantity',
         'approved_by_user_id',
         'approval_notes',
-        'priority',
         'status',
         'purpose',
         'responder_email',

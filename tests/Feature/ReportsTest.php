@@ -69,7 +69,7 @@ class ReportsTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 10,
-            'priority' => 'High',
+
             'status' => 'Approved',
             'purpose' => 'Clinic support',
             'created_at' => now(),
@@ -80,7 +80,7 @@ class ReportsTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 4,
-            'priority' => 'Low',
+
             'status' => 'Rejected',
             'purpose' => 'Duplicate request',
             'created_at' => now(),
@@ -232,8 +232,7 @@ class ReportsTest extends TestCase
         ]);
         $request = SupplyRequest::create([
             'request_code' => 'REQ-TENT-001', 'inventory_id' => $inventory->id,
-            'source' => 'ResQOperation', 'quantity' => 10, 'priority' => 'High',
-            'status' => 'Released', 'purpose' => 'Field deployment',
+            'source' => 'ResQOperation', 'quantity' => 10, 'status' => 'Released', 'purpose' => 'Field deployment',
         ]);
         BorrowRelease::create([
             'request_id' => $request->id, 'inventory_id' => $inventory->id, 'unit' => 'PCS',
@@ -265,8 +264,7 @@ class ReportsTest extends TestCase
         ]);
         $request = SupplyRequest::create([
             'request_code' => 'REQ-WATER-001', 'inventory_id' => $inventory->id,
-            'source' => 'ResQOperation', 'quantity' => 20, 'priority' => 'High',
-            'status' => 'Released', 'purpose' => 'Relief distribution',
+            'source' => 'ResQOperation', 'quantity' => 20, 'status' => 'Released', 'purpose' => 'Relief distribution',
         ]);
         foreach ([5, 7] as $quantity) {
             BorrowRelease::create([
@@ -332,16 +330,16 @@ class ReportsTest extends TestCase
         ]);
         $rejected = SupplyRequest::create([
             'request_code' => 'REQ-FILTER-REJECTED', 'inventory_id' => $food->id,
-            'quantity' => 2, 'priority' => 'High', 'status' => 'Rejected',
+            'quantity' => 2, 'status' => 'Rejected',
         ]);
         $rejected->forceFill(['created_at' => now()->startOfDay()->addHour()])->saveQuietly();
         SupplyRequest::create([
             'request_code' => 'REQ-FILTER-APPROVED', 'inventory_id' => $food->id,
-            'quantity' => 2, 'priority' => 'High', 'status' => 'Approved',
+            'quantity' => 2, 'status' => 'Approved',
         ]);
         SupplyRequest::create([
             'request_code' => 'REQ-FILTER-MEDICAL', 'inventory_id' => $medical->id,
-            'quantity' => 2, 'priority' => 'High', 'status' => 'Rejected',
+            'quantity' => 2, 'status' => 'Rejected',
         ]);
 
         $this->get(route('reports.index', [
@@ -379,7 +377,7 @@ class ReportsTest extends TestCase
         ]);
         $request = SupplyRequest::create([
             'request_code' => 'REQ-MOVEMENT-1', 'inventory_id' => $inventory->id,
-            'quantity' => 3, 'priority' => 'High', 'status' => 'Released',
+            'quantity' => 3, 'status' => 'Released',
         ]);
         $release = BorrowRelease::create([
             'request_id' => $request->id, 'inventory_id' => $inventory->id,

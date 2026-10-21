@@ -62,6 +62,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');
+        Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
 
         // 👥 User Management Actions (Fixed to work perfectly with standard browser form submissions)
         Route::get('/users', [UserController::class, 'index'])->name('users.index');

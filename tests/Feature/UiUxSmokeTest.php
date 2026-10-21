@@ -109,7 +109,7 @@ class UiUxSmokeTest extends TestCase
         ]);
         SupplyRequest::create([
             'request_code' => 'REQ-RELEASED-UX', 'inventory_id' => $inventory->id,
-            'quantity' => 2, 'priority' => 'High', 'status' => 'Released',
+            'quantity' => 2, 'status' => 'Released',
         ]);
 
         $this->get(route('requests.index'))

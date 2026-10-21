@@ -82,7 +82,7 @@ class AdminDashboardTest extends TestCase
                 'request_code' => 'REQ-UI-' . $index,
                 'inventory_id' => $inventory->id,
                 'quantity' => 1,
-                'priority' => 'High',
+
                 'status' => $status,
             ]);
         }

@@ -59,7 +59,6 @@
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Request ID</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Item</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">QTY</th>
-                        <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Priority</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Requested By</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Date</th>
                         <th style="padding:12px 16px; text-align:left; font-size:11px; font-weight:600; text-transform:uppercase; color:#94a3b8; letter-spacing:.05em;">Status</th>
@@ -75,9 +74,7 @@
                     @if(isset($requests) && count($requests) > 0)
                         @foreach($requests as $req)
                             @php
-                                $priorityKey = ucfirst(strtolower($req->priority ?? 'Low'));
                                 $statusKey   = ucfirst(strtolower($req->status ?? 'Pending'));
-                                $priorityClass = 'priority-'.strtolower($priorityKey);
                                 $statusClass = match ($statusKey) {
                                     'Pending' => 'status-pending',
                                     'Approved' => 'status-approved',
@@ -106,11 +103,6 @@
                                 </td>
                                 <td style="padding:14px 16px; font-weight:700; color:#1a202c;">
                                     {{ number_format($req->quantity ?? 0) }}
-                                </td>
-                                <td style="padding:14px 16px;">
-                                    <span class="priority-badge {{ $priorityClass }}">
-                                        {{ $priorityKey }}
-                                    </span>
                                 </td>
                                 <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
                                     {{ $req->source ?? $req->responder_email ?? 'Local User' }}
@@ -165,14 +157,12 @@
                     @if(isset($forwardedRequests) && count($forwardedRequests) > 0)
                         @foreach($forwardedRequests as $freq)
                             @php
-                                $urgencyKey = ucfirst(strtolower($freq->urgency ?? 'Medium'));
                                 $statusKey = match (strtolower($freq->resqperation_status ?? 'forwarded')) {
                                     'approved' => 'Approved',
                                     'rejected' => 'Rejected',
                                     'released' => 'Released',
                                     default => 'Pending',
                                 };
-                                $priorityClass = 'priority-'.strtolower($urgencyKey);
                                 $statusClass = match ($statusKey) {
                                     'Pending' => 'status-pending',
                                     'Approved' => 'status-approved',
@@ -201,11 +191,6 @@
                                 </td>
                                 <td style="padding:14px 16px; font-weight:700; color:#1a202c;">
                                     {{ number_format($freq->quantity ?? 0) }} {{ $freq->unit ?? '' }}
-                                </td>
-                                <td style="padding:14px 16px;">
-                                    <span class="priority-badge {{ $priorityClass }}">
-                                        {{ $urgencyKey }}
-                                    </span>
                                 </td>
                                 <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
                                     {{ $freq->requested_by ?? $freq->request_source ?? 'External request' }}
@@ -249,7 +234,6 @@
                                             data-resource-type="{{ $freq->resource_type }}"
                                             data-quantity="{{ $freq->quantity }}"
                                             data-unit="{{ $freq->unit }}"
-                                            data-urgency="{{ $freq->urgency }}"
                                             data-requested-by="{{ $freq->requested_by }}"
                                             data-request-source="{{ $freq->request_source }}"
                                             data-source-system="{{ $freq->source_system }}"
@@ -274,7 +258,7 @@
                     {{-- 3. EMPTY STATE --}}
                     @if((!isset($requests) || count($requests) == 0) && (!isset($forwardedRequests) || count($forwardedRequests) == 0))
                         <tr>
-                            <td colspan="9" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
+            <td colspan="8" style="text-align:center; padding:40px; color:#94a3b8; font-size:14px;">
                                 No requests found.
                             </td>
                         </tr>
@@ -345,7 +329,6 @@
             <div><dt>Category</dt><dd data-request-detail="category"></dd></div>
             <div><dt>Resource type</dt><dd data-request-detail="resourceType"></dd></div>
             <div><dt>Quantity</dt><dd data-request-detail="quantity"></dd></div>
-            <div><dt>Urgency</dt><dd data-request-detail="urgency"></dd></div>
             <div><dt>Requested by</dt><dd data-request-detail="requestedBy"></dd></div>
             <div><dt>Request source</dt><dd data-request-detail="requestSource"></dd></div>
             <div><dt>Area</dt><dd data-request-detail="areaLabel"></dd></div>
@@ -454,7 +437,6 @@
                 category: button.dataset.category,
                 resourceType: button.dataset.resourceType,
                 quantity: `${button.dataset.quantity ?? ''} ${button.dataset.unit ?? ''}`.trim(),
-                urgency: button.dataset.urgency,
                 requestedBy: button.dataset.requestedBy,
                 requestSource: button.dataset.requestSource,
                 sourceSystem: button.dataset.sourceSystem,

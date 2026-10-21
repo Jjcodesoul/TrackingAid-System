@@ -79,6 +79,6 @@ class SeederDataIntegrityTest extends TestCase
             'REQ-2024-091' => 'MEDMEDKISMCST01',
         ], $requests->mapWithKeys(fn (SupplyRequest $request): array => [$request->request_code => $request->inventory->sku])->all());
 
-        $this->assertSame(['High', 'Low', 'Medium'], $requests->pluck('priority')->unique()->sort()->values()->all());
+        $this->assertFalse(\Illuminate\Support\Facades\Schema::hasColumn('requests', 'priority'));
     }
 }

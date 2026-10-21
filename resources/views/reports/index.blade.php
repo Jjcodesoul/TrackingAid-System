@@ -479,6 +479,10 @@
                 <i class="fa-solid fa-download"></i>
                 CSV
             </a>
+            <a class="report-action" href="{{ route('reports.export.pdf', array_merge(['report' => $activeReport], $filters)) }}">
+                <i class="fa-solid fa-file-pdf" aria-hidden="true"></i>
+                Download PDF
+            </a>
         </div>
     </div>
 

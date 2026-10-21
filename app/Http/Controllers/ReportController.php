@@ -92,6 +92,21 @@ class ReportController extends Controller
         ]);
     }
 
+    public function exportPdf(HttpRequest $request)
+    {
+        $activeReport = $this->activeReport($request);
+        $filters = $this->validatedFilters($request);
+        $report = $this->buildReport($activeReport, $filters);
+        $filename = $activeReport.'-report-'.now()->format('Ymd-His').'.pdf';
+
+        return Pdf::loadView('reports.pdf', [
+            'reportType' => $activeReport,
+            'report' => $report,
+            'filters' => $filters,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'landscape')->download($filename);
+    }
+
     public function apiIndex(HttpRequest $request)
     {
         $reportType = $this->reportNameFromRequest((string) $request->query('report', 'inventory'));

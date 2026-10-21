@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\DB;
 class DemoRequest extends Command
 {
     /**
-     * php artisan demo:request            -> 3 units of the first item, Medium priority
-     * php artisan demo:request 5 --item=2 --priority=High
+     * php artisan demo:request            -> 3 units of the first item
+     * php artisan demo:request 5 --item=2
      *
      * Creates a PENDING request, exactly like the ResQOperation website does
      * through the API. TrackingAid has no "create request" button of its own,
@@ -18,21 +18,12 @@ class DemoRequest extends Command
     protected $signature = 'demo:request
         {quantity=3 : How many units are requested}
         {--item= : Inventory id (defaults to the first item)}
-        {--priority=Medium : Low, Medium or High}
         {--purpose=Test request : What the request is for}';
 
     protected $description = 'Create a Pending test request (what the ResQOperation API would send)';
 
     public function handle(): int
     {
-        $priority = ucfirst(strtolower((string) $this->option('priority')));
-
-        if (! in_array($priority, ['Low', 'Medium', 'High'], true)) {
-            $this->error('Priority must be Low, Medium or High.');
-
-            return self::FAILURE;
-        }
-
         $quantity = (int) $this->argument('quantity');
 
         if ($quantity < 1) {
@@ -62,7 +53,6 @@ class DemoRequest extends Command
             'inventory_id' => $inventory->id,
             'source'       => 'ResQOperation',
             'quantity'     => $quantity,
-            'priority'     => $priority,
             'status'       => 'Pending',
             'purpose'      => (string) $this->option('purpose'),
             'created_at'   => now(),
@@ -70,8 +60,8 @@ class DemoRequest extends Command
         ]);
 
         $this->table(
-            ['Request', 'Item', 'SKU', 'Qty', 'Priority', 'Status'],
-            [[$code, $inventory->name, $inventory->sku, $quantity, $priority, 'Pending']]
+            ['Request', 'Item', 'SKU', 'Qty', 'Status'],
+            [[$code, $inventory->name, $inventory->sku, $quantity, 'Pending']]
         );
         $this->info('Open the Requests page to approve it.');
 

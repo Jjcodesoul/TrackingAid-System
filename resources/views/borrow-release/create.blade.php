@@ -3,6 +3,51 @@
 @section('title', 'Borrow / Release')
 
 @section('content')
+    <style>
+        .borrow-release-table { min-width: 980px; }
+        .borrow-release-table th,
+        .borrow-release-table td { vertical-align: middle; }
+        .borrow-release-table tbody tr:hover { background: #f8fbfa; }
+        .borrow-release-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .borrow-review-button,
+        .borrow-release-trigger {
+            min-height: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font: inherit;
+            font-size: 13px;
+            font-weight: 600;
+            line-height: 1.2;
+            white-space: nowrap;
+            cursor: pointer;
+            list-style: none;
+            transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .borrow-review-button {
+            color: #176b57;
+            background: #fff;
+            border: 1px solid #9bbdb3;
+        }
+        .borrow-review-button:hover { background: #eff8f5; border-color: #176b57; }
+        .borrow-release-trigger {
+            color: #fff;
+            background: #087f5b;
+            border: 1px solid #087f5b;
+        }
+        .borrow-release-trigger:hover { background: #066b4d; border-color: #066b4d; }
+        .borrow-release-details { margin: 0; }
+        .borrow-release-trigger::-webkit-details-marker { display: none; }
+
+        @media (max-width: 720px) {
+            .borrow-release-actions { align-items: stretch; }
+            .borrow-review-button,
+            .borrow-release-trigger { flex: 1 1 auto; }
+        }
+    </style>
     <div class="p-6 bg-[#f8fafc] min-h-screen text-left">
 
         {{-- Flash Messages --}}
@@ -29,33 +74,29 @@
         @endif
 
         {{-- Header Section --}}
-        <div class="mb-6">
+        <div class="mb-5">
             <h1 class="page-title">Borrow / Release</h1>
-            <p class="page-subtitle">Release inventory items for field operations</p>
         </div>
 
-        <section class="bg-white border border-[#e2e8f0] p-6 rounded-xl shadow-sm mb-6">
+        <section class="bg-white border border-[#e2e8f0] p-5 rounded-xl shadow-sm">
             <div class="flex flex-wrap justify-between items-end gap-4 mb-4">
-                <div>
-                    <h2 class="text-[16px] font-semibold text-[#0f172a] m-0">Approved requests awaiting release</h2>
-                    <p class="text-[12px] text-[#64748b] mt-1 mb-0">Items and quantities are loaded from the approved request.</p>
-                </div>
+                <h2 class="text-[16px] font-semibold text-[#0f172a] m-0">Approved requests awaiting release</h2>
                 <form method="GET" action="{{ route('borrow-release.create') }}" class="flex gap-2 m-0">
                     <label class="sr-only" for="release-search">Search requests</label>
-                    <input id="release-search" name="search" type="search" value="{{ $search }}" class="form-input" placeholder="Search request or SKU">
+                    <input id="release-search" name="search" type="search" value="{{ $search }}" class="form-input" placeholder="Search request, item, SKU, or requester">
                     <button type="submit" class="btn-soft">Search</button>
                 </form>
             </div>
 
             <div class="w-full overflow-x-auto">
-                <table class="w-full border-collapse text-left m-0">
+                <table class="borrow-release-table w-full border-collapse text-left m-0">
                     <thead>
                         <tr class="bg-[#f8fafc] border-b border-[#e2e8f0]">
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Request</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Approved item</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Quantity progress</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Stock</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Status</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Request ID</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Item</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">SKU</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Requester</th>
+                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Approved quantity</th>
                             <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase">Action</th>
                         </tr>
                     </thead>
@@ -69,44 +110,34 @@
                                 $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
                                 $availableQuantity = max((int) ($inventory?->quantity ?? 0), 0);
                                 $canReleaseApprovedQuantity = $remainingQuantity > 0 && $availableQuantity >= $remainingQuantity;
-                                $isPartial = $releasedQuantity > 0;
                                 $isOldInput = old('request_id') == $approvedRequest->id;
                             @endphp
                             <tr class="align-top">
-                                <td class="p-3 text-[13px] text-[#1e293b]">
-                                    <strong>{{ $approvedRequest->request_code }}</strong>
-                                    <div class="text-[12px] text-[#64748b]">{{ $approvedRequest->source }}</div>
-                                    <div class="text-[12px] text-[#64748b]">{{ $approvedRequest->responder_email ?: 'No requester email' }}</div>
-                                    <div class="text-[11px] text-[#94a3b8]">{{ $approvedRequest->created_at?->format('M d, Y') }}</div>
-                                </td>
-                                <td class="p-3 text-[13px] text-[#1e293b]">
-                                    <strong>{{ $inventory?->sku ?? 'Inventory unavailable' }}</strong>
-                                    <div>{{ $inventory?->name ?? 'Item no longer available' }}</div>
-                                    <div class="text-[12px] text-[#64748b]">
-                                        {{ collect([$item?->size_weight, $item?->variant !== 'NONE' ? $item?->variant : null])->filter()->join(' / ') ?: ($item?->unit_type ?? '') }}
-                                    </div>
-                                </td>
-                                <td class="p-3 text-[13px] text-[#1e293b]">
-                                    <div>Requested: {{ number_format($approvedRequest->quantity) }}</div>
-                                    <div>Approved: {{ number_format($approvedQuantity) }}</div>
-                                    <div>Released: {{ number_format($releasedQuantity) }}</div>
-                                    <div class="font-semibold">Remaining: {{ number_format($remainingQuantity) }}</div>
-                                </td>
-                                <td class="p-3 text-[13px] text-[#1e293b]">
-                                    <div>Available: {{ number_format($availableQuantity) }}</div>
-                                    @if($availableQuantity < $remainingQuantity)
-                                        <div class="text-[12px] text-amber-700">Short by {{ number_format($remainingQuantity - $availableQuantity) }}; partial releases are limited to current stock.</div>
-                                    @endif
-                                </td>
-                                <td class="p-3">
-                                    <span class="inline-flex px-2 py-1 rounded text-[11px] font-semibold {{ $isPartial ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800' }}">
-                                        {{ $isPartial ? 'Partially Released' : 'Approved / Awaiting Release' }}
-                                    </span>
-                                </td>
-                                <td class="p-3 min-w-[260px]">
-                                    @if($inventory && $canReleaseApprovedQuantity)
-                                        <details>
-                                            <summary class="btn-main cursor-pointer text-center">Process Release</summary>
+                                <td class="p-3 text-[13px] font-medium text-[#1e293b]">{{ $approvedRequest->request_code }}</td>
+                                <td class="p-3 text-[13px] text-[#1e293b]">{{ $inventory?->name ?? 'Item unavailable' }}</td>
+                                <td class="p-3 text-[13px] text-[#475569]">{{ $inventory?->sku ?? '—' }}</td>
+                                <td class="p-3 text-[13px] text-[#475569]">{{ $approvedRequest->source ?: ($approvedRequest->responder_email ?: '—') }}</td>
+                                <td class="p-3 text-[13px] font-semibold text-[#1e293b]">{{ number_format($approvedQuantity) }}</td>
+                                <td class="p-3 min-w-[240px]">
+                                    @if($inventory)
+                                        <div class="borrow-release-actions">
+                                            <button type="button" class="borrow-review-button review-request-button"
+                                                data-request="{{ $approvedRequest->request_code }}"
+                                                data-requester="{{ $approvedRequest->source ?: ($approvedRequest->responder_email ?: '—') }}"
+                                                data-item="{{ $inventory->name }}"
+                                                data-sku="{{ $inventory->sku }}"
+                                                data-approved="{{ $approvedQuantity }}"
+                                                data-remaining="{{ $remainingQuantity }}"
+                                                data-available="{{ $availableQuantity }}">
+                                                <i class="fa-regular fa-eye" aria-hidden="true"></i>
+                                                Review
+                                            </button>
+                                        @if($canReleaseApprovedQuantity)
+                                        <details class="borrow-release-details">
+                                            <summary class="borrow-release-trigger">
+                                                <i class="fa-solid fa-box-open" aria-hidden="true"></i>
+                                                Release Item
+                                            </summary>
                                             <form action="{{ route('borrow-release.store') }}" method="POST" class="release-form mt-3 space-y-3"
                                                 data-request="{{ $approvedRequest->request_code }}"
                                                 data-item="{{ $inventory->name }}"
@@ -122,9 +153,8 @@
                                                 <input type="hidden" name="idempotency_key" value="{{ $isOldInput ? old('idempotency_key') : (string) \Illuminate\Support\Str::uuid() }}">
 
                                                 <div>
-                                                    <label class="form-label" for="quantity-{{ $approvedRequest->id }}">Release quantity</label>
+                                                    <label class="form-label" for="quantity-{{ $approvedRequest->id }}">Approved quantity to release</label>
                                                     <input id="quantity-{{ $approvedRequest->id }}" name="quantity" type="number" min="{{ $remainingQuantity }}" max="{{ $remainingQuantity }}" value="{{ $remainingQuantity }}" class="form-input" readonly aria-readonly="true" required>
-                                                    <p class="form-help">Fixed to the remaining approved quantity. To release a different amount, update the request approval first.</p>
                                                 </div>
                                                 <div>
                                                     <label class="form-label" for="delivery-{{ $approvedRequest->id }}">Delivery personnel</label>
@@ -141,15 +171,17 @@
                                                     <label class="form-label" for="location-{{ $approvedRequest->id }}">Destination</label>
                                                     <input id="location-{{ $approvedRequest->id }}" name="location" type="text" value="{{ $isOldInput ? old('location') : '' }}" class="form-input" maxlength="255" required>
                                                 </div>
-                                                <button type="button" class="btn-main w-full review-release-button">Review release</button>
+                                                <button type="button" class="btn-main w-full review-release-button">Confirm release details</button>
                                             </form>
                                         </details>
-                                    @else
-                                        @if($inventory && $remainingQuantity > 0)
-                                            <span class="text-[12px] text-rose-700">Cannot release yet: {{ number_format($remainingQuantity) }} approved units remain, but only {{ number_format($availableQuantity) }} are available. Restock before releasing.</span>
+                                        @elseif($remainingQuantity > 0)
+                                            <span class="text-[12px] text-rose-700">Insufficient stock ({{ number_format($availableQuantity) }} available).</span>
                                         @else
-                                            <span class="text-[12px] text-rose-700">No stock available to release.</span>
+                                            <span class="text-[12px] text-rose-700">No quantity remains to release.</span>
                                         @endif
+                                        </div>
+                                    @else
+                                        <span class="text-[12px] text-rose-700">Item unavailable.</span>
                                     @endif
                                 </td>
                             </tr>
@@ -163,62 +195,42 @@
             </div>
             <div class="mt-4">{{ $approvedRequests->links() }}</div>
         </section>
-
-        {{-- Activity Table Section --}}
-        <section class="bg-white border border-[#e2e8f0] p-6 rounded-xl shadow-sm">
-            <div class="flex justify-between items-center mb-4">
-                <h5 class="text-[16px] font-semibold text-[#0f172a] m-0">Recent Release Activity</h5>
-                <span class="text-[#64748b] text-[12px]">Latest 5 transactions</span>
-            </div>
-
-            <div class="w-full overflow-x-auto">
-                <table class="w-full border-collapse text-left m-0">
-                    <thead>
-                        <tr class="bg-[#f8fafc] border-b border-[#e2e8f0]">
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Request</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Item</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Quantity</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Location</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Released At</th>
-                            <th class="p-3 text-[11px] font-semibold text-[#64748b] uppercase tracking-wider">Processed By</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-[#f1f5f9]">
-                        @forelse($recentReleases as $release)
-                            <tr class="hover:bg-gray-50">
-                                <td class="p-3 text-[13px] font-medium text-[#1e293b]">{{ $release->request->request_code ?? 'N/A' }}</td>
-                                <td class="p-3 text-[13px] text-[#475569]">{{ $release->inventory->sku ?? 'N/A' }}</td>
-                                <td class="p-3 text-[13px] text-[#475569]">{{ number_format($release->quantity) }}</td>
-                                <td class="p-3 text-[13px] text-[#475569]">{{ $release->location ?? '—' }}</td>
-                                <td class="p-3 text-[13px] text-[#64748b]">{{ $release->released_at?->format('M d, Y H:i') ?? '—' }}</td>
-                                <td class="p-3 text-[13px] text-[#64748b]">{{ $release->processedBy?->name ?? '—' }}</td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="p-8 text-center text-[#94a3b8] text-[13px]">No recent releases recorded yet.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-        </section>
     </div>
+
+    <dialog id="requestDetailsDialog" class="request-review-dialog" aria-labelledby="requestDetailsTitle">
+        <div class="request-review-header">
+            <div>
+                <h2 id="requestDetailsTitle">Request details</h2>
+                <p class="request-review-code">Approved quantities and current stock.</p>
+            </div>
+            <button type="button" class="users-action" id="closeRequestDetails" aria-label="Close request details">Close</button>
+        </div>
+        <dl class="request-review-grid">
+            <div><dt>Request ID</dt><dd id="detailsRequestId"></dd></div>
+            <div><dt>Requester</dt><dd id="detailsRequester"></dd></div>
+            <div><dt>Item</dt><dd id="detailsItem"></dd></div>
+            <div><dt>SKU</dt><dd id="detailsSku"></dd></div>
+            <div><dt>Approved quantity</dt><dd id="detailsApproved"></dd></div>
+            <div><dt>Remaining to release</dt><dd id="detailsRemaining"></dd></div>
+            <div><dt>Available stock</dt><dd id="detailsAvailable"></dd></div>
+        </dl>
+        <div class="request-review-buttons px-5 pb-5">
+            <button type="button" class="btn-soft" id="doneRequestDetails">Close</button>
+        </div>
+    </dialog>
 
     <dialog id="releaseReviewDialog" class="request-review-dialog" aria-labelledby="releaseReviewTitle">
         <div class="request-review-header">
             <div>
-                <h2 id="releaseReviewTitle">Review release</h2>
-                <p class="request-review-code">Confirm these values before inventory is deducted.</p>
+                <h2 id="releaseReviewTitle">Confirm release</h2>
+                <p class="request-review-code">Confirm the approved item and quantity.</p>
             </div>
             <button type="button" class="users-action" id="closeReleaseReview" aria-label="Close release review">Close</button>
         </div>
         <dl class="request-review-grid">
             <div><dt>Approved request</dt><dd id="reviewReleaseRequest"></dd></div>
             <div><dt>Item / variant</dt><dd id="reviewReleaseItem"></dd></div>
-            <div><dt>Original requested</dt><dd id="reviewReleaseRequested"></dd></div>
             <div><dt>Approved quantity</dt><dd id="reviewReleaseApproved"></dd></div>
-            <div><dt>Previously released</dt><dd id="reviewReleasePrevious"></dd></div>
-            <div><dt>Remaining approved</dt><dd id="reviewReleaseRemaining"></dd></div>
             <div><dt>Available stock</dt><dd id="reviewReleaseAvailable"></dd></div>
             <div><dt>Quantity in this release</dt><dd id="reviewReleaseQuantity"></dd></div>
             <div><dt>Delivery personnel</dt><dd id="reviewReleaseDelivery"></dd></div>
@@ -235,6 +247,23 @@
     <script>
         let releaseFormToSubmit = null;
         const releaseDialog = document.getElementById('releaseReviewDialog');
+        const requestDetailsDialog = document.getElementById('requestDetailsDialog');
+
+        document.querySelectorAll('.review-request-button').forEach((button) => {
+            button.addEventListener('click', () => {
+                document.getElementById('detailsRequestId').textContent = button.dataset.request;
+                document.getElementById('detailsRequester').textContent = button.dataset.requester;
+                document.getElementById('detailsItem').textContent = button.dataset.item;
+                document.getElementById('detailsSku').textContent = button.dataset.sku;
+                document.getElementById('detailsApproved').textContent = button.dataset.approved;
+                document.getElementById('detailsRemaining').textContent = button.dataset.remaining;
+                document.getElementById('detailsAvailable').textContent = button.dataset.available;
+                requestDetailsDialog.showModal();
+            });
+        });
+
+        document.getElementById('closeRequestDetails').addEventListener('click', () => requestDetailsDialog.close());
+        document.getElementById('doneRequestDetails').addEventListener('click', () => requestDetailsDialog.close());
 
         document.querySelectorAll('.release-form').forEach((form) => {
             form.querySelector('.review-release-button')?.addEventListener('click', () => {
@@ -247,10 +276,7 @@
 
                 document.getElementById('reviewReleaseRequest').textContent = form.dataset.request;
                 document.getElementById('reviewReleaseItem').textContent = `${form.dataset.sku} - ${form.dataset.item}${form.dataset.variant ? ` (${form.dataset.variant})` : ''}`;
-                document.getElementById('reviewReleaseRequested').textContent = form.dataset.requested;
                 document.getElementById('reviewReleaseApproved').textContent = form.dataset.approved;
-                document.getElementById('reviewReleasePrevious').textContent = form.dataset.released;
-                document.getElementById('reviewReleaseRemaining').textContent = form.dataset.remaining;
                 document.getElementById('reviewReleaseAvailable').textContent = form.dataset.available;
                 document.getElementById('reviewReleaseQuantity').textContent = String(quantity);
                 document.getElementById('reviewReleaseDelivery').textContent = deliveryName;

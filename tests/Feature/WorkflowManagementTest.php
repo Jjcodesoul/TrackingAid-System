@@ -36,7 +36,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 10,
-            'priority' => 'High',
+
             'status' => 'Pending',
             'purpose' => 'Emergency response',
         ]);
@@ -46,7 +46,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 5,
-            'priority' => 'Medium',
+
             'status' => 'Approved',
             'purpose' => 'Field support',
         ]);
@@ -56,7 +56,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 4,
-            'priority' => 'Low',
+
             'status' => 'Released',
             'purpose' => 'Relief convoy',
         ]);
@@ -66,7 +66,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 2,
-            'priority' => 'High',
+
             'status' => 'Rejected',
             'purpose' => 'Duplicate request',
         ]);
@@ -91,7 +91,7 @@ class WorkflowManagementTest extends TestCase
         ]);
         $request = Request::create([
             'request_code' => 'REQ-SHORT-1', 'inventory_id' => $inventory->id,
-            'quantity' => 5, 'priority' => 'High', 'status' => 'Pending',
+            'quantity' => 5, 'status' => 'Pending',
         ]);
 
         $this->actingAs($admin)
@@ -111,7 +111,7 @@ class WorkflowManagementTest extends TestCase
         ]);
         $request = Request::create([
             'request_code' => 'REQ-ADJUSTED-1', 'inventory_id' => $inventory->id,
-            'quantity' => 4, 'priority' => 'High', 'status' => 'Pending',
+            'quantity' => 4, 'status' => 'Pending',
         ]);
 
         $this->actingAs($admin)
@@ -137,11 +137,11 @@ class WorkflowManagementTest extends TestCase
         ]);
         Request::create([
             'request_code' => 'REQ-RESERVED-1', 'inventory_id' => $inventory->id,
-            'quantity' => 4, 'approved_quantity' => 4, 'priority' => 'High', 'status' => 'Approved',
+            'quantity' => 4, 'approved_quantity' => 4, 'status' => 'Approved',
         ]);
         $pendingRequest = Request::create([
             'request_code' => 'REQ-RESERVED-2', 'inventory_id' => $inventory->id,
-            'quantity' => 4, 'priority' => 'High', 'status' => 'Pending',
+            'quantity' => 4, 'status' => 'Pending',
         ]);
 
         $this->actingAs($admin)
@@ -173,7 +173,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 4,
-            'priority' => 'High',
+
             'status' => 'Approved',
             'purpose' => 'Shelter deployment',
         ]);
@@ -334,11 +334,11 @@ class WorkflowManagementTest extends TestCase
         ]);
         $reusableRequest = Request::create([
             'request_code' => 'REQ-RETURNABLE', 'inventory_id' => $reusable->id,
-            'quantity' => 3, 'priority' => 'Medium', 'status' => 'Released',
+            'quantity' => 3, 'status' => 'Released',
         ]);
         $consumableRequest = Request::create([
             'request_code' => 'REQ-CONSUMABLE', 'inventory_id' => $consumable->id,
-            'quantity' => 3, 'priority' => 'Medium', 'status' => 'Released',
+            'quantity' => 3, 'status' => 'Released',
         ]);
         BorrowRelease::create([
             'request_id' => $reusableRequest->id, 'inventory_id' => $reusable->id,
@@ -365,7 +365,7 @@ class WorkflowManagementTest extends TestCase
         ]);
         $request = Request::create([
             'request_code' => 'REQ-RETURN-TEST-1', 'inventory_id' => $inventory->id,
-            'quantity' => 6, 'priority' => 'Medium', 'status' => 'Released',
+            'quantity' => 6, 'status' => 'Released',
         ]);
         $release = BorrowRelease::create([
             'request_id' => $request->id, 'inventory_id' => $inventory->id,
@@ -426,7 +426,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 10,
-            'priority' => 'High',
+
             'status' => 'Approved',
             'purpose' => 'Emergency response',
             'notification_status' => 'Responder notified: request approved',
@@ -455,7 +455,7 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => $approvedQuantity,
-            'priority' => 'High',
+
             'status' => $status,
             'purpose' => 'Field support',
         ]);
