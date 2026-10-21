@@ -22,6 +22,29 @@
     <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
 
+<style>
+    .stock-category-picker { position:relative; }
+    .stock-category-native { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+    .stock-category-trigger, .stock-category-search { width:100%; box-sizing:border-box; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; background:#fff; color:#374151; font-size:13px; text-align:left; }
+    .stock-category-trigger { cursor:pointer; display:flex; justify-content:space-between; align-items:center; }
+    .stock-picker-panel { position:absolute; z-index:30; top:calc(100% + 5px); left:0; right:0; padding:8px; border:1px solid #dbe4ee; border-radius:10px; background:#fff; box-shadow:0 12px 28px rgba(15,23,42,.14); }
+    .stock-category-options { max-height:220px; overflow-y:auto; margin-top:6px; }
+    .stock-category-option, .stock-item-option { width:100%; border:0; border-radius:6px; background:#fff; color:#334155; cursor:pointer; text-align:left; }
+    .stock-category-option { padding:9px 10px; font-size:13px; }
+    .stock-category-option:hover, .stock-item-option:hover { background:#f0fdf4; }
+    .stock-picker-pager { display:flex; align-items:center; justify-content:space-between; gap:8px; border-top:1px solid #eef2f7; margin-top:6px; padding:8px 2px 0; color:#64748b; font-size:11px; }
+    .stock-picker-pager button { padding:5px 9px; border:1px solid #dbe4ee; border-radius:6px; background:#fff; color:#334155; cursor:pointer; }
+    .stock-picker-pager button:disabled { opacity:.45; cursor:default; }
+    #itemDropdownList { padding:6px; max-height:none !important; overflow:visible !important; }
+    .stock-item-options { max-height:280px; overflow-y:auto; }
+    .stock-item-option { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 9px; border-bottom:1px solid #f1f5f9; font-size:13px; }
+    .stock-item-option-main { min-width:0; }
+    .stock-item-option-sku { color:#059669; font-family:monospace; font-weight:700; }
+    .stock-item-option-name { color:#374151; }
+    .stock-item-option-badge { flex:none; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:600; }
+    @media (max-width: 700px) { .stock-item-option { align-items:flex-start; flex-direction:column; gap:5px; } }
+</style>
+
 <form method="POST" action="/stock-in/store" id="stockInForm" class="inventory-form">
 @csrf
 
@@ -34,7 +57,8 @@
         {{-- CATEGORY FILTER --}}
         <div style="margin-bottom:18px;">
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Filter by Category</label>
-            <select id="categoryFilter" onchange="onCategoryChange()"
+            <div class="stock-category-picker" id="categoryPicker">
+            <select id="categoryFilter" class="stock-category-native" onchange="onCategoryChange()"
                 style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; background:#fff; color:#374151; box-sizing:border-box;"
                 onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
                 <option value="">All Categories</option>
@@ -42,6 +66,15 @@
                     <option value="{{ strtoupper($cat) }}">{{ ucfirst(strtolower($cat)) }}</option>
                 @endforeach
             </select>
+            <button type="button" id="categoryPickerTrigger" class="stock-category-trigger" aria-expanded="false">
+                <span id="categoryPickerValue">All Categories</span><span aria-hidden="true">▾</span>
+            </button>
+            <div id="categoryPickerPanel" class="stock-picker-panel" style="display:none;">
+                <input type="search" id="categoryPickerSearch" class="stock-category-search" placeholder="Search categories..." autocomplete="off">
+                <div id="categoryPickerOptions" class="stock-category-options"></div>
+                <div class="stock-picker-pager"><button type="button" id="categoryPickerPrev">Previous</button><span id="categoryPickerPage"></span><button type="button" id="categoryPickerNext">Next</button></div>
+            </div>
+            </div>
         </div>
 
         {{-- SEARCHABLE ITEM SKU --}}
@@ -55,7 +88,10 @@
 
             <input type="hidden" name="item_id" id="itemIdField" required>
 
-            <div id="itemDropdownList" style="display:none; position:absolute; z-index:20; top:calc(100% + 4px); left:0; right:0; max-height:260px; overflow-y:auto; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.08);"></div>
+            <div id="itemDropdownList" style="display:none; position:absolute; z-index:20; top:calc(100% + 4px); left:0; right:0; background:#fff; border:1px solid #e2e8f0; border-radius:10px; box-shadow:0 8px 20px rgba(0,0,0,0.08);">
+                <div id="itemDropdownOptions" class="stock-item-options"></div>
+                <div class="stock-picker-pager"><button type="button" id="itemPickerPrev">Previous</button><span id="itemPickerPage"></span><button type="button" id="itemPickerNext">Next</button></div>
+            </div>
 
             <p id="noItemsMsg" style="display:none; font-size:12px; color:#DC2626; margin:6px 0 0;">
                 No matching items found.
@@ -175,8 +211,24 @@ const dropdownList = document.getElementById('itemDropdownList');
 const itemIdField = document.getElementById('itemIdField');
 const noItemsMsg = document.getElementById('noItemsMsg');
 const categoryFilter = document.getElementById('categoryFilter');
+const categoryPicker = document.getElementById('categoryPicker');
+const categoryPickerTrigger = document.getElementById('categoryPickerTrigger');
+const categoryPickerValue = document.getElementById('categoryPickerValue');
+const categoryPickerPanel = document.getElementById('categoryPickerPanel');
+const categoryPickerSearch = document.getElementById('categoryPickerSearch');
+const categoryPickerOptions = document.getElementById('categoryPickerOptions');
+const categoryPickerPage = document.getElementById('categoryPickerPage');
+const categoryPickerPrev = document.getElementById('categoryPickerPrev');
+const categoryPickerNext = document.getElementById('categoryPickerNext');
+const itemDropdownOptions = document.getElementById('itemDropdownOptions');
+const itemPickerPage = document.getElementById('itemPickerPage');
+const itemPickerPrev = document.getElementById('itemPickerPrev');
+const itemPickerNext = document.getElementById('itemPickerNext');
 const expirationWrapper = document.getElementById('expirationWrapper');
 const expirationInput = document.getElementById('expirationInput');
+const pickerPageSize = 8;
+let categoryPage = 0;
+let itemPage = 0;
 
 const itemEmptyState = document.getElementById('itemEmptyState');
 const itemSummaryCard = document.getElementById('itemSummaryCard');
@@ -200,7 +252,9 @@ function getFilteredItems() {
 
 function renderDropdown() {
     const filtered = getFilteredItems();
-    dropdownList.innerHTML = '';
+    const pageCount = Math.max(1, Math.ceil(filtered.length / pickerPageSize));
+    itemPage = Math.min(itemPage, pageCount - 1);
+    itemDropdownOptions.innerHTML = '';
 
     if (filtered.length === 0) {
         noItemsMsg.style.display = 'block';
@@ -210,31 +264,85 @@ function renderDropdown() {
 
     noItemsMsg.style.display = 'none';
 
-    filtered.slice(0, 50).forEach(item => {
-        const row = document.createElement('div');
-        row.style.cssText = 'padding:10px 14px; cursor:pointer; border-bottom:1px solid #f1f5f9; font-size:13px; display:flex; align-items:center; justify-content:space-between;';
-        row.onmouseenter = () => row.style.background = '#F0FFF4';
-        row.onmouseleave = () => row.style.background = '#fff';
+    filtered.slice(itemPage * pickerPageSize, (itemPage + 1) * pickerPageSize).forEach(item => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'stock-item-option';
 
-        const typeBadge = item.type === 'returnable'
-            ? '<span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; background:#FAF5FF; color:#6B46C1;">Reusable</span>'
-            : '<span style="font-size:10px; font-weight:600; padding:2px 8px; border-radius:999px; background:#EBF8FF; color:#2B6CB0;">Consumable</span>';
+        const main = document.createElement('span');
+        main.className = 'stock-item-option-main';
+        const sku = document.createElement('span');
+        sku.className = 'stock-item-option-sku';
+        sku.textContent = item.sku;
+        const name = document.createElement('span');
+        name.className = 'stock-item-option-name';
+        name.textContent = ' — ' + item.name;
+        main.append(sku, name);
 
-        row.innerHTML = `<span><span style="font-family:monospace; font-weight:600; color:#10B981;">${item.sku}</span>
-                          <span style="color:#374151;"> — ${item.name}</span></span>${typeBadge}`;
+        const badge = document.createElement('span');
+        badge.className = 'stock-item-option-badge';
+        badge.textContent = item.type === 'returnable' ? 'Reusable' : 'Consumable';
+        badge.style.background = item.type === 'returnable' ? '#FAF5FF' : '#EBF8FF';
+        badge.style.color = item.type === 'returnable' ? '#6B46C1' : '#2B6CB0';
+
+        row.append(main, badge);
         row.onclick = () => selectItem(item);
-        dropdownList.appendChild(row);
+        itemDropdownOptions.appendChild(row);
     });
 
-    if (filtered.length > 50) {
-        const moreNote = document.createElement('div');
-        moreNote.style.cssText = 'padding:8px 14px; font-size:11px; color:#94a3b8; text-align:center;';
-        moreNote.innerText = `+${filtered.length - 50} more — keep typing to narrow down`;
-        dropdownList.appendChild(moreNote);
-    }
-
+    itemPickerPage.textContent = `Page ${itemPage + 1} of ${pageCount} · ${filtered.length} items`;
+    itemPickerPrev.disabled = itemPage === 0;
+    itemPickerNext.disabled = itemPage >= pageCount - 1;
     dropdownList.style.display = 'block';
 }
+
+function renderCategoryOptions() {
+    const query = categoryPickerSearch.value.trim().toLowerCase();
+    const options = Array.from(categoryFilter.options).filter(option =>
+        option.textContent.toLowerCase().includes(query)
+    );
+    const pageCount = Math.max(1, Math.ceil(options.length / pickerPageSize));
+    categoryPage = Math.min(categoryPage, pageCount - 1);
+    categoryPickerOptions.innerHTML = '';
+
+    options.slice(categoryPage * pickerPageSize, (categoryPage + 1) * pickerPageSize).forEach(option => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'stock-category-option';
+        button.textContent = option.textContent;
+        button.setAttribute('aria-selected', String(option.value === categoryFilter.value));
+        if (option.value === categoryFilter.value) button.style.fontWeight = '700';
+        button.addEventListener('click', () => {
+            categoryFilter.value = option.value;
+            categoryPickerValue.textContent = option.textContent;
+            categoryPickerPanel.style.display = 'none';
+            categoryPickerTrigger.setAttribute('aria-expanded', 'false');
+            categoryFilter.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        categoryPickerOptions.appendChild(button);
+    });
+
+    categoryPickerPage.textContent = `${options.length ? categoryPage + 1 : 0} of ${pageCount} · ${options.length} categories`;
+    categoryPickerPrev.disabled = categoryPage === 0;
+    categoryPickerNext.disabled = categoryPage >= pageCount - 1;
+}
+
+categoryPickerTrigger.addEventListener('click', () => {
+    const opening = categoryPickerPanel.style.display === 'none';
+    categoryPickerPanel.style.display = opening ? 'block' : 'none';
+    categoryPickerTrigger.setAttribute('aria-expanded', String(opening));
+    if (opening) {
+        categoryPickerSearch.value = '';
+        categoryPage = 0;
+        renderCategoryOptions();
+        categoryPickerSearch.focus();
+    }
+});
+categoryPickerSearch.addEventListener('input', () => { categoryPage = 0; renderCategoryOptions(); });
+categoryPickerPrev.addEventListener('click', () => { categoryPage--; renderCategoryOptions(); });
+categoryPickerNext.addEventListener('click', () => { categoryPage++; renderCategoryOptions(); });
+itemPickerPrev.addEventListener('click', () => { itemPage--; renderDropdown(); });
+itemPickerNext.addEventListener('click', () => { itemPage++; renderDropdown(); });
 
 function selectItem(item) {
     searchInput.value = item.sku + ' — ' + item.name;
@@ -291,6 +399,7 @@ function resetSummary() {
 }
 
 function onSearchInput() {
+    itemPage = 0;
     itemIdField.value = '';
     resetSummary();
     renderDropdown();
@@ -301,7 +410,9 @@ function onSearchFocus() {
 }
 
 function onCategoryChange() {
+    categoryPickerValue.textContent = categoryFilter.options[categoryFilter.selectedIndex].textContent;
     searchInput.value = '';
+    itemPage = 0;
     itemIdField.value = '';
     resetSummary();
     renderDropdown();
@@ -311,7 +422,13 @@ document.addEventListener('click', function(e) {
     if (!e.target.closest('#itemSearchInput') && !e.target.closest('#itemDropdownList')) {
         dropdownList.style.display = 'none';
     }
+    if (!e.target.closest('#categoryPicker')) {
+        categoryPickerPanel.style.display = 'none';
+        categoryPickerTrigger.setAttribute('aria-expanded', 'false');
+    }
 });
+
+renderCategoryOptions();
 
 document.getElementById('stockInForm').addEventListener('submit', function(e) {
     if (!itemIdField.value) {

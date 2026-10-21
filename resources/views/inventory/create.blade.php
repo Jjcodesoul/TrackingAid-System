@@ -1,6 +1,28 @@
 @extends('layouts.app')
 
 @section('content')
+<style>
+    .paginated-select { position: relative; width: 100%; }
+    .paginated-select-native { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
+    .paginated-select-trigger { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid #bdcbc5; border-radius: 8px; background: #fff; color: #1f2937; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+    .paginated-select-trigger:hover { border-color: #176b57; }
+    .paginated-select-trigger:focus { outline: 0; border-color: #10b981; box-shadow: 0 0 0 3px rgb(16 185 129 / 15%); }
+    .paginated-select-trigger[aria-invalid="true"] { border-color: #dc2626; }
+    .paginated-select-panel { position: absolute; z-index: 40; top: calc(100% + 6px); left: 0; width: 100%; padding: 8px; border: 1px solid #dbe4ee; border-radius: 10px; background: #fff; box-shadow: 0 14px 32px rgb(15 23 42 / 16%); }
+    .paginated-select-panel.is-above { top: auto; bottom: calc(100% + 6px); }
+    .paginated-select-search { width: 100%; min-height: 38px; margin-bottom: 7px; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 7px; font: inherit; font-size: 13px; box-sizing: border-box; }
+    .paginated-select-options { display: grid; gap: 2px; max-height: 256px; overflow-y: auto; }
+    .paginated-select-option { width: 100%; min-height: 34px; padding: 7px 9px; border: 0; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+    .paginated-select-option:hover, .paginated-select-option[aria-selected="true"] { background: #eff8f5; color: #075e49; }
+    .paginated-select-option.is-add { color: #087f5b; font-weight: 700; }
+    .paginated-select-empty { padding: 12px 8px; color: #64748b; font-size: 12px; }
+    .paginated-select-pager { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-top: 8px; margin-top: 7px; border-top: 1px solid #edf1f4; }
+    .paginated-select-page-button { min-height: 30px; padding: 5px 9px; border: 1px solid #dbe4ee; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 12px; cursor: pointer; }
+    .paginated-select-page-button:disabled { opacity: .45; cursor: not-allowed; }
+    .paginated-select-page-label { color: #64748b; font-size: 11px; }
+    .paginated-select-error { display: none; margin-top: 5px; color: #b91c1c; font-size: 11px; }
+    .paginated-select-error.is-visible { display: block; }
+</style>
 
 {{-- BREADCRUMB --}}
 <div class="breadcrumb">
@@ -304,6 +326,189 @@
 </form>
 
 <script>
+const paginatedSelectPageSize = 8;
+
+function setupPaginatedSelect(select) {
+    if (select.dataset.paginated === 'true') return;
+
+    const label = select.parentElement.querySelector('label')?.textContent.trim() || 'Choose an option';
+    const wrapper = document.createElement('div');
+    wrapper.className = 'paginated-select';
+    select.parentNode.insertBefore(wrapper, select);
+    wrapper.appendChild(select);
+
+    select.dataset.paginated = 'true';
+    select.classList.add('paginated-select-native');
+    select.tabIndex = -1;
+    select.removeAttribute('required');
+    select.setAttribute('aria-hidden', 'true');
+
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'paginated-select-trigger';
+    trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('aria-expanded', 'false');
+    trigger.setAttribute('aria-label', label);
+
+    const currentValue = document.createElement('span');
+    currentValue.className = 'paginated-select-value';
+    const chevron = document.createElement('i');
+    chevron.className = 'fa-solid fa-chevron-down';
+    chevron.setAttribute('aria-hidden', 'true');
+    trigger.append(currentValue, chevron);
+
+    const panel = document.createElement('div');
+    panel.className = 'paginated-select-panel';
+    panel.hidden = true;
+
+    const search = document.createElement('input');
+    search.type = 'search';
+    search.className = 'paginated-select-search';
+    search.placeholder = `Search ${label.toLowerCase()}...`;
+    search.setAttribute('aria-label', `Search ${label.toLowerCase()}`);
+
+    const options = document.createElement('div');
+    options.className = 'paginated-select-options';
+    options.setAttribute('role', 'listbox');
+
+    const pager = document.createElement('div');
+    pager.className = 'paginated-select-pager';
+    const previous = document.createElement('button');
+    previous.type = 'button';
+    previous.className = 'paginated-select-page-button';
+    previous.textContent = 'Previous';
+    const pageLabel = document.createElement('span');
+    pageLabel.className = 'paginated-select-page-label';
+    pageLabel.setAttribute('aria-live', 'polite');
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'paginated-select-page-button';
+    next.textContent = 'Next';
+    pager.append(previous, pageLabel, next);
+    panel.append(search, options, pager);
+
+    const error = document.createElement('div');
+    error.className = 'paginated-select-error';
+    error.textContent = `Choose ${label.toLowerCase()} to continue.`;
+    error.setAttribute('role', 'alert');
+    wrapper.append(trigger, panel, error);
+
+    let page = 0;
+
+    const filteredOptions = () => Array.from(select.options).filter((option) => {
+        const query = search.value.trim().toLowerCase();
+        return !option.disabled && `${option.textContent} ${option.value}`.toLowerCase().includes(query);
+    });
+
+    const updateValue = () => {
+        const selected = select.options[select.selectedIndex];
+        currentValue.textContent = selected?.textContent.trim() || 'Select';
+        trigger.setAttribute('aria-invalid', error.classList.contains('is-visible') ? 'true' : 'false');
+        if (select.value && select.value !== '__new__') error.classList.remove('is-visible');
+    };
+
+    const renderOptions = () => {
+        const matches = filteredOptions();
+        const pageCount = Math.max(1, Math.ceil(matches.length / paginatedSelectPageSize));
+        page = Math.min(page, pageCount - 1);
+        options.replaceChildren();
+
+        matches.slice(page * paginatedSelectPageSize, (page + 1) * paginatedSelectPageSize).forEach((option) => {
+            const optionButton = document.createElement('button');
+            optionButton.type = 'button';
+            optionButton.className = `paginated-select-option${option.value === '__new__' ? ' is-add' : ''}`;
+            optionButton.textContent = option.textContent.trim();
+            optionButton.setAttribute('role', 'option');
+            optionButton.setAttribute('aria-selected', String(option.value === select.value));
+            optionButton.addEventListener('click', () => {
+                select.value = option.value;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+                updateValue();
+                panel.hidden = true;
+                trigger.setAttribute('aria-expanded', 'false');
+                trigger.focus();
+            });
+            options.appendChild(optionButton);
+        });
+
+        if (matches.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'paginated-select-empty';
+            empty.textContent = 'No matching options.';
+            options.appendChild(empty);
+        }
+
+        pageLabel.textContent = `Page ${page + 1} of ${pageCount}`;
+        previous.disabled = page === 0;
+        next.disabled = page >= pageCount - 1;
+    };
+
+    const close = () => {
+        panel.hidden = true;
+        trigger.setAttribute('aria-expanded', 'false');
+        panel.classList.remove('is-above');
+    };
+
+    const open = () => {
+        if (!panel.hidden) return;
+        panel.hidden = false;
+        trigger.setAttribute('aria-expanded', 'true');
+        panel.classList.toggle('is-above', window.innerHeight - wrapper.getBoundingClientRect().bottom < 330);
+        search.value = '';
+        page = 0;
+        renderOptions();
+        search.focus();
+    };
+
+    trigger.addEventListener('click', () => {
+        if (panel.hidden) open();
+        else close();
+    });
+    search.addEventListener('input', () => { page = 0; renderOptions(); });
+    previous.addEventListener('click', () => { page--; renderOptions(); });
+    next.addEventListener('click', () => { page++; renderOptions(); });
+    select.addEventListener('change', () => { updateValue(); renderOptions(); });
+    panel.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            close();
+            trigger.focus();
+        }
+    });
+    document.addEventListener('click', (event) => {
+        if (!wrapper.contains(event.target)) close();
+    });
+
+    select.dataset.pagerWrapper = 'true';
+    select._paginatedSelect = { trigger, error, updateValue, renderOptions, open, close };
+    updateValue();
+}
+
+function syncPaginatedSelects() {
+    document.querySelectorAll('.inventory-form select').forEach((select) => {
+        if (!select._paginatedSelect) setupPaginatedSelect(select);
+        select._paginatedSelect?.updateValue();
+        select._paginatedSelect?.renderOptions();
+    });
+}
+
+syncPaginatedSelects();
+
+document.querySelector('.inventory-form').addEventListener('submit', (event) => {
+    const requiredFields = ['category', 'unit_type', 'target_beneficiary'];
+    for (const field of requiredFields) {
+        const finalInput = document.getElementById(`${field}_final`);
+        const select = document.getElementById(field);
+        if (finalInput.value.trim()) continue;
+
+        const control = select._paginatedSelect;
+        control.error.classList.add('is-visible');
+        control.trigger.setAttribute('aria-invalid', 'true');
+        control.open();
+        event.preventDefault();
+        return;
+    }
+});
+
 function selectItemType(type) {
     const consumableCard = document.getElementById('typeCard_consumable');
     const returnableCard = document.getElementById('typeCard_returnable');
@@ -342,6 +547,7 @@ function selectItemType(type) {
         // Reset variant to NONE since it's hidden for returnable items
         document.getElementById('variant').value = 'NONE';
         document.getElementById('variant_final').value = 'NONE';
+        document.getElementById('variant')._paginatedSelect?.updateValue();
     }
 
     generateSKU();
@@ -370,6 +576,11 @@ function handleDynamicNewInput(field) {
     const finalInput = document.getElementById(field + '_final');
     const cleaned = newInput.value.trim().toUpperCase().replace(/\s+/g, '_');
     finalInput.value = cleaned;
+    if (cleaned) {
+        const control = document.getElementById(field)._paginatedSelect;
+        control?.error.classList.remove('is-visible');
+        control?.trigger.setAttribute('aria-invalid', 'false');
+    }
     generateSKU();
 }
 
@@ -436,6 +647,7 @@ function clearForm() {
     });
 
     selectItemType('consumable');
+    syncPaginatedSelects();
 }
 </script>
 
