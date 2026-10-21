@@ -40,6 +40,7 @@
                                     <option value="user" {{ old('role', $user->role) === 'user' ? 'selected' : '' }}>User</option>
                                     <option value="staff" {{ old('role', $user->role) === 'staff' ? 'selected' : '' }}>Staff</option>
                                     <option value="admin" {{ old('role', $user->role) === 'admin' ? 'selected' : '' }}>Admin</option>
+                                    <option value="delivery_personnel" {{ old('role', $user->role) === 'delivery_personnel' ? 'selected' : '' }}>Delivery Personnel</option>
                                 </select>
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
                                     <i class="fa-solid fa-chevron-down"></i>

@@ -38,21 +38,26 @@ class UserController extends Controller
         }
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8',
+            'password' => 'nullable|string',
             'role' => 'required|string|in:admin,user,staff,delivery_personnel',
         ]);
 
-       User::create([
-    'name' => $validated['name'],
-    'email' => $validated['email'],
-    'password' => Hash::make($validated['password']),
-    'role' => $validated['role'],
-    'must_change_password' => $validated['role'] === 'delivery_personnel',
-]);
+        $temporaryPassword = 'Temp_123';
 
-        return redirect()->route('users.index')->with('success', 'Personnel authorized successfully.');
+        User::create([
+            'first_name' => $validated['first_name'],
+            'last_name' => $validated['last_name'],
+            'name' => trim("{$validated['first_name']} {$validated['last_name']}"),
+            'email' => $validated['email'],
+            'password' => Hash::make($temporaryPassword),
+            'role' => $validated['role'],
+            'must_change_password' => true,
+        ]);
+
+        return redirect()->route('users.index')->with('success', 'Personnel authorized successfully with temporary password "Temp_123".');
     }
 
     /**
@@ -80,13 +85,16 @@ class UserController extends Controller
         $user = User::findOrFail($id);
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8',
-            'role' => 'required|string|in:admin,user,staff',
+            'role' => 'required|string|in:admin,user,staff,delivery_personnel',
         ]);
 
-        $user->name = $validated['name'];
+        $user->first_name = $validated['first_name'];
+        $user->last_name = $validated['last_name'];
+        $user->name = trim("{$validated['first_name']} {$validated['last_name']}");
         $user->email = $validated['email'];
         $user->role = $validated['role'];
 
