@@ -9,6 +9,17 @@ use Illuminate\Validation\Rule;
 
 class ProfileUpdateRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ((!$this->filled('first_name') || !$this->filled('last_name')) && $this->filled('name')) {
+            $parts = explode(' ', trim((string) $this->input('name')), 2);
+            $this->merge([
+                'first_name' => $this->filled('first_name') ? $this->input('first_name') : ($parts[0] ?? ''),
+                'last_name' => $this->filled('last_name') ? $this->input('last_name') : ($parts[1] ?? ''),
+            ]);
+        }
+    }
+
     /**
      * Get the validation rules that apply to the request.
      *

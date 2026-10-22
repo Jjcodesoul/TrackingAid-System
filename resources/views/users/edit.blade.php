@@ -15,19 +15,26 @@
 
                 <div class="space-y-4">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {{-- Full Name Input --}}
+                        {{-- First Name Input --}}
                         <div>
-                            <label for="name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full Name *</label>
-                            <input type="text" id="name" name="name" required value="{{ old('name', $user->name) }}"
+                            <label for="first_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">First Name *</label>
+                            <input type="text" id="first_name" name="first_name" required value="{{ old('first_name', $user->first_name) }}"
                                 class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                         </div>
 
-                        {{-- Email Input --}}
+                        {{-- Last Name Input --}}
                         <div>
-                            <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address *</label>
-                            <input type="email" id="email" name="email" required value="{{ old('email', $user->email) }}"
+                            <label for="last_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Last Name *</label>
+                            <input type="text" id="last_name" name="last_name" required value="{{ old('last_name', $user->last_name) }}"
                                 class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                         </div>
+                    </div>
+
+                    {{-- Email Input --}}
+                    <div>
+                        <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address *</label>
+                        <input type="email" id="email" name="email" required value="{{ old('email', $user->email) }}"
+                            class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

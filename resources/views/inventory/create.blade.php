@@ -234,12 +234,24 @@
             <input type="hidden" name="variant" id="variant_final" value="NONE">
         </div>
 
-        {{-- STORAGE LOCATION --}}
-        <div style="margin-bottom:18px;">
-            <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location</label>
-            <input type="text" name="storage_location" placeholder="e.g. Warehouse A, Equipment Bay" required
-                style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
-                onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
+        {{-- STORAGE LOCATION & MIN STOCK THRESHOLD --}}
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+            <div>
+                <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location *</label>
+                <input type="text" name="storage_location" placeholder="e.g. Warehouse A, Equipment Bay" required value="{{ old('storage_location') }}"
+                    style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
+            </div>
+
+            <div>
+                <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">
+                    Min. Stock Alert Threshold *
+                </label>
+                <input type="number" name="min_stock" min="1" placeholder="10" required value="{{ old('min_stock', 10) }}"
+                    style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
+                <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">Triggers a low-stock alert when stock falls below this number.</p>
+            </div>
         </div>
 
         {{-- EXPIRATION DATE (Consumable only) --}}

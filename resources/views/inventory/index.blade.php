@@ -248,11 +248,12 @@
                     @php
                         $nextExpirationDate = $item->next_expiration_date;
                         $stockQuantity = $item->total_stock;
+                        $minThreshold = (int) ($item->min_stock ?? 10);
                         $expirationDate = $nextExpirationDate ? \Carbon\Carbon::parse($nextExpirationDate)->startOfDay() : null;
                         $today = now()->startOfDay();
                         $isExpired = $stockQuantity > 0 && $expirationDate && $expirationDate->lt($today);
                         $isExpiring = $stockQuantity > 0 && $expirationDate && $expirationDate->between($today, $today->copy()->addDays(30), true);
-                        $statusFilters = [$stockQuantity <= 0 ? 'out-of-stock' : ($stockQuantity < 10 ? 'low-stock' : 'in-stock')];
+                        $statusFilters = [$stockQuantity <= 0 ? 'out-of-stock' : ($stockQuantity < $minThreshold ? 'low-stock' : 'in-stock')];
                         if ($isExpired) $statusFilters[] = 'expired';
                         elseif ($isExpiring) $statusFilters[] = 'expiring';
                     @endphp
@@ -277,7 +278,7 @@
                         </td>
 
                         <td style="padding:14px 16px;">
-                            <span style="font-weight:700; font-size:15px; color:{{ $stockQuantity <= 0 ? '#dc2626' : ($stockQuantity < 10 ? '#d97706' : '#1a202c') }};">
+                            <span style="font-weight:700; font-size:15px; color:{{ $stockQuantity <= 0 ? '#dc2626' : ($stockQuantity < $minThreshold ? '#d97706' : '#1a202c') }};">
                                 {{ number_format($stockQuantity) }}
                             </span>
                         </td>
@@ -297,8 +298,8 @@
                         <td style="padding:14px 16px;">
                             @if($stockQuantity <= 0)
                                 <span class="status-badge status-out">Out of Stock</span>
-                            @elseif($stockQuantity < 10)
-                                <span class="status-badge status-low">Low Stock</span>
+                            @elseif($stockQuantity < $minThreshold)
+                                <span class="status-badge status-low" title="Alert threshold: {{ $minThreshold }}">Low Stock</span>
                             @else
                                 <span class="status-badge status-in">In Stock</span>
                             @endif

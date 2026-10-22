@@ -18,11 +18,13 @@ class Item extends Model
         'variant',
         'type',
         'storage_location',
+        'min_stock',
         'expiration_date',
         'sku',
     ];
 
     protected $casts = [
+        'min_stock' => 'integer',
         'expiration_date' => 'date',
     ];
 
@@ -59,7 +61,8 @@ class Item extends Model
     {
         $stock = $this->total_stock;
         if ($stock <= 0) return 'OUT OF STOCK';
-        if ($stock < 10) return 'LOW STOCK';
+        $threshold = (int) ($this->min_stock ?? 10);
+        if ($stock < $threshold) return 'LOW STOCK';
         return 'IN STOCK';
     }
 }

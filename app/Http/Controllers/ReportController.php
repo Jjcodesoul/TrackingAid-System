@@ -372,7 +372,7 @@ class ReportController extends Controller
 
         $stockFor = fn (Item $item): int => (int) $item->stockBatches->sum('quantity');
         $totalStock = $items->sum(fn (Item $item): int => $stockFor($item));
-        $lowStock = $items->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count();
+        $lowStock = $items->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < (int) ($item->min_stock ?? 10))->count();
         $outOfStock = $items->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count();
         $expiring = $items->filter(function (Item $item): bool {
             if (! $item->next_expiration_date) {
@@ -396,8 +396,9 @@ class ReportController extends Controller
 
         $rows = $items->map(function (Item $item) use ($stockFor): array {
             $stock = $stockFor($item);
-            $status = $stock <= 0 ? 'Out of Stock' : ($stock < 10 ? 'Low Stock' : 'In Stock');
-            $statusTone = $stock <= 0 ? 'danger' : ($stock < 10 ? 'warning' : 'success');
+            $threshold = (int) ($item->min_stock ?? 10);
+            $status = $stock <= 0 ? 'Out of Stock' : ($stock < $threshold ? 'Low Stock' : 'In Stock');
+            $statusTone = $stock <= 0 ? 'danger' : ($stock < $threshold ? 'warning' : 'success');
 
             return $this->tableRow([
                 $this->cell($item->sku, mono: true),
@@ -428,7 +429,7 @@ class ReportController extends Controller
             'stats' => [
                 $this->stat('Total Items', number_format($items->count()), 'Registered SKUs', 'fa-solid fa-boxes-stacked'),
                 $this->stat('Total Stock', number_format($totalStock), 'Across all batches', 'fa-solid fa-layer-group', 'success'),
-                $this->stat('Low Stock', number_format($lowStock), 'Below 10 units', 'fa-solid fa-triangle-exclamation', 'warning'),
+                $this->stat('Low Stock', number_format($lowStock), 'Below min threshold', 'fa-solid fa-triangle-exclamation', 'warning'),
                 $this->stat('Expiring Soon', number_format($expiring), 'Within 30 days', 'fa-regular fa-clock', 'danger'),
             ],
             'headers' => ['SKU', 'Item', 'Category', 'Stock', 'Unit', 'Type', 'Status', 'Location', 'Expiration'],
@@ -440,7 +441,8 @@ class ReportController extends Controller
     private function inventoryStatuses(Item $item): array
     {
         $stock = (int) $item->total_stock;
-        $statuses = [$stock <= 0 ? 'Out of Stock' : ($stock < 10 ? 'Low Stock' : 'In Stock')];
+        $threshold = (int) ($item->min_stock ?? 10);
+        $statuses = [$stock <= 0 ? 'Out of Stock' : ($stock < $threshold ? 'Low Stock' : 'In Stock')];
 
         if ($stock > 0 && $item->next_expiration_date) {
             $expiration = Carbon::parse($item->next_expiration_date)->startOfDay();

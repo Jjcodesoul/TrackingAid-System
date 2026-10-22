@@ -91,16 +91,22 @@
                     <div class="p-6 space-y-4">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <label for="name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Full Name *</label>
-                                <input type="text" id="name" name="name" required placeholder="e.g., Joanna Doe" 
+                                <label for="first_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">First Name *</label>
+                                <input type="text" id="first_name" name="first_name" required placeholder="e.g., Joanna" value="{{ old('first_name') }}"
                                     class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                             </div>
 
                             <div>
-                                <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address *</label>
-                                <input type="email" id="email" name="email" required placeholder="admin@trackingaid.org" 
+                                <label for="last_name" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Last Name *</label>
+                                <input type="text" id="last_name" name="last_name" required placeholder="e.g., Doe" value="{{ old('last_name') }}"
                                     class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                             </div>
+                        </div>
+
+                        <div>
+                            <label for="email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Email Address *</label>
+                            <input type="email" id="email" name="email" required placeholder="admin@trackingaid.org" value="{{ old('email') }}"
+                                class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
                         </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

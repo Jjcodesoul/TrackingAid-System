@@ -42,7 +42,7 @@ class InventoryController extends Controller
         $inventoryStats = [
             'totalItems' => $allItems->count(),
             'totalStock' => $allItems->sum(fn (Item $item): int => $stockFor($item)),
-            'lowStock'   => $allItems->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < 10)->count(),
+            'lowStock'   => $allItems->filter(fn (Item $item): bool => $stockFor($item) > 0 && $stockFor($item) < ($item->min_stock ?? 10))->count(),
             'outOfStock' => $allItems->filter(fn (Item $item): bool => $stockFor($item) <= 0)->count(),
             'expired'    => $expired,
             'expiring'   => $expiring,
@@ -115,6 +115,7 @@ public function create()
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
             'storage_location' => 'required|string|max:255',
+            'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
 
@@ -148,6 +149,7 @@ public function create()
             'variant'            => $validated['variant'] ?? 'NONE',
             'type'               => $validated['type'],
             'storage_location'   => $validated['storage_location'],
+            'min_stock'          => isset($validated['min_stock']) && $validated['min_stock'] !== '' ? (int) $validated['min_stock'] : 10,
             'expiration_date'    => $validated['expiration_date'] ?? null,
             'sku'                => $sku,
         ]);
@@ -181,6 +183,7 @@ public function create()
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
             'storage_location' => 'nullable|string|max:255',
+            'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
 

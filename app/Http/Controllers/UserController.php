@@ -37,6 +37,14 @@ class UserController extends Controller
             abort(403, 'Unauthorized action.');
         }
 
+        if ((!$request->filled('first_name') || !$request->filled('last_name')) && $request->filled('name')) {
+            $parts = explode(' ', trim((string) $request->input('name')), 2);
+            $request->merge([
+                'first_name' => $request->filled('first_name') ? $request->input('first_name') : ($parts[0] ?? ''),
+                'last_name' => $request->filled('last_name') ? $request->input('last_name') : ($parts[1] ?? ''),
+            ]);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -83,6 +91,14 @@ class UserController extends Controller
         }
 
         $user = User::findOrFail($id);
+
+        if ((!$request->filled('first_name') || !$request->filled('last_name')) && $request->filled('name')) {
+            $parts = explode(' ', trim((string) $request->input('name')), 2);
+            $request->merge([
+                'first_name' => $request->filled('first_name') ? $request->input('first_name') : ($parts[0] ?? ''),
+                'last_name' => $request->filled('last_name') ? $request->input('last_name') : ($parts[1] ?? ''),
+            ]);
+        }
 
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',

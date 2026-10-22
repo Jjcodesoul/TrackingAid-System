@@ -47,13 +47,17 @@ class NotificationService
     {
         return Item::with('stockBatches')
             ->get()
-            ->filter(fn (Item $item): bool => $item->total_stock > 0 && $item->total_stock < self::LOW_STOCK_THRESHOLD)
+            ->filter(function (Item $item): bool {
+                $threshold = (int) ($item->min_stock ?? self::LOW_STOCK_THRESHOLD);
+                return $item->total_stock > 0 && $item->total_stock < $threshold;
+            })
             ->map(function (Item $item): array {
+                $threshold = (int) ($item->min_stock ?? self::LOW_STOCK_THRESHOLD);
                 return [
                     'id' => 'low-stock-' . $item->id,
                     'type' => 'low_stock',
                     'title' => 'Low stock: ' . $item->name,
-                    'message' => $item->sku . ' has ' . number_format($item->total_stock) . ' units remaining.',
+                    'message' => $item->sku . ' has ' . number_format($item->total_stock) . ' units remaining (min: ' . number_format($threshold) . ').',
                     'request_code' => null,
                     'item_name' => $item->name,
                     'url' => route('inventory.index'),
