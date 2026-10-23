@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 250" role="img" aria-label="TrackingAid TA">
+  <defs>
+    <linearGradient id="teal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#49b7a8"/>
+      <stop offset="0.5" stop-color="#168b83"/>
+      <stop offset="1" stop-color="#07524f"/>
+    </linearGradient>
+    <linearGradient id="shadow" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#073f3d"/>
+      <stop offset="1" stop-color="#147b73"/>
+    </linearGradient>
+    <mask id="a-cutouts" maskUnits="userSpaceOnUse" x="0" y="0" width="320" height="250">
+      <rect width="320" height="250" fill="white"/>
+      <path d="M187 77 C194 68 203 71 209 83 L228 122 C213 128 198 136 183 145 L169 137 Z" fill="black"/>
+      <path d="M105 190 C152 164 216 147 276 91" fill="none" stroke="black" stroke-width="9" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path fill="url(#teal)" d="M24 62 C28 35 45 20 72 20 H181 C178 46 160 61 132 61 H101 L78 176 C74 195 83 208 101 216 C74 215 56 204 50 188 C46 176 49 160 53 143 L70 61 H24 Z"/>
+  <path fill="url(#teal)" mask="url(#a-cutouts)" d="M110 219 C132 167 164 83 190 36 C200 17 219 18 231 37 C253 72 281 144 300 198 L307 219 H277 C263 218 256 211 250 196 L216 116 C212 106 207 97 201 110 L161 190 C148 213 132 220 110 219 Z"/>
+  <path fill="url(#shadow)" opacity=".72" d="M78 176 C75 195 84 207 101 216 C84 214 72 208 64 197 C59 189 58 179 61 165 L77 82 L93 82 Z"/>
+  <path fill="url(#shadow)" opacity=".78" d="M161 190 C176 161 190 132 201 110 C207 97 212 106 216 116 L250 196 C256 211 263 218 277 219 H258 C246 216 239 208 233 195 L207 138 L181 190 C176 201 170 207 161 212 Z"/>
+</svg>

@@ -9,6 +9,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'TrackingAid | Disaster Logistics')</title>
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 
     <script>
         (() => {
@@ -285,10 +286,10 @@
 
         <aside id="appSidebar" class="app-sidebar w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0 border-r border-slate-800" aria-label="Main navigation">
 
-            <div class="flex items-center gap-3 px-6 py-5 border-b border-slate-800">
-                <x-brand-mark class="app-brand-mark" />
-                <div class="flex flex-col min-w-0">
-                    <h1 class="text-base font-bold text-white tracking-wide m-0 p-0 leading-tight truncate">TrackingAid</h1>
+            <div class="flex items-center px-6 py-5 border-b border-slate-800">
+                <div class="app-brand-logo" style="display:flex;align-items:center;gap:8px;min-width:0" role="img" aria-label="TrackingAid">
+                    <img src="{{ asset('images/trackingaid-mark.png') }}" alt="" aria-hidden="true" class="app-brand-logo-mark" style="display:block;width:46px;height:46px;flex:0 0 46px;object-fit:contain">
+                    <span class="app-brand-wordmark" style="color:#f0f7f3;font-size:28px;font-weight:700;letter-spacing:-1px;line-height:1;white-space:nowrap">Tracking<span class="app-brand-wordmark-accent" style="color:#51b795">Aid</span></span>
                 </div>
             </div>
 
@@ -556,7 +557,7 @@
                 try {
                     const n = new Notification(title, {
                         body: body,
-                        icon: '/favicon.ico',
+                        icon: '/favicon.svg',
                         tag: 'trackingaid-notification',
                     });
 
