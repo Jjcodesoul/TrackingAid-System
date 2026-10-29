@@ -11,7 +11,10 @@ class StockBatch extends Model
         'quantity',
         'supplier',
         'date_received',
-        'expiration_date'
+        'expiration_date',
+        'created_by_user_id',
+        'movement_type',
+        'storage_location',
     ];
 
     protected $casts = [
@@ -22,5 +25,10 @@ class StockBatch extends Model
     public function item()
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 }

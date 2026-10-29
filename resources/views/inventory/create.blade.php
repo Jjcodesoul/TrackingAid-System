@@ -238,9 +238,11 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location *</label>
-                <input type="text" name="storage_location" placeholder="e.g. Warehouse A, Equipment Bay" required value="{{ old('storage_location') }}"
+                <select name="storage_location" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
-                    onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
+                    onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'"><option value="">Select a verified Mambaling location</option>
+                    @foreach($storageLocations as $location)<option value="{{ $location->name }}" @selected(old('storage_location') === $location->name)>{{ $location->name }}</option>@endforeach
+                </select>
             </div>
 
             <div>

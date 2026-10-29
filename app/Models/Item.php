@@ -21,6 +21,7 @@ class Item extends Model
         'min_stock',
         'expiration_date',
         'sku',
+        'created_by_user_id',
     ];
 
     protected $casts = [
@@ -31,6 +32,11 @@ class Item extends Model
     public function stockBatches()
     {
         return $this->hasMany(StockBatch::class);
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     public function getTotalStockAttribute()

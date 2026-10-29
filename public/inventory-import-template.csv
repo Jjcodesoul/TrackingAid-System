@@ -1,0 +1,2 @@
+name,category,unit_type,size_weight,target_beneficiary,variant,type,storage_location,quantity,min_stock,expiration_date
+Rice,FOOD,SACK,50KG,ALL,NONE,consumable,ENTER_VERIFIED_LOCATION,100,10,2027-12-31

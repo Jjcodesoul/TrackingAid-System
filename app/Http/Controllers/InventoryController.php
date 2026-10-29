@@ -7,6 +7,10 @@ use App\Models\Inventory;
 use App\Models\Item;
 use App\Services\InventorySyncService;
 use App\Services\SkuGenerator;
+use App\Models\StorageLocation;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class InventoryController extends Controller
 {
@@ -48,7 +52,14 @@ class InventoryController extends Controller
             'expiring'   => $expiring,
         ];
 
-        return view('inventory.index', compact('items', 'inventoryStats'));
+        $storageLocations = StorageLocation::where('is_active', true)->orderBy('name')->get();
+        $unverifiedLocations = Item::whereNotNull('storage_location')->where('storage_location', '!=', '')
+            ->whereNotIn('storage_location', $storageLocations->pluck('name'))->distinct()->orderBy('storage_location')->pluck('storage_location');
+        $unverifiedLocations = $unverifiedLocations->merge(Inventory::whereNotNull('storage_location')->where('storage_location', '!=', '')
+            ->whereNotIn('storage_location', $storageLocations->pluck('name'))->distinct()->orderBy('storage_location')->pluck('storage_location'))->unique()->sort()->values();
+        $missingLocationCount = Item::whereNull('storage_location')->orWhere('storage_location', '')->count();
+
+        return view('inventory.index', compact('items', 'inventoryStats', 'storageLocations', 'unverifiedLocations', 'missingLocationCount'));
     }
 
     
@@ -96,12 +107,13 @@ public function create()
         ->orderBy('variant')
         ->pluck('variant');
 
+    $storageLocations = StorageLocation::where('is_active', true)->orderBy('name')->get();
     return view('inventory.create', compact(
         'customCategories',
         'customUnits',
         'customSizes',
         'customTargets',
-        'customVariants'
+        'customVariants', 'storageLocations'
     ));
 }
     public function store(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
@@ -114,7 +126,7 @@ public function create()
             'target_beneficiary' => 'required|string|max:100',
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
-            'storage_location' => 'required|string|max:255',
+            'storage_location' => ['required', 'string', 'max:255', Rule::exists('storage_locations', 'name')->where('is_active', true)],
             'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
@@ -152,6 +164,7 @@ public function create()
             'min_stock'          => isset($validated['min_stock']) && $validated['min_stock'] !== '' ? (int) $validated['min_stock'] : 10,
             'expiration_date'    => $validated['expiration_date'] ?? null,
             'sku'                => $sku,
+            'created_by_user_id' => $request->user()->id,
         ]);
 
         $inventorySync->syncItem($item);
@@ -168,7 +181,8 @@ public function create()
         $customCategories = Item::whereNotIn('category', $defaultCategories)
             ->distinct()->pluck('category');
 
-        return view('inventory.edit', compact('item', 'customCategories'));
+        $storageLocations = StorageLocation::where('is_active', true)->orderBy('name')->get();
+        return view('inventory.edit', compact('item', 'customCategories', 'storageLocations'));
     }
 
     public function update(Request $request, InventorySyncService $inventorySync, $id)
@@ -182,7 +196,7 @@ public function create()
             'target_beneficiary' => 'nullable|string|max:100',
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
-            'storage_location' => 'nullable|string|max:255',
+            'storage_location' => ['required', 'string', 'max:255', Rule::exists('storage_locations', 'name')->where('is_active', true)],
             'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
@@ -199,6 +213,85 @@ public function create()
         $inventorySync->syncItem($item->fresh('stockBatches'));
 
         return redirect('/inventory')->with('success', 'Item updated successfully.');
+    }
+
+    public function storeLocation(Request $request)
+    {
+        $validated = $request->validate(['name' => 'required|string|max:255|unique:storage_locations,name']);
+        StorageLocation::create($validated + ['warehouse_name' => 'Mambaling, Cebu City, Philippines', 'is_active' => true]);
+        return back()->with('success', 'Verified storage location added under Mambaling, Cebu City.');
+    }
+
+    public function history(Item $item)
+    {
+        $item->load(['creator', 'stockBatches.creator']);
+        $inventory = Inventory::withTrashed()->where('sku', $item->sku)->first();
+        $releases = $inventory ? $inventory->borrowReleases()->with('processedBy')->orderByDesc('released_at')->get() : collect();
+        $returns = $inventory ? $inventory->returns()->with('processedBy')->latest()->get() : collect();
+        return view('inventory.history', compact('item', 'releases', 'returns'));
+    }
+
+    public function import(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
+    {
+        $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
+        $handle = fopen($request->file('csv_file')->getRealPath(), 'r');
+        if (! $handle) return back()->withErrors(['csv_file' => 'The CSV file could not be read.']);
+        $headers = fgetcsv($handle);
+        $required = ['name','category','unit_type','size_weight','target_beneficiary','variant','type','storage_location','quantity','min_stock','expiration_date'];
+        $headers = array_map(fn ($header) => strtolower(trim((string) $header)), $headers ?: []);
+        if ($headers !== $required) {
+            fclose($handle);
+            return back()->withErrors(['csv_file' => 'CSV headers must be exactly: '.implode(',', $required)]);
+        }
+        $locations = StorageLocation::where('is_active', true)->pluck('name')->all();
+        $validRows = []; $errors = []; $rowNumber = 1;
+        while (($values = fgetcsv($handle)) !== false) {
+            $rowNumber++;
+            if ($values === [null] || $values === []) continue;
+            if ($rowNumber > 1001) { $errors[] = "Row {$rowNumber}: files may contain at most 1000 data rows."; break; }
+            if (count($values) !== count($required)) { $errors[] = "Row {$rowNumber}: expected ".count($required).' columns.'; continue; }
+            $row = array_combine($required, $values);
+            $validator = Validator::make($row, [
+                'name'=>'required|string|max:255','category'=>'required|string|max:100','unit_type'=>'required|string|max:100',
+                'size_weight'=>'nullable|string|max:100','target_beneficiary'=>'required|string|max:100','variant'=>'nullable|string|max:100',
+                'type'=>'required|in:consumable,reusable,returnable','storage_location'=>['required',Rule::in($locations)],
+                'quantity'=>'required|integer|min:0|max:2147483647','min_stock'=>'nullable|integer|min:0', 'expiration_date'=>'nullable|date',
+            ]);
+            if ($validator->fails()) { foreach ($validator->errors()->all() as $error) $errors[] = "Row {$rowNumber}: {$error}"; continue; }
+            $row['_line'] = $rowNumber;
+            $row['_sku'] = $skuGenerator->generate(strtoupper($row['category']), $row['name'], $row['size_weight'] ?: null, $row['variant'] ?: null, $row['target_beneficiary'], $row['type'] === 'reusable' ? 'returnable' : $row['type']);
+            if (Item::withTrashed()->where('sku', $row['_sku'])->exists() || Inventory::withTrashed()->where('sku', $row['_sku'])->exists()) {
+                $errors[] = "Row {$rowNumber}: generated SKU {$row['_sku']} already exists."; continue;
+            }
+            if (collect($validRows)->contains(fn ($valid) => $valid['_sku'] === $row['_sku'])) { $errors[] = "Row {$rowNumber}: duplicate item in this CSV (SKU {$row['_sku']})."; continue; }
+            $validRows[] = $row;
+        }
+        fclose($handle);
+        $imported = 0;
+        try {
+            DB::transaction(function () use ($validRows, $request, $inventorySync, &$imported) {
+                foreach ($validRows as $row) {
+                    $item = Item::create([
+                        'name'=>$row['name'],'category'=>strtoupper($row['category']),'unit_type'=>strtoupper($row['unit_type']),
+                        'size_weight'=>$row['size_weight'] ?: null,'target_beneficiary'=>strtoupper($row['target_beneficiary']),
+                        'variant'=>$row['variant'] ?: 'NONE','type'=>$row['type'] === 'reusable' ? 'returnable' : $row['type'],
+                        'storage_location'=>$row['storage_location'],'min_stock'=>$row['min_stock'] === '' ? 10 : (int) $row['min_stock'],
+                        'expiration_date'=>$row['expiration_date'] ?: null,'sku'=>$row['_sku'],'created_by_user_id'=>$request->user()->id,
+                    ]);
+                    if ((int) $row['quantity'] > 0) {
+                        $item->stockBatches()->create(['quantity'=>(int) $row['quantity'],'supplier'=>'Initial inventory import','date_received'=>now()->toDateString(),
+                            'expiration_date'=>$row['expiration_date'] ?: null,'created_by_user_id'=>$request->user()->id,
+                            'movement_type'=>'initial-import','storage_location'=>$row['storage_location']]);
+                    }
+                    $inventorySync->syncItem($item->fresh('stockBatches'));
+                    $imported++;
+                }
+            });
+        } catch (\Throwable $exception) {
+            report($exception);
+            return back()->with('import_summary', ['imported'=>0,'skipped'=>count($errors),'failed'=>count($validRows),'errors'=>['Import transaction rolled back due to a database error.']]);
+        }
+        return back()->with('import_summary', ['imported'=>$imported,'skipped'=>count($errors),'failed'=>0,'errors'=>$errors]);
     }
 
     public function delete(InventorySyncService $inventorySync, $id)

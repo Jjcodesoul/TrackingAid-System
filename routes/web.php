@@ -51,6 +51,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit'])->name('inventory.edit');
         Route::post('/inventory/update/{id}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete'])->name('inventory.delete');
+        Route::post('/inventory/import', [InventoryController::class, 'import'])->name('inventory.import');
+        Route::post('/inventory/locations', [InventoryController::class, 'storeLocation'])->name('inventory.locations.store');
 
         Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
         Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
@@ -75,6 +77,7 @@ Route::middleware('auth')->group(function () {
 
     // 4. SHARED FEATURES (Both Admin and Staff can open these routes)
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
+    Route::get('/inventory/{item}/history', [InventoryController::class, 'history'])->name('inventory.history');
     Route::get('/requests', [RequestController::class, 'index'])->name('requests.index');
     Route::get('/borrow-release', [BorrowReleaseController::class, 'create'])->name('borrow-release.create');
     Route::post('/borrow-release', [BorrowReleaseController::class, 'store'])->name('borrow-release.store');
