@@ -292,7 +292,7 @@
         </dl>
         <p id="requestShortageWarning" class="alert-box alert-warning" role="status" hidden></p>
         <p id="localReviewedMessage" class="alert-box alert-info" role="status" style="margin:0 20px 20px;" hidden></p>
-        @if(auth()->user()->role === 'admin')
+        @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
             <div id="localPendingActions" class="request-review-actions" hidden>
                 <form id="localApproveForm" method="POST" onsubmit="return confirmLocalApproval()">
                     @csrf
@@ -341,7 +341,7 @@
             <div><dt>Source system</dt><dd data-request-detail="sourceSystem"></dd></div>
         </dl>
         <p id="forwardedReviewedMessage" class="alert-box alert-info" role="status" style="margin:0 20px 20px;" hidden></p>
-        @if(auth()->user()->role === 'admin')
+        @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
             <div id="forwardedPendingActions" class="request-review-actions request-review-actions--sticky" hidden>
                 <p class="form-help" style="margin:0;">This updates the request status in TrackingAid. No external status sync is configured.</p>
                 <div class="request-review-buttons" style="gap:8px;">

@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RequestController;
+use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\ValidateReportApiKey;
 use Illuminate\Support\Facades\Route;
 
@@ -17,7 +18,7 @@ Route::post('/incoming-requests', [RequestController::class, 'storeResqData']);
 
 Route::post('/login', [AuthController::class, 'login']);
 
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 });
 
@@ -30,7 +31,7 @@ Route::patch('/deliveries/{delivery}/status', [
     DeliveryController::class,
     'updateStatus',
 ]);
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
 
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 

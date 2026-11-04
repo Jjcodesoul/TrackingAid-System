@@ -20,10 +20,14 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
         $request->session()->regenerate();
+        $request->session()->put('auth_version', Auth::user()->auth_version);
 
         $user = Auth::user();
 
-        // Strict role-based routing right after a successful login click
+        if ($user->role === 'super_admin') {
+            return redirect()->route('super-admin.dashboard');
+        }
+
         if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }

@@ -59,7 +59,12 @@ class AdminDashboardTest extends TestCase
     public function test_users_page_uses_the_shared_shell_and_database_records(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $staff = User::factory()->create(['role' => 'staff', 'name' => 'Actual Staff Record']);
+        $staff = User::factory()->create([
+            'role' => 'staff',
+            'first_name' => 'Actual',
+            'last_name' => 'Staff Record',
+            'name' => 'Actual Staff Record',
+        ]);
 
         $this->actingAs($admin)
             ->get(route('users.index'))

@@ -21,3 +21,17 @@ The seeders create sample/demo records. Confirm inventory, supplier, batch, requ
 ## QA
 
 Run the automated suite with `php artisan test`. The report and data-integrity test cases, including expected values, are documented in [QA_TEST_CASES.md](QA_TEST_CASES.md).
+
+## Initial Super Admin
+
+After migrations are applied, create the initial Super Admin interactively:
+
+```bash
+php artisan super-admin:create
+```
+
+The command prompts for a name, email, and a confirmed password of at least 12 characters. It does not print or store the password in plaintext, and it refuses to create another Super Admin if one already exists. Super Admin accounts are intentionally excluded from the regular user-management form and must be protected through the deployment's account recovery process.
+
+Super Admin account controls include activation/deactivation, reset links, and session revocation. Sign-in history and these controls require the account-security migration to be applied with `php artisan migrate`.
+
+To seed or reset the initial Super Admin account, set `SUPER_ADMIN_PASSWORD` in the environment and run `php artisan db:seed --class=SuperAdminSeeder --force`. The seeder creates or updates `superadmin@gmail.com`, stores only a password hash, and revokes existing sessions and API tokens when resetting an existing account. Do not commit the password or place it in source control; use a strong password and change the provided initial password promptly.

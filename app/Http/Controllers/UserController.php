@@ -14,17 +14,36 @@ class UserController extends Controller
     /**
      * Display the user registry.
      */
-    public function index(): View
+    public function index(Request $request): View
     {
-        // Safety: Prevent unauthorized access
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized access to user registry.');
+        $this->authorizeUserManagement();
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'role' => ['nullable', 'in:admin,user,staff,delivery_personnel'],
+            'is_active' => ['nullable', 'in:0,1'],
+        ]);
+
+        $usersQuery = User::where('role', '!=', 'super_admin');
+
+        if (! empty($validated['search'])) {
+            $search = $validated['search'];
+            $usersQuery->where(fn ($query) => $query
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%"));
+        }
+        if (! empty($validated['role'])) {
+            $usersQuery->where('role', $validated['role']);
+        }
+        if (array_key_exists('is_active', $validated)) {
+            $usersQuery->where('is_active', (bool) $validated['is_active']);
         }
 
-        // Fetch ALL users so everyone added displays in your dashboard management table
-        $users = User::all();
-
-        return view('users.index', compact('users'));
+        return view('users.index', [
+            'users' => $usersQuery->orderBy('name')->paginate(20)->withQueryString(),
+            'filters' => $validated,
+            'isSuperAdmin' => Auth::user()->role === 'super_admin',
+        ]);
     }
 
     /**
@@ -32,10 +51,7 @@ class UserController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
-        // Enforce admin permission check for storing records too
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeUserManagement();
 
         if ((!$request->filled('first_name') || !$request->filled('last_name')) && $request->filled('name')) {
             $parts = explode(' ', trim((string) $request->input('name')), 2);
@@ -73,11 +89,11 @@ class UserController extends Controller
      */
     public function edit($id): View
     {
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeUserManagement();
 
         $user = User::findOrFail($id);
+        abort_if($user->role === 'super_admin', 403, 'Super Admin accounts cannot be changed through user management.');
+
         return view('users.edit', compact('user'));
     }
 
@@ -86,11 +102,10 @@ class UserController extends Controller
      */
     public function update(Request $request, $id): RedirectResponse
     {
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeUserManagement();
 
         $user = User::findOrFail($id);
+        abort_if($user->role === 'super_admin', 403, 'Super Admin accounts cannot be changed through user management.');
 
         if ((!$request->filled('first_name') || !$request->filled('last_name')) && $request->filled('name')) {
             $parts = explode(' ', trim((string) $request->input('name')), 2);
@@ -128,12 +143,10 @@ class UserController extends Controller
      */
     public function destroy($id): RedirectResponse
     {
-        // Safety: Restrict destructive actions to administrators only
-        if (Auth::user()->role !== 'admin') {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorizeUserManagement();
 
         $user = User::findOrFail($id);
+        abort_if($user->role === 'super_admin', 403, 'Super Admin accounts cannot be removed through user management.');
 
         // Safety: Prevent deleting your own logged-in session account
         if (Auth::id() === $user->id) {
@@ -143,5 +156,14 @@ class UserController extends Controller
         $user->delete();
 
         return redirect()->route('users.index')->with('success', 'User access revoked successfully.');
+    }
+
+    private function authorizeUserManagement(): void
+    {
+        abort_unless(
+            in_array(Auth::user()?->role, ['admin', 'super_admin'], true),
+            403,
+            'Unauthorized action.'
+        );
     }
 }

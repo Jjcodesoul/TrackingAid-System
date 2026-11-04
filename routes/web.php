@@ -9,37 +9,54 @@ use App\Http\Controllers\RequestController;
 use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StockController;
+use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\AdminMiddleware;
+use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\SuperAdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // 1. Landing Root Route
 Route::get('/', function () {
     if (auth()->check()) {
-        return auth()->user()->role === 'admin' 
-            ? redirect()->route('admin.dashboard') 
-            : redirect()->route('dashboard');
+        return match (auth()->user()->role) {
+            'super_admin' => redirect()->route('super-admin.dashboard'),
+            'admin' => redirect()->route('admin.dashboard'),
+            default => redirect()->route('dashboard'),
+        };
     }
     return redirect('/login');
 });
 
 // All authenticated routes (Admin + User/Staff)
-Route::middleware('auth')->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
 
     // 2. Regular User Dashboard
     Route::get('/dashboard', function () {
+        if (auth()->user()->role === 'super_admin') {
+            return redirect()->route('super-admin.dashboard');
+        }
         if (auth()->user()->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }
         return app(DashboardController::class)->index();
     })->name('dashboard');
 
+    Route::middleware(SuperAdminMiddleware::class)->prefix('super-admin')->name('super-admin.')->group(function () {
+        Route::get('/dashboard', [SuperAdminController::class, 'dashboard'])->name('dashboard');
+        Route::get('/activity-logs', [SuperAdminController::class, 'activityLogs'])->name('activity-logs');
+        Route::get('/activity-logs/users/{user}', [SuperAdminController::class, 'userActivity'])->name('activity-logs.users.show');
+        Route::post('/users/{user}/status', [SuperAdminController::class, 'setAccountStatus'])->name('users.status');
+        Route::post('/users/{user}/force-logout', [SuperAdminController::class, 'forceLogout'])->name('users.force-logout');
+        Route::post('/users/{user}/password-reset', [SuperAdminController::class, 'sendPasswordReset'])->name('users.password-reset');
+    });
+
 
     // 3. 🛑 ADMIN-ONLY CONTROL PANEL ROUTES
     Route::middleware(AdminMiddleware::class)->group(function () {
         
         Route::get('/admin/dashboard', function () {
-            if (auth()->user()->role !== 'admin') {
+            if (! in_array(auth()->user()->role, ['admin', 'super_admin'], true)) {
                 return redirect()->route('dashboard')->with('error', 'Access denied.');
             }
             return app(DashboardController::class)->adminIndex();

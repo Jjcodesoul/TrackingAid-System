@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -63,6 +64,10 @@ class ReportApiTest extends TestCase
 
         $this->assertSame('https', parse_url($response->json('download_url'), PHP_URL_SCHEME));
         $this->assertSame('reports.example.test', parse_url($response->json('download_url'), PHP_URL_HOST));
+        parse_str((string) parse_url($response->json('download_url'), PHP_URL_QUERY), $query);
+        $expiresAt = Carbon::parse($response->json('expires_at'));
+        $this->assertSame($expiresAt->timestamp, (int) $query['expires']);
+        $this->assertTrue($expiresAt->isFuture());
 
         $downloadResponse = $this->get($response->json('download_url'));
 
@@ -70,6 +75,8 @@ class ReportApiTest extends TestCase
             ->assertHeader('content-disposition');
 
         $this->assertStringContainsString('SKU', $downloadResponse->streamedContent());
+        $this->travelTo($expiresAt->addSecond());
+        $this->get($response->json('download_url'))->assertForbidden();
 
         $this->assertDatabaseHas('report_requests', [
             'id' => $response->json('request_id'),

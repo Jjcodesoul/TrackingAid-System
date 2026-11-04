@@ -66,6 +66,7 @@ class RegisteredUserController extends Controller
         event(new Registered($user));
 
         Auth::login($user);
+        $request->session()->put('auth_version', $user->auth_version);
 
         return redirect(route('dashboard', absolute: false));
     }

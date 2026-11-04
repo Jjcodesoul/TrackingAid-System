@@ -3,12 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\LoginHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    public function login(Request $request)
+    public function login(Request $request, LoginHistoryService $loginHistory)
     {
         $credentials = $request->validate([
             'email' => ['required', 'email'],
@@ -17,11 +18,15 @@ class AuthController extends Controller
 
         $user = User::where('email', $credentials['email'])->first();
 
-        if (!$user || !Hash::check($credentials['password'], $user->password)) {
+        if (!$user || ! $user->is_active || !Hash::check($credentials['password'], $user->password)) {
+            $loginHistory->record($user, $credentials['email'], false, $request);
+
             return response()->json([
                 'message' => 'Invalid email or password.'
             ], 401);
         }
+
+        $loginHistory->record($user, $credentials['email'], true, $request);
 
         // Remove old tokens for this user
         $user->tokens()->delete();

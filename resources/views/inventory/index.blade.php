@@ -223,7 +223,7 @@
         <p class="page-subtitle">All registered items and current stock levels</p>
     </div>
 
-    @if(auth()->user()->role === 'admin')
+    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
         <a href="{{ route('inventory.create') }}" class="btn-main">
             <i class="fa-solid fa-plus"></i> Add Item
         </a>
@@ -309,7 +309,7 @@
 @endif
 
 {{-- ADMIN STORAGE LOCATIONS AND CSV IMPORT --}}
-@if(auth()->user()->role === 'admin')
+@if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
     <div class="card-ui" style="margin:16px 0; padding:16px 20px;">
         <h3 style="margin:0 0 10px; font-size:15px;">
             Mambaling storage locations
@@ -672,7 +672,7 @@
                                         History
                                     </a>
 
-                                    @if(auth()->user()->role === 'admin')
+                                    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
                                         <a
                                             href="{{ route('inventory.edit', $item->id) }}"
                                             class="btn-soft btn-compact"

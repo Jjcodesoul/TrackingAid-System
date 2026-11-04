@@ -14,6 +14,35 @@ class UiUxSmokeTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_inventory_add_form_shows_variant_for_reusable_items_and_restores_invalid_input(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $this->from(route('inventory.create'))
+            ->post(route('inventory.store'), [
+                'name' => 'Retained Item',
+                'category' => 'FOOD',
+                'unit_type' => 'BOX',
+                'size_weight' => 'SM',
+                'target_beneficiary' => 'ALL',
+                'variant' => 'REG',
+                'type' => 'reusable',
+                'storage_location' => 'Unavailable Location',
+                'min_stock' => 10,
+            ])
+            ->assertRedirect(route('inventory.create'))
+            ->assertSessionHasErrors('storage_location');
+
+        $this->get(route('inventory.create'))
+            ->assertOk()
+            ->assertSee('class="inventory-create-grid"', false)
+            ->assertSee('id="variantWrapper" style="margin-bottom:18px;"', false)
+            ->assertSee('value="Retained Item"', false)
+            ->assertSee('id="category_final" value="FOOD"', false)
+            ->assertSee('id="variant_final" value="REG"', false)
+            ->assertSee('value="reusable" checked', false);
+    }
+
     public function test_staff_dashboard_shows_live_values_without_demo_or_loading_placeholders(): void
     {
         $staff = User::factory()->create(['role' => 'staff']);

@@ -217,6 +217,47 @@ class WorkflowManagementTest extends TestCase
         $this->assertSame('Released', $request->fresh()->status);
     }
 
+    public function test_super_admin_can_record_a_release(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        [$inventory, $request, $deliveryPerson] = $this->createReleaseFixture();
+
+        $this->actingAs($superAdmin)
+            ->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 3))
+            ->assertRedirect(route('borrow-release.create'));
+
+        $this->assertDatabaseHas('borrow_releases', [
+            'request_id' => $request->id,
+            'inventory_id' => $inventory->id,
+            'quantity' => 3,
+            'processed_by_user_id' => $superAdmin->id,
+        ]);
+        $this->assertSame(7, (int) $inventory->fresh()->quantity);
+        $this->assertSame('Released', $request->fresh()->status);
+    }
+
+    public function test_delivery_personnel_can_record_a_release(): void
+    {
+        $deliveryOperator = User::factory()->create(['role' => 'delivery_personnel']);
+        [$inventory, $request, $deliveryPerson] = $this->createReleaseFixture();
+
+        $this->actingAs($deliveryOperator)
+            ->get(route('borrow-release.create'))
+            ->assertOk();
+
+        $this->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 3))
+            ->assertRedirect(route('borrow-release.create'));
+
+        $this->assertDatabaseHas('borrow_releases', [
+            'request_id' => $request->id,
+            'inventory_id' => $inventory->id,
+            'quantity' => 3,
+            'processed_by_user_id' => $deliveryOperator->id,
+        ]);
+        $this->assertSame(7, (int) $inventory->fresh()->quantity);
+        $this->assertSame('Released', $request->fresh()->status);
+    }
+
     public function test_release_quantity_must_match_remaining_approved_quantity(): void
     {
         $staff = User::factory()->create(['role' => 'staff']);

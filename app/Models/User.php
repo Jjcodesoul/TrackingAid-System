@@ -7,13 +7,14 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
 // FIXED: Added 'role' inside the Fillable PHP attribute array
-#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'role', 'must_change_password'])]
-#[Hidden(['password', 'remember_token'])]
+#[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'role', 'must_change_password', 'is_active', 'last_login_at'])]
+#[Hidden(['password', 'remember_token', 'auth_version'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -38,6 +39,11 @@ class User extends Authenticatable
         return $fullName !== '' ? $fullName : ($value ?? '');
     }
 
+    public function loginEvents(): HasMany
+    {
+        return $this->hasMany(UserLoginEvent::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
@@ -49,6 +55,8 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'must_change_password' => 'boolean',
+            'is_active' => 'boolean',
+            'last_login_at' => 'datetime',
         ];
     }
 }

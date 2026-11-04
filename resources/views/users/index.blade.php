@@ -20,6 +20,9 @@
         @if(session('success'))
             <div class="alert-box alert-success" role="status">{{ session('success') }}</div>
         @endif
+        @if(session('error'))
+            <div class="alert-box alert-error" role="alert">{{ session('error') }}</div>
+        @endif
         @if($errors->any())
             <div class="alert-box alert-error" role="alert">
                 <ul class="m-0 pl-5">
@@ -30,6 +33,32 @@
             </div>
         @endif
 
+        <form method="GET" action="{{ route('users.index') }}" class="card-ui p-4 mb-4" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:180px;">
+                <label for="user-search" class="form-label">Search users</label>
+                <input id="user-search" name="search" type="search" value="{{ $filters['search'] ?? '' }}" class="form-input" placeholder="Name or email">
+            </div>
+            <div style="min-width:160px;">
+                <label for="user-role-filter" class="form-label">Role</label>
+                <select id="user-role-filter" name="role" class="form-select">
+                    <option value="">All roles</option>
+                    @foreach(['admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['role'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="min-width:150px;">
+                <label for="user-status-filter" class="form-label">Account status</label>
+                <select id="user-status-filter" name="is_active" class="form-select">
+                    <option value="">All statuses</option>
+                    <option value="1" @selected(($filters['is_active'] ?? '') === '1')>Active</option>
+                    <option value="0" @selected(($filters['is_active'] ?? '') === '0')>Inactive</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-main">Filter</button>
+            <a href="{{ route('users.index') }}" class="btn-soft">Clear</a>
+        </form>
+
         <div class="card-ui" style="padding:0; overflow:hidden;">
             <div class="overflow-x-auto">
                 <table class="table-ui">
@@ -38,6 +67,8 @@
                             <th scope="col" class="px-4 py-3 font-bold">Name</th>
                             <th scope="col" class="px-4 py-3 font-bold">Email</th>
                             <th scope="col" class="px-4 py-3 font-bold">Role</th>
+                            <th scope="col" class="px-4 py-3 font-bold">Status</th>
+                            <th scope="col" class="px-4 py-3 font-bold">Last active</th>
                             <th scope="col" class="px-4 py-3 font-bold text-right">Actions</th>
                         </tr>
                     </thead>
@@ -48,26 +79,51 @@
                                     <td class="px-4 py-3.5">{{ $userItem->email }}</td>
                                     <td class="px-4 py-3.5">
                                         <span class="status-badge role-badge role-{{ $userItem->role }}">
-                                            {{ $userItem->role }}
+                                            {{ match($userItem->role) { 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel', default => ucfirst(str_replace('_', ' ', $userItem->role)) } }}
                                         </span>
                                     </td>
+                                    <td class="px-4 py-3.5">
+                                        <span class="status-badge {{ $userItem->is_active ? 'status-approved' : 'status-rejected' }}">
+                                            {{ $userItem->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </td>
+                                    <td class="px-4 py-3.5">{{ $userItem->last_login_at?->format('M d, Y H:i') ?? 'Never signed in' }}</td>
                                     <td class="px-4 py-3.5 text-right">
                                         <div class="flex items-center justify-end gap-3">
+                                            @if($isSuperAdmin)
+                                                <a href="{{ route('super-admin.activity-logs.users.show', $userItem) }}" class="users-action">Activity</a>
+                                            @endif
                                             <a href="{{ route('users.edit', $userItem->id) }}" class="users-action">Edit</a>
                                             
                                             <form action="{{ route('users.destroy', $userItem->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this user access?');" class="m-0 p-0 inline">
                                                 @csrf
                                                 <button type="submit" class="users-action is-danger">Remove</button>
                                             </form>
+                                            @if($isSuperAdmin)
+                                                <form action="{{ route('super-admin.users.status', $userItem) }}" method="POST" class="m-0 p-0 inline">
+                                                    @csrf
+                                                    <input type="hidden" name="is_active" value="{{ $userItem->is_active ? 0 : 1 }}">
+                                                    <button type="submit" class="users-action">{{ $userItem->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                                </form>
+                                                <form action="{{ route('super-admin.users.force-logout', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Revoke all current sessions and API tokens for this account?');">
+                                                    @csrf
+                                                    <button type="submit" class="users-action">Force logout</button>
+                                                </form>
+                                                <form action="{{ route('super-admin.users.password-reset', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Send an expiring password reset link to this user?');">
+                                                    @csrf
+                                                    <button type="submit" class="users-action">Reset password</button>
+                                                </form>
+                                            @endif
                                         </div>
                                     </td>
                                 </tr>
                         @empty
-                            <tr><td colspan="4" class="p-8 text-center text-slate-500">No users have been added.</td></tr>
+                            <tr><td colspan="6" class="p-8 text-center text-slate-500">No users match these filters.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
+            <div style="padding:16px;">{{ $users->links() }}</div>
         </div>
 
         {{-- Fixed Layout: Only 'hidden' is applied initially --}}

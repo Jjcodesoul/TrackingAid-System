@@ -2,6 +2,10 @@
 
 @section('content')
 <style>
+    .inventory-create-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 380px); gap: 24px; align-items: start; }
+    .inventory-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+    .inventory-type-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .inventory-sku-panel { display: flex; flex-direction: column; gap: 16px; position: sticky; top: 24px; }
     .paginated-select { position: relative; width: 100%; }
     .paginated-select-native { position: absolute !important; width: 1px !important; height: 1px !important; padding: 0 !important; margin: -1px !important; overflow: hidden !important; clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important; }
     .paginated-select-trigger { width: 100%; min-height: 42px; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border: 1px solid #bdcbc5; border-radius: 8px; background: #fff; color: #1f2937; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
@@ -22,6 +26,16 @@
     .paginated-select-page-label { color: #64748b; font-size: 11px; }
     .paginated-select-error { display: none; margin-top: 5px; color: #b91c1c; font-size: 11px; }
     .paginated-select-error.is-visible { display: block; }
+
+    @media (max-width: 1200px) {
+        .inventory-create-grid { grid-template-columns: minmax(0, 1fr); }
+        .inventory-sku-panel { position: static; }
+    }
+
+    @media (max-width: 640px) {
+        .inventory-form-grid,
+        .inventory-type-grid { grid-template-columns: minmax(0, 1fr); }
+    }
 </style>
 
 {{-- BREADCRUMB --}}
@@ -55,7 +69,7 @@
 <form method="POST" action="/inventory/store" class="inventory-form">
 @csrf
 
-<div style="display:grid; grid-template-columns:1fr 380px; gap:24px; align-items:start;">
+<div class="inventory-create-grid">
 
     {{-- LEFT: FORM --}}
     <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:28px;">
@@ -63,11 +77,11 @@
         {{-- ITEM TYPE SELECTOR (moved to top, drives the rest of the form) --}}
         <div style="margin-bottom:24px; padding-bottom:24px; border-bottom:1px solid #f1f5f9;">
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:10px;">What kind of item is this?</label>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="inventory-type-grid">
 
                 <label id="typeCard_consumable" onclick="selectItemType('consumable')"
                     style="cursor:pointer; border:2px solid #10B981; background:#ECFDF5; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; transition:all .15s;">
-                    <input type="radio" name="type" value="consumable" checked style="display:none;">
+                    <input type="radio" name="type" value="consumable" @checked(old('type', 'consumable') === 'consumable') style="display:none;">
                     <div style="width:36px; height:36px; border-radius:8px; background:#D1FAE5; color:#10B981; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <i class="fa-solid fa-box-open"></i>
                     </div>
@@ -79,7 +93,7 @@
 
                 <label id="typeCard_returnable" onclick="selectItemType('reusable')"
                     style="cursor:pointer; border:2px solid #e2e8f0; background:#fff; border-radius:12px; padding:16px; display:flex; align-items:center; gap:12px; transition:all .15s;">
-                    <input type="radio" name="type" value="reusable" style="display:none;">
+                    <input type="radio" name="type" value="reusable" @checked(old('type') === 'reusable') style="display:none;">
                     <div style="width:36px; height:36px; border-radius:8px; background:#F1F5F9; color:#64748b; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                         <i class="fa-solid fa-arrow-rotate-left"></i>
                     </div>
@@ -98,13 +112,13 @@
         <div style="margin-bottom:18px;">
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Item Name</label>
             <input type="text" id="name" name="name" placeholder="e.g. Rice, Medical Kit, Life Vest"
-                onkeyup="generateSKU()" required
+                onkeyup="generateSKU()" required value="{{ old('name') }}"
                 style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                 onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
         </div>
 
         {{-- CATEGORY + UNIT TYPE --}}
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+        <div class="inventory-form-grid">
 
             {{-- CATEGORY --}}
             <div>
@@ -127,7 +141,7 @@
                         style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
                     <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new category.</p>
                 </div>
-                <input type="hidden" name="category" id="category_final">
+                <input type="hidden" name="category" id="category_final" value="{{ old('category') }}">
             </div>
 
             {{-- UNIT TYPE --}}
@@ -152,12 +166,12 @@
                         style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
                     <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new unit type.</p>
                 </div>
-                <input type="hidden" name="unit_type" id="unit_type_final">
+                <input type="hidden" name="unit_type" id="unit_type_final" value="{{ old('unit_type') }}">
             </div>
         </div>
 
         {{-- SIZE + TARGET --}}
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+        <div class="inventory-form-grid">
 
             {{-- SIZE / WEIGHT (label changes based on type) --}}
             <div>
@@ -184,7 +198,7 @@
                         style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
                     <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new size option.</p>
                 </div>
-                <input type="hidden" name="size_weight" id="size_weight_final">
+                <input type="hidden" name="size_weight" id="size_weight_final" value="{{ old('size_weight') }}">
             </div>
 
             {{-- TARGET BENEFICIARY --}}
@@ -207,12 +221,12 @@
                         style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
                     <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new target beneficiary.</p>
                 </div>
-                <input type="hidden" name="target_beneficiary" id="target_beneficiary_final">
+                <input type="hidden" name="target_beneficiary" id="target_beneficiary_final" value="{{ old('target_beneficiary') }}">
             </div>
         </div>
 
-        {{-- VARIANT (Consumable only) --}}
-        <div id="variantWrapper" style="margin-bottom:18px; overflow:hidden; transition:max-height .25s ease, opacity .25s ease; max-height:100px; opacity:1;">
+        {{-- VARIANT --}}
+        <div id="variantWrapper" style="margin-bottom:18px;">
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Variant</label>
             <select id="variant" onchange="handleDynamicChange('variant')"
                 style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box; background:#fff;">
@@ -231,11 +245,11 @@
                     style="width:100%; padding:10px 14px; border:1px solid #10B981; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;">
                 <p style="font-size:11px; color:#94a3b8; margin:4px 0 0;">This will be added as a new variant.</p>
             </div>
-            <input type="hidden" name="variant" id="variant_final" value="NONE">
+            <input type="hidden" name="variant" id="variant_final" value="{{ old('variant', 'NONE') }}">
         </div>
 
         {{-- STORAGE LOCATION & MIN STOCK THRESHOLD --}}
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+        <div class="inventory-form-grid">
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location *</label>
                 <select name="storage_location" required
@@ -261,7 +275,7 @@
             <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">
                 Expiration Date <span style="color:#94a3b8; font-weight:400;">(optional)</span>
             </label>
-            <input type="date" name="expiration_date"
+            <input type="date" name="expiration_date" value="{{ old('expiration_date') }}"
                 style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                 onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'">
         </div>
@@ -277,7 +291,7 @@
     </div>
 
     {{-- RIGHT: SKU PANEL --}}
-    <div style="display:flex; flex-direction:column; gap:16px; position:sticky; top:24px;">
+    <div class="inventory-sku-panel">
 
         <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
             <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Compact SKU preview</h4>
@@ -467,10 +481,17 @@ function setupPaginatedSelect(select) {
         if (!panel.hidden) return;
         panel.hidden = false;
         trigger.setAttribute('aria-expanded', 'true');
-        panel.classList.toggle('is-above', window.innerHeight - wrapper.getBoundingClientRect().bottom < 330);
         search.value = '';
         page = 0;
         renderOptions();
+        const wrapperRect = wrapper.getBoundingClientRect();
+        const panelHeight = panel.getBoundingClientRect().height;
+        const availableBelow = window.innerHeight - wrapperRect.bottom;
+        const availableAbove = wrapperRect.top;
+        panel.classList.toggle(
+            'is-above',
+            availableBelow < panelHeight + 12 && availableAbove > availableBelow
+        );
         search.focus();
     };
 
@@ -500,6 +521,15 @@ function setupPaginatedSelect(select) {
 function syncPaginatedSelects() {
     document.querySelectorAll('.inventory-form select').forEach((select) => {
         if (!select._paginatedSelect) setupPaginatedSelect(select);
+        const finalInput = select.id
+            ? document.getElementById(`${select.id}_final`)
+            : null;
+        if (finalInput?.value) {
+            if (!Array.from(select.options).some((option) => option.value === finalInput.value)) {
+                select.add(new Option(finalInput.value, finalInput.value, true, true));
+            }
+            select.value = finalInput.value;
+        }
         select._paginatedSelect?.updateValue();
         select._paginatedSelect?.renderOptions();
     });
@@ -526,7 +556,6 @@ document.querySelector('.inventory-form').addEventListener('submit', (event) => 
 function selectItemType(type) {
     const consumableCard = document.getElementById('typeCard_consumable');
     const returnableCard = document.getElementById('typeCard_returnable');
-    const variantWrapper = document.getElementById('variantWrapper');
     const expirationWrapper = document.getElementById('expirationWrapper');
     const returnableNote = document.getElementById('returnableNote');
     const sizeLabel = document.getElementById('sizeLabel');
@@ -539,8 +568,6 @@ function selectItemType(type) {
         returnableCard.style.borderColor = '#e2e8f0';
         returnableCard.style.background = '#fff';
 
-        variantWrapper.style.maxHeight = '100px';
-        variantWrapper.style.opacity = '1';
         expirationWrapper.style.maxHeight = '100px';
         expirationWrapper.style.opacity = '1';
         returnableNote.style.display = 'none';
@@ -551,17 +578,10 @@ function selectItemType(type) {
         consumableCard.style.borderColor = '#e2e8f0';
         consumableCard.style.background = '#fff';
 
-        variantWrapper.style.maxHeight = '0px';
-        variantWrapper.style.opacity = '0';
         expirationWrapper.style.maxHeight = '0px';
         expirationWrapper.style.opacity = '0';
         returnableNote.style.display = 'block';
         sizeLabel.innerText = 'Size';
-
-        // Reset variant to NONE since it's hidden for returnable items
-        document.getElementById('variant').value = 'NONE';
-        document.getElementById('variant_final').value = 'NONE';
-        document.getElementById('variant')._paginatedSelect?.updateValue();
     }
 
     generateSKU();
@@ -646,7 +666,7 @@ function copySKU() {
 }
 
 function clearForm() {
-    document.querySelector('form').reset();
+    document.querySelector('.inventory-form').reset();
     document.getElementById('skuPreview').innerText = 'Generated on save';
     document.getElementById('sku').value = '';
 
@@ -663,6 +683,8 @@ function clearForm() {
     selectItemType('consumable');
     syncPaginatedSelects();
 }
+
+selectItemType(document.querySelector('input[name="type"]:checked')?.value || 'consumable');
 </script>
 
 @endsection

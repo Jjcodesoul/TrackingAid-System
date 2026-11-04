@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Inventory;
 use App\Models\Item;
+use App\Models\StorageLocation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -11,6 +12,17 @@ use Tests\TestCase;
 class SkuGenerationTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        StorageLocation::create([
+            'name' => 'Warehouse A',
+            'warehouse_name' => 'Test Warehouse',
+            'is_active' => true,
+        ]);
+    }
 
     public function test_sku_uses_item_attributes_and_is_generated_on_the_server(): void
     {

@@ -74,7 +74,7 @@ class BorrowReleaseController extends Controller
         HttpRequest $request,
         InventorySyncService $inventorySync
     ) {
-        abort_unless(in_array($request->user()->role, ['admin', 'staff'], true), 403);
+        abort_unless(in_array($request->user()->role, ['admin', 'super_admin', 'staff', 'delivery_personnel'], true), 403);
 
         $validated = $request->validate([
             'request_id' => 'required|exists:requests,id',

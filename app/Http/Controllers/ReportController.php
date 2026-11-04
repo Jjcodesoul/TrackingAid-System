@@ -209,12 +209,18 @@ class ReportController extends Controller
             throw $exception;
         }
 
+        $expiresAt = now()->addMinutes(30);
         URL::forceRootUrl(config('app.url'));
 
-        $downloadUrl = URL::signedRoute(
-            'api.external-reports.download',
-            ['reportRequest' => $record->id]
-        );
+        try {
+            $downloadUrl = URL::temporarySignedRoute(
+                'api.external-reports.download',
+                $expiresAt,
+                ['reportRequest' => $record->id]
+            );
+        } finally {
+            URL::forceRootUrl(null);
+        }
 
         return response()->json([
             'status' => 'success',
@@ -225,6 +231,7 @@ class ReportController extends Controller
             'format' => $format,
             'file_name' => $fileName,
             'download_url' => $downloadUrl,
+            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 

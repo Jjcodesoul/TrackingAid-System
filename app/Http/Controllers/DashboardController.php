@@ -20,7 +20,7 @@ class DashboardController extends Controller
         return view('admin.dashboard', $this->dashboardData($notificationService));
     }
 
-    private function dashboardData(?NotificationService $notificationService = null): array
+    public function dashboardData(?NotificationService $notificationService = null): array
     {
         $notificationService ??= app(NotificationService::class);
 

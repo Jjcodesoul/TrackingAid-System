@@ -298,8 +298,12 @@
 
                     <li>
                         @php
-                            $dashboardUrl = auth()->user()->role === 'admin' ? '/admin/dashboard' : '/dashboard';
-                            $isActive = request()->is('admin/dashboard*') || (request()->is('dashboard*') && !request()->is('admin*'));
+                            $dashboardUrl = match (auth()->user()->role) {
+                                'super_admin' => route('super-admin.dashboard'),
+                                'admin' => '/admin/dashboard',
+                                default => '/dashboard',
+                            };
+                            $isActive = request()->is('admin/dashboard*', 'super-admin/dashboard*') || (request()->is('dashboard*') && !request()->is('admin*') && !request()->is('super-admin*'));
                         @endphp
                         <a href="{{ $dashboardUrl }}" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ $isActive ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i>
@@ -314,7 +318,7 @@
                         </a>
                     </li>
 
-                    @if(auth()->user()->role === 'admin')
+                    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
 
                     <li>
                         <a href="/stock-in" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('stock-in*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
@@ -358,7 +362,7 @@
                         </a>
                     </li>
 
-                    @if(auth()->user()->role === 'admin')
+                    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
                     <li>
                         <a href="/reports" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('reports*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-chart-line w-5 text-center text-base"></i>
@@ -367,11 +371,20 @@
                     </li>
                     @endif
 
-                    @if(auth()->user()->role === 'admin')
+                    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
                     <li>
                         <a href="/users" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('users*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-user-gear w-5 text-center text-base"></i>
                             <span>Users & Roles</span>
+                        </a>
+                    </li>
+                    @endif
+
+                    @if(auth()->user()->role === 'super_admin')
+                    <li>
+                        <a href="{{ route('super-admin.activity-logs') }}" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('super-admin/activity-logs*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
+                            <i class="fa-solid fa-clipboard-check w-5 text-center text-base"></i>
+                            <span>Activity Logs</span>
                         </a>
                     </li>
                     @endif
