@@ -90,6 +90,7 @@ class StockBatchSeeder extends Seeder
                         'quantity'        => $data['quantity'],
                         'supplier'        => $data['supplier'],
                         'expiration_date' => $data['expiration_date'],
+                        'storage_location' => $item->storage_location,
                     ]
                 );
             }

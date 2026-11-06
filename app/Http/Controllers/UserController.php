@@ -8,6 +8,9 @@ use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Str;
+use Throwable;
 
 class UserController extends Controller
 {
@@ -65,23 +68,32 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'nullable|string',
             'role' => 'required|string|in:admin,user,staff,delivery_personnel',
         ]);
 
-        $temporaryPassword = 'Temp_123';
-
-        User::create([
+        $user = User::create([
             'first_name' => $validated['first_name'],
             'last_name' => $validated['last_name'],
             'name' => trim("{$validated['first_name']} {$validated['last_name']}"),
             'email' => $validated['email'],
-            'password' => Hash::make($temporaryPassword),
+            // The user sets a real password through Laravel's expiring reset token.
+            'password' => Hash::make(Str::random(64)),
             'role' => $validated['role'],
             'must_change_password' => true,
         ]);
 
-        return redirect()->route('users.index')->with('success', 'Personnel authorized successfully with temporary password "Temp_123".');
+        try {
+            $setupEmailSent = Password::sendResetLink(['email' => $user->email]) === Password::RESET_LINK_SENT;
+        } catch (Throwable $exception) {
+            report($exception);
+            $setupEmailSent = false;
+        }
+
+        if (! $setupEmailSent) {
+            return redirect()->route('users.index')->with('error', 'The account was created, but the setup email could not be sent. Ask the user to use Forgot password after mail delivery is restored.');
+        }
+
+        return redirect()->route('users.index')->with('success', 'Account created. A secure password setup link was sent to '.$user->email.'.');
     }
 
     /**
@@ -119,7 +131,6 @@ class UserController extends Controller
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8',
             'role' => 'required|string|in:admin,user,staff,delivery_personnel',
         ]);
 
@@ -128,10 +139,6 @@ class UserController extends Controller
         $user->name = trim("{$validated['first_name']} {$validated['last_name']}");
         $user->email = $validated['email'];
         $user->role = $validated['role'];
-
-        if (!empty($validated['password'])) {
-            $user->password = Hash::make($validated['password']);
-        }
 
         $user->save();
 

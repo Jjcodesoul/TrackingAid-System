@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\Inventory;
 use App\Models\Request as SupplyRequest;
 use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -27,15 +28,17 @@ class UiUxSmokeTest extends TestCase
                 'target_beneficiary' => 'ALL',
                 'variant' => 'REG',
                 'type' => 'reusable',
-                'storage_location' => 'Unavailable Location',
+                'storage_location_id' => 999999,
                 'min_stock' => 10,
             ])
             ->assertRedirect(route('inventory.create'))
-            ->assertSessionHasErrors('storage_location');
+            ->assertSessionHasErrors('storage_location_id');
 
         $this->get(route('inventory.create'))
             ->assertOk()
             ->assertSee('class="inventory-create-grid"', false)
+            ->assertSee('7–12 uppercase letters or numbers.')
+            ->assertSee('/^[A-Z0-9]{7,12}$/')
             ->assertSee('id="variantWrapper" style="margin-bottom:18px;"', false)
             ->assertSee('value="Retained Item"', false)
             ->assertSee('id="category_final" value="FOOD"', false)
@@ -80,6 +83,33 @@ class UiUxSmokeTest extends TestCase
             ->assertSee('aria-label="Filter by stock and expiration status"', false)
             ->assertSee('<th scope="col"', false)
             ->assertSee('Expiration');
+    }
+
+    public function test_inventory_location_filter_shows_only_stock_from_the_selected_location(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'staff']));
+        $warehouseA = StorageLocation::where('name', 'Warehouse A')->firstOrFail();
+        $warehouseB = StorageLocation::where('name', 'Warehouse B')->firstOrFail();
+        $splitItem = Item::create([
+            'name' => 'Split Location Item', 'category' => 'FOOD', 'unit_type' => 'BOX',
+            'target_beneficiary' => 'ALL', 'type' => 'consumable', 'storage_location' => $warehouseA->name,
+            'sku' => 'FILTER-SPLIT-01',
+        ]);
+        $otherItem = Item::create([
+            'name' => 'Other Location Item', 'category' => 'FOOD', 'unit_type' => 'BOX',
+            'target_beneficiary' => 'ALL', 'type' => 'consumable', 'storage_location' => $warehouseB->name,
+            'sku' => 'FILTER-OTHER-01',
+        ]);
+        foreach ([[$splitItem, $warehouseA, 3], [$splitItem, $warehouseB, 8], [$otherItem, $warehouseB, 6]] as [$item, $location, $quantity]) {
+            StockBatch::create([
+                'item_id' => $item->id, 'quantity' => $quantity, 'supplier' => 'Test fixture',
+                'date_received' => now()->toDateString(), 'storage_location' => $location->name,
+            ]);
+        }
+
+        $response = $this->get(route('inventory.index', ['location' => $warehouseA->id]));
+        $response->assertOk()->assertSee('Split Location Item')->assertDontSee('Other Location Item');
+        $response->assertViewHas('inventoryStats', fn (array $stats): bool => $stats['totalStock'] === 3 && $stats['totalItems'] === 1);
     }
 
     public function test_inventory_lists_expiry_date_and_distinguishes_expired_from_expiring_stock(): void
@@ -143,7 +173,7 @@ class UiUxSmokeTest extends TestCase
 
         $this->get(route('requests.index'))
             ->assertOk()
-            ->assertSee("filterStatus('Released')", false)
+            ->assertSee('status=Released', false)
             ->assertSee('aria-label="Search requests"', false)
             ->assertSee('No requests match these filters.')
             ->assertSee('REQ-RELEASED-UX');

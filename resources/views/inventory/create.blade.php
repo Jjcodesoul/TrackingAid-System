@@ -252,10 +252,10 @@
         <div class="inventory-form-grid">
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location *</label>
-                <select name="storage_location" required
+                <select name="storage_location_id" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                     onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'"><option value="">Select a verified Mambaling location</option>
-                    @foreach($storageLocations as $location)<option value="{{ $location->name }}" @selected(old('storage_location') === $location->name)>{{ $location->name }}</option>@endforeach
+                    @foreach($storageLocations as $location)<option value="{{ $location->id }}" @selected(old('storage_location_id') == $location->id)>{{ $location->name }} — {{ $location->warehouse_name }}</option>@endforeach
                 </select>
             </div>
 
@@ -294,13 +294,16 @@
     <div class="inventory-sku-panel">
 
         <div style="background:#fff; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
-            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">Compact SKU preview</h4>
+            <h4 style="font-size:13px; font-weight:700; color:#1a202c; margin:0 0 16px;">SKU preview</h4>
 
             <div style="background:#ECFDF5; border:1px solid #A7F3D0; border-radius:10px; padding:16px 20px; margin-bottom:16px;">
                 <p id="skuPreview" style="color:#10B981; font-weight:700; font-family:monospace; font-size:20px; margin:0; letter-spacing:.06em;">
                     Generated on save
                 </p>
             </div>
+            <p id="skuValidationMessage" class="text-sm text-slate-500" role="status" aria-live="polite" style="margin:-8px 0 14px;">
+                Generated SKU: 7–12 uppercase letters or numbers.
+            </p>
 
             <div style="margin-bottom:16px;">
                 <table style="width:100%; border-collapse:collapse;">
@@ -308,7 +311,7 @@
                         <tr style="border-bottom:1px solid #f1f5f9;">
                             <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Category</th>
                             <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Item</th>
-                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Details</th>
+                            <th style="padding:6px 8px; font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; text-align:left;">Unit type</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -328,13 +331,14 @@
             </button>
         </div>
 
-        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:16px;">
+        <div style="background:#f7faf8; border:1px solid #d8e5df; border-radius:8px; padding:16px;">
             <div style="display:flex; align-items:flex-start; gap:10px;">
-                <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
+                <i class="fa-solid fa-circle-info" style="color:#176b57; margin-top:2px; font-size:13px;"></i>
                 <div>
-                    <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY + ITEM + SIZE + TYPE + VARIANT + SEQUENCE</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">Short readable codes with no dashes. Example: Rice (50 kg) is FOORICE50KGCST01. Quantity is tracked separately.</p>
+                    <p style="font-size:13px; font-weight:700; color:#1c2b28; margin:0 0 4px;">SKU format</p>
+                    <p style="font-size:13px; color:#63716d; margin:0 0 4px;">7–12 uppercase letters or numbers; a number may be last.</p>
+                    <p style="font-size:13px; color:#63716d; margin:0 0 4px;">Automatically generated from category, item, unit type, and a sequence number.</p>
+                    <p style="font-size:13px; color:#63716d; margin:0;">SKU identifies the item; quantity is tracked separately.</p>
                 </div>
             </div>
         </div>
@@ -621,39 +625,60 @@ function handleDynamicNewInput(field) {
 function generateSKU() {
     const category = document.getElementById('category_final').value;
     const rawName = document.getElementById('name').value.trim();
-    const categoryCodes = { FOOD: 'FOO', MEDICAL: 'MED', RESCUE: 'RES', RELIEF: 'REL', HYGIENE: 'HYG', SHELTER: 'SHE', COMMUNICATIONS: 'COM' };
+    const categoryCodes = { FOOD: 'FO', MEDICAL: 'ME', RESCUE: 'RE', RELIEF: 'RL', HYGIENE: 'HY', SHELTER: 'SH', COMMUNICATIONS: 'CO' };
     const categoryKey = category.trim().toUpperCase();
-    const categoryCode = categoryCodes[categoryKey] || (categoryKey.replace(/[^A-Z0-9]/g, '').slice(0, 3) || 'GEN');
-    const variantValue = document.getElementById('variant_final').value;
-    const targetValue = document.getElementById('target_beneficiary_final').value;
-    const selectedType = document.querySelector('input[name="type"]:checked')?.value;
+    const categoryCode = categoryCodes[categoryKey] || (categoryKey.replace(/[^A-Z0-9]/g, '').slice(0, 2) || 'GN');
+    const unitValue = document.getElementById('unit_type_final').value;
     const preview = document.getElementById('skuPreview');
-    const sizeValue = document.getElementById('size_weight_final').value;
+    const validationMessage = document.getElementById('skuValidationMessage');
 
     document.getElementById('bd-category').innerText = categoryCode || '—';
     document.getElementById('bd-item').innerText = rawName || '—';
-    document.getElementById('bd-details').innerText = [document.getElementById('size_weight_final').value, variantValue, targetValue]
-        .filter(value => value && value.toUpperCase() !== 'NONE').join(' · ') || '—';
+    document.getElementById('bd-details').innerText = unitValue || '—';
     if (!category || !rawName) {
         preview.innerText = 'Generated on save';
         document.getElementById('sku').value = '';
+        validationMessage.textContent = 'Generated SKU: 7–12 uppercase letters or numbers.';
+        validationMessage.className = 'text-sm text-slate-500';
         return;
     }
 
     const words = rawName.toUpperCase().match(/[A-Z0-9]+/g) || [];
     const itemWords = words.filter(word => !/^\d+(ML|L|KG|G|CM|M|PCS|CT)$/.test(word));
-    const itemCode = itemWords.length > 1
-        ? `${itemWords[0].slice(0, 3)}${itemWords[1].slice(0, 2)}`
-        : (itemWords[0] || 'ITEM').slice(0, 4);
-    const compact = (value, length, fallback) => {
-        const cleaned = (value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
-        return (cleaned && cleaned !== 'NONE' ? cleaned : fallback).slice(0, length);
-    };
-    const typeCode = selectedType === 'reusable' ? 'R' : 'C';
-    const sku = `${categoryCode}${itemCode}${compact(sizeValue, 5, 'STD')}${typeCode}${compact(variantValue, 2, 'ST')}01`;
+    const itemCode = (itemWords.length > 1 ? `${itemWords[0]}${itemWords[1]}` : (itemWords[0] || 'ITEM')).slice(0, 4);
+    const unitKey = (unitValue || 'PCS').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const unitCodes = { BOX: 'BX', PACK: 'PK', PCS: 'PC', PIECE: 'PC', SACK: 'SK', BAG: 'BG', BOTTLE: 'BT', GALLON: 'GL' };
+    const unitCode = unitCodes[unitKey] || unitKey.slice(0, 2) || 'PC';
+    const existingSkus = @json($existingSkus).map(value => String(value).toUpperCase());
+    const base = `${categoryCode}${itemCode}${unitCode}`;
+    const sequenceNumbers = existingSkus.map(value => value.match(new RegExp(`^${base}([0-9]{2,})$`))).filter(Boolean).map(match => Number(match[1]));
+    const nextNumber = Math.max(0, ...sequenceNumbers) + 1;
+    const suffix = String(nextNumber).padStart(2, '0');
+    const sku = `${base.slice(0, Math.max(1, 12 - suffix.length))}${suffix}`;
+    const isValidSku = /^[A-Z0-9]{7,12}$/.test(sku);
+    const duplicateSku = existingSkus.includes(sku);
     preview.innerText = sku;
-    document.getElementById('sku').value = sku;
+    document.getElementById('sku').value = isValidSku && !duplicateSku ? sku : '';
+    if (!isValidSku) {
+        validationMessage.textContent = 'SKU must contain 7–12 uppercase letters or numbers.';
+        validationMessage.className = 'text-sm text-red-700';
+    } else if (duplicateSku) {
+        validationMessage.textContent = 'This generated SKU already exists. Adjust the item details before saving.';
+        validationMessage.className = 'text-sm text-red-700';
+    } else {
+        validationMessage.textContent = `${sku.length} characters · uppercase letters and numbers`;
+        validationMessage.className = 'text-sm text-slate-500';
+    }
 }
+
+document.querySelector('.inventory-form').addEventListener('submit', event => {
+    const sku = document.getElementById('sku').value;
+    if (!/^[A-Z0-9]{7,12}$/.test(sku) || @json($existingSkus).includes(sku)) {
+        event.preventDefault();
+        document.getElementById('skuValidationMessage').textContent = 'Generate a unique SKU of 7–12 uppercase letters or numbers before saving.';
+        document.getElementById('skuValidationMessage').className = 'text-sm text-red-700';
+    }
+});
 
 function copySKU() {
     const sku = document.getElementById('sku').value;

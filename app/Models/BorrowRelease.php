@@ -16,6 +16,7 @@ class BorrowRelease extends Model
     'quantity',
     'purpose',
     'location',
+    'source_storage_location',
     'released_at',
     'delivery_status',
     'dispatched_at',

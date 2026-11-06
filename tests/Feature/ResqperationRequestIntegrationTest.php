@@ -13,6 +13,24 @@ class ResqperationRequestIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['services.resqoperation.api_key' => 'test-resqoperation-key']);
+        $this->withHeader('X-API-KEY', 'test-resqoperation-key');
+    }
+
+    public function test_incoming_request_intake_rejects_missing_or_invalid_api_keys(): void
+    {
+        config(['services.resqoperation.api_key' => '']);
+        $this->postJson('/api/incoming-requests', [])->assertServiceUnavailable();
+
+        config(['services.resqoperation.api_key' => 'test-resqoperation-key']);
+        $this->withHeader('X-API-KEY', 'incorrect-key')
+            ->postJson('/api/incoming-requests', [])
+            ->assertUnauthorized();
+    }
+
     public function test_incoming_resqperation_request_is_saved_and_shown_as_pending(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));

@@ -5,10 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Request;
+use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use App\Models\User;
 use App\Services\InventorySyncService;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request as HttpRequest;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class BorrowReleaseController extends Controller
@@ -22,7 +25,7 @@ class BorrowReleaseController extends Controller
             ->get();
 
         $requestsQuery = Request::with([
-            'inventory.item',
+            'inventory.item.stockBatches',
             'borrowReleases.deliveryPersonnel',
         ])
             ->withSum('borrowReleases as released_quantity', 'quantity')
@@ -49,6 +52,20 @@ class BorrowReleaseController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $storageLocations = StorageLocation::availableInMambaling()
+            ->orderBy('warehouse_name')->orderBy('name')->get();
+        $locationAvailability = [];
+        foreach ($approvedRequests as $approvedRequest) {
+            $inventory = $approvedRequest->inventory;
+            $item = $inventory?->item;
+            foreach ($storageLocations as $storageLocation) {
+                $locationAvailability[$approvedRequest->id][$storageLocation->id] = $item
+                    ? (int) $item->stockBatches->filter(fn ($batch) => (int) $batch->quantity > 0
+                        && $batch->storage_location === $storageLocation->name)->sum('quantity')
+                    : (($inventory?->storage_location === $storageLocation->name) ? (int) ($inventory?->quantity ?? 0) : 0);
+            }
+        }
+
         $recentReleases = BorrowRelease::with([
             'request',
             'inventory',
@@ -65,7 +82,9 @@ class BorrowReleaseController extends Controller
                 'approvedRequests',
                 'recentReleases',
                 'deliveryPersonnel',
-                'search'
+                'search',
+                'storageLocations',
+                'locationAvailability',
             )
         );
     }
@@ -92,9 +111,15 @@ class BorrowReleaseController extends Controller
             ],
             'quantity' => 'required|integer|min:1',
             'location' => 'required|string|max:255',
+            'source_storage_location' => ['required', 'integer', Rule::exists('storage_locations', 'id')->where(fn ($query) => $query->where('is_active', true)->where('warehouse_name', 'like', '%Mambaling%'))],
         ]);
 
         return DB::transaction(function () use ($validated, $inventorySync) {
+            $sourceLocation = StorageLocation::availableInMambaling()
+                ->whereKey($validated['source_storage_location'])->lockForUpdate()->first();
+            if (! $sourceLocation) {
+                throw ValidationException::withMessages(['source_storage_location' => 'Choose an active Mambaling storage location.']);
+            }
             $supplyRequest = Request::whereKey($validated['request_id'])
                 ->lockForUpdate()
                 ->first();
@@ -157,13 +182,14 @@ class BorrowReleaseController extends Controller
 
             $inventory = $inventorySync->syncInventory($inventory);
 
-            if ((int) $validated['quantity'] > (int) $inventory->quantity) {
-                throw ValidationException::withMessages([
-                    'quantity' => 'Available stock is lower than the requested release quantity.',
-                ]);
-            }
-
             $item = $inventory->item;
+            $availableAtLocation = $item
+                ? StockBatch::where('item_id', $item->id)->where('quantity', '>', 0)
+                    ->where('storage_location', $sourceLocation->name)->sum('quantity')
+                : ($inventory->storage_location === $sourceLocation->name ? (int) $inventory->quantity : 0);
+            if ((int) $validated['quantity'] > (int) $availableAtLocation) {
+                throw ValidationException::withMessages(['quantity' => 'Available stock at the selected location is lower than the requested release quantity.']);
+            }
 
             BorrowRelease::create([
                 'request_id' => $supplyRequest->id,
@@ -175,13 +201,15 @@ class BorrowReleaseController extends Controller
                 'quantity' => $validated['quantity'],
                 'purpose' => $supplyRequest->purpose ?: 'Approved request '.$supplyRequest->request_code,
                 'location' => $validated['location'],
+                'source_storage_location' => $sourceLocation->name,
                 'released_at' => now(),
                 'delivery_status' => 'Loading',
             ]);
 
             $inventorySync->releaseFromInventory(
                 $inventory,
-                $validated['quantity']
+                $validated['quantity'],
+                $sourceLocation->name
             );
 
             $supplyRequest->update([

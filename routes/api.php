@@ -6,6 +6,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RequestController;
 use App\Http\Middleware\EnsureActiveAccount;
 use App\Http\Middleware\ValidateReportApiKey;
+use App\Http\Middleware\ValidateResqOperationApiKey;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,27 +15,12 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 */
 
-Route::post('/incoming-requests', [RequestController::class, 'storeResqData']);
-
+Route::post('/incoming-requests', [RequestController::class, 'storeResqData'])
+    ->middleware(ValidateResqOperationApiKey::class);
 Route::post('/login', [AuthController::class, 'login']);
 
 Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
-});
-
-Route::get('/dashboard', [DeliveryController::class, 'dashboard']);
-Route::get('/deliveries', [DeliveryController::class, 'index']);
-Route::get('/history', [DeliveryController::class, 'history']);
-Route::get('/deliveries/{delivery}', [DeliveryController::class, 'show']);
-
-Route::patch('/deliveries/{delivery}/status', [
-    DeliveryController::class,
-    'updateStatus',
-]);
-Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
-
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
-
     Route::get('/dashboard', [DeliveryController::class, 'dashboard']);
 
     Route::get('/deliveries', [DeliveryController::class, 'index']);

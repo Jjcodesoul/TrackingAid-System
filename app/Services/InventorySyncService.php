@@ -57,11 +57,17 @@ class InventorySyncService
         }
     }
 
-    public function releaseFromInventory(Inventory $inventory, int $quantity): Inventory
+    public function releaseFromInventory(Inventory $inventory, int $quantity, ?string $location = null): Inventory
     {
         $item = Item::where('sku', $inventory->sku)->first();
 
         if (! $item) {
+            if ($location !== null && $location !== $inventory->storage_location) {
+                throw ValidationException::withMessages(['source_storage_location' => 'This inventory record is assigned to a different storage location.']);
+            }
+            if ((int) $inventory->quantity < $quantity) {
+                throw ValidationException::withMessages(['quantity' => 'Not enough stock available for this release.']);
+            }
             $inventory->decrement('quantity', $quantity);
 
             return $inventory->refresh();
@@ -71,6 +77,7 @@ class InventorySyncService
 
         $batches = StockBatch::where('item_id', $item->id)
             ->where('quantity', '>', 0)
+            ->when($location !== null, fn ($query) => $query->where('storage_location', $location))
             ->orderByRaw('expiration_date is null')
             ->orderBy('expiration_date')
             ->orderBy('date_received')
@@ -97,11 +104,14 @@ class InventorySyncService
         return $this->syncItem($item->fresh('stockBatches'));
     }
 
-    public function receiveReturn(Inventory $inventory, int $quantity): Inventory
+    public function receiveReturn(Inventory $inventory, int $quantity, ?int $actorId = null, ?string $location = null): Inventory
     {
         $item = Item::where('sku', $inventory->sku)->first();
 
         if (! $item) {
+            if ($location !== null && $location !== $inventory->storage_location) {
+                throw ValidationException::withMessages(['borrow_release_id' => 'The return location does not match the release location.']);
+            }
             $inventory->increment('quantity', $quantity);
 
             return $inventory->refresh();
@@ -113,6 +123,9 @@ class InventorySyncService
             'supplier' => 'Returned stock',
             'date_received' => now()->toDateString(),
             'expiration_date' => $item->expiration_date?->toDateString(),
+            'created_by_user_id' => $actorId,
+            'movement_type' => 'return-good',
+            'storage_location' => $location ?: $item->storage_location,
         ]);
 
         return $this->syncItem($item->fresh('stockBatches'));

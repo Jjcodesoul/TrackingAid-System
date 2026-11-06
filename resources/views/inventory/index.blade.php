@@ -15,6 +15,7 @@
         padding: 16px;
         background: #fff;
         border: 1px solid #e2e8f0;
+        border-top: 2px solid #c3d9ce;
         border-radius: 12px;
         box-shadow: 0 1px 3px rgba(15, 23, 42, .04);
     }
@@ -220,7 +221,7 @@
 <div class="page-header" style="margin-bottom:8px;">
     <div>
         <h2 class="page-title">Inventory</h2>
-        <p class="page-subtitle">All registered items and current stock levels</p>
+        <p class="page-subtitle">{{ $selectedLocation ? $selectedLocation->name.' · '.$selectedLocation->warehouse_name : 'All Mambaling storage locations' }}</p>
     </div>
 
     @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
@@ -308,36 +309,12 @@
     </div>
 @endif
 
-{{-- ADMIN STORAGE LOCATIONS AND CSV IMPORT --}}
+{{-- ADMIN INVENTORY IMPORT --}}
 @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
     <div class="card-ui" style="margin:16px 0; padding:16px 20px;">
-        <h3 style="margin:0 0 10px; font-size:15px;">
-            Mambaling storage locations
-        </h3>
-
-        <p style="margin:0 0 12px; color:#64748b; font-size:12px;">
-            Warehouse: Mambaling, Cebu City, Philippines. Add only facilities
-            verified for this operation. Existing unverified values are preserved below.
-        </p>
+        <h3 style="margin:0 0 10px; font-size:15px;">Import inventory</h3>
 
         <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:start;">
-            <form method="POST"
-                  action="{{ route('inventory.locations.store') }}"
-                  style="display:flex; gap:8px;">
-                @csrf
-
-                <input
-                    name="name"
-                    required
-                    maxlength="255"
-                    placeholder="Verified facility name"
-                    style="padding:8px 10px; border:1px solid #e2e8f0; border-radius:7px;"
-                >
-
-                <button class="btn-soft btn-compact" type="submit">
-                    Add location
-                </button>
-            </form>
 
             <form method="POST"
                   action="{{ route('inventory.import') }}"
@@ -358,18 +335,6 @@
             </form>
         </div>
 
-        <p style="margin:12px 0 0; color:#64748b; font-size:12px;">
-            Approved locations:
-            {{ $storageLocations->pluck('name')->join(', ') ?: 'none yet' }}
-        </p>
-
-        @if($unverifiedLocations->isNotEmpty() || $missingLocationCount)
-            <p style="margin:6px 0 0; color:#b45309; font-size:12px;">
-                Needs manual verification:
-                {{ $unverifiedLocations->join(', ') ?: 'none' }}
-                {{ $missingLocationCount ? ' · '.$missingLocationCount.' item(s) have no storage location' : '' }}
-            </p>
-        @endif
     </div>
 @endif
 
@@ -473,6 +438,16 @@
             <option value="expired">Expired</option>
         </select>
 
+        <form method="GET" action="{{ route('inventory.index') }}">
+            <label class="sr-only" for="inventoryLocationFilter">Filter by warehouse location</label>
+            <select id="inventoryLocationFilter" name="location" aria-label="Filter by warehouse location" onchange="this.form.submit()" style="padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; color:#374151; background:#fff;">
+                <option value="">All locations</option>
+                @foreach($storageLocations as $location)
+                    <option value="{{ $location->id }}" @selected((string) $selectedLocationId === (string) $location->id)>{{ $location->name }} — {{ $location->warehouse_name }}{{ $location->is_active ? '' : ' (inactive)' }}</option>
+                @endforeach
+            </select>
+        </form>
+
         <span
             id="resultCount"
             style="margin-left:auto; font-size:12px; color:#94a3b8; white-space:nowrap;"
@@ -565,6 +540,13 @@
                             } elseif ($isExpiring) {
                                 $statusFilters[] = 'expiring';
                             }
+                            $locationQuantities = $item->stockBatches
+                                ->groupBy(fn ($batch) => $batch->storage_location ?: 'Location not recorded')
+                                ->map(fn ($batches) => (int) $batches->sum('quantity'));
+                            $locationSummary = $selectedLocation
+                                ? $selectedLocation->name
+                                : $locationQuantities->map(fn ($quantity, $location) => $location.': '.number_format($quantity))->join(' · ');
+                            if ($locationSummary === '') $locationSummary = $item->storage_location ?: 'Location not recorded';
                         @endphp
 
                         <tr
@@ -573,6 +555,7 @@
                             data-category="{{ strtoupper($item->category) }}"
                             data-cat-slug="{{ $catSlug }}"
                             data-status="{{ implode(' ', $statusFilters) }}"
+                            data-location="{{ $locationSummary }}"
                         >
                             {{-- SKU --}}
                             <td style="padding:14px 16px;">
@@ -659,7 +642,7 @@
 
                             {{-- LOCATION --}}
                             <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                {{ $item->storage_location ?? '—' }}{{ $item->storage_location && ! $storageLocations->contains('name', $item->storage_location) ? ' (unverified)' : '' }}
+                                {{ $locationSummary }}{{ $item->storage_location && ! $availableStorageLocations->contains('name', $item->storage_location) ? ' (unverified/inactive)' : '' }}
                             </td>
 
                             {{-- ACTIONS --}}

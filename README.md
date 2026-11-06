@@ -16,6 +16,8 @@ npm run build
 php artisan serve
 ```
 
+The public overview is available at `/`. Use its **Login** link to reach the existing sign-in page. Admin-created user accounts receive an expiring password setup link by email; configure the Laravel mail transport in the deployment environment before creating real accounts. The architecture overview, project timeline template, and research validation plan are in [docs/project-documentation.md](docs/project-documentation.md).
+
 The seeders create sample/demo records. Confirm inventory, supplier, batch, request, and expiration details against operational records before using seeded data for decisions.
 
 ## QA

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\ReturnItem;
+use App\Models\StorageLocation;
 use App\Services\InventorySyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -25,12 +26,13 @@ class ReturnController extends Controller
             )
             ->latest('released_at')
             ->paginate(15);
-        $recentReturns = ReturnItem::with(['inventory', 'borrowRelease.request', 'processedBy'])
+        $verifiedLocationNames = StorageLocation::availableInMambaling()->pluck('name');
+        $recentReturns = ReturnItem::with(['inventory', 'borrowRelease.request', 'processedBy', 'receivedBy'])
             ->latest()
             ->take(5)
             ->get();
 
-        return view('returns.create', compact('returnableReleases', 'recentReturns'));
+        return view('returns.create', compact('returnableReleases', 'recentReturns', 'verifiedLocationNames'));
     }
 
     public function store(Request $request, InventorySyncService $inventorySync)
@@ -40,6 +42,7 @@ class ReturnController extends Controller
             'idempotency_key' => 'required|uuid',
             'quantity' => 'required|integer|min:1',
             'condition' => 'required|in:Good,Damaged,Missing',
+            'returned_by_name' => 'required|string|max:255',
             'notes' => 'nullable|string|max:2000',
         ]);
 
@@ -71,6 +74,17 @@ class ReturnController extends Controller
                 ]);
             }
 
+            $returnLocationName = $release->source_storage_location;
+            $returnLocation = StorageLocation::availableInMambaling()
+                ->where('name', $returnLocationName)
+                ->lockForUpdate()
+                ->first();
+            if (! $returnLocation) {
+                throw ValidationException::withMessages([
+                    'borrow_release_id' => 'The release storage location is not active and verified in Mambaling. Ask an administrator to verify it before recording this return.',
+                ]);
+            }
+
             $returnedQuantity = (int) ReturnItem::where('borrow_release_id', $release->id)->sum('quantity');
             $outstandingQuantity = max((int) $release->quantity - $returnedQuantity, 0);
 
@@ -84,14 +98,18 @@ class ReturnController extends Controller
                 'inventory_id' => $inventory->id,
                 'borrow_release_id' => $release->id,
                 'processed_by_user_id' => $request->user()->id,
+                'returned_by_name' => $validated['returned_by_name'],
+                'received_by_user_id' => $request->user()->id,
                 'idempotency_key' => $validated['idempotency_key'],
                 'quantity' => $validated['quantity'],
                 'condition' => $validated['condition'],
+                'storage_location' => $returnLocation->name,
+                'returned_at' => now(),
                 'notes' => $validated['notes'] ?? null,
             ]);
 
             if ($validated['condition'] === 'Good') {
-                $inventorySync->receiveReturn($inventory, $validated['quantity']);
+                $inventorySync->receiveReturn($inventory, $validated['quantity'], $request->user()->id, $returnLocation->name);
             }
 
             return true;

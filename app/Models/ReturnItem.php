@@ -12,11 +12,17 @@ class ReturnItem extends Model
         'inventory_id',
         'borrow_release_id',
         'processed_by_user_id',
+        'returned_by_name',
+        'received_by_user_id',
         'idempotency_key',
         'quantity',
         'condition',
+        'storage_location',
+        'returned_at',
         'notes'
     ];
+
+    protected $casts = ['returned_at' => 'datetime'];
 
     public function inventory()
     {
@@ -31,5 +37,10 @@ class ReturnItem extends Model
     public function processedBy()
     {
         return $this->belongsTo(User::class, 'processed_by_user_id');
+    }
+
+    public function receivedBy()
+    {
+        return $this->belongsTo(User::class, 'received_by_user_id');
     }
 }

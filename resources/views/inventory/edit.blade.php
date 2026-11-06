@@ -120,10 +120,10 @@
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
             <div>
                 <label style="font-size:12px; font-weight:600; color:#374151; display:block; margin-bottom:6px;">Storage Location *</label>
-                <select name="storage_location" required
+                <select name="storage_location_id" required
                     style="width:100%; padding:10px 14px; border:1px solid #e2e8f0; border-radius:8px; font-size:13px; outline:none; box-sizing:border-box;"
                     onfocus="this.style.borderColor='#10B981'" onblur="this.style.borderColor='#e2e8f0'"><option value="">Select a verified Mambaling location</option>
-                    @foreach($storageLocations as $location)<option value="{{ $location->name }}" @selected(old('storage_location', $item->storage_location) === $location->name)>{{ $location->name }}</option>@endforeach
+                    @foreach($storageLocations as $location)<option value="{{ $location->id }}" @selected(old('storage_location_id', $storageLocationId ?? null) == $location->id || (!old('storage_location_id') && $item->storage_location === $location->name))>{{ $location->name }} — {{ $location->warehouse_name }}</option>@endforeach
                 </select>
             </div>
 
@@ -193,13 +193,13 @@
             </button>
         </div>
 
-        <div style="background:#EFF6FF; border:1px solid #BFDBFE; border-radius:12px; padding:16px;">
+        <div style="background:#f7faf8; border:1px solid #d8e5df; border-radius:8px; padding:16px;">
             <div style="display:flex; align-items:flex-start; gap:10px;">
-                <i class="fa-solid fa-circle-info" style="color:#3B82F6; margin-top:2px; font-size:13px;"></i>
+                <i class="fa-solid fa-circle-info" style="color:#176b57; margin-top:2px; font-size:13px;"></i>
                 <div>
-                    <p style="font-size:12px; font-weight:700; color:#1e40af; margin:0 0 4px;">SKU Format</p>
-                    <p style="font-size:11px; color:#3B82F6; margin:0 0 4px; font-family:monospace;">CATEGORY + ITEM + SIZE + TYPE + VARIANT + SEQUENCE</p>
-                    <p style="font-size:11px; color:#6B7280; margin:0;">Existing SKUs stay fixed when item details are edited.</p>
+                    <p style="font-size:13px; font-weight:700; color:#1c2b28; margin:0 0 4px;">SKU format</p>
+                    <p style="font-size:13px; color:#63716d; margin:0 0 4px;">New SKUs use 7–12 uppercase letters or numbers; a number may be last.</p>
+                    <p style="font-size:13px; color:#63716d; margin:0;">Existing SKUs stay fixed when item details are edited.</p>
                 </div>
             </div>
         </div>

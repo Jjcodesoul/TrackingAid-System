@@ -55,12 +55,6 @@
                             </div>
                         </div>
 
-                        {{-- Optional Password Field --}}
-                        <div>
-                            <label for="password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">New Password (Leave blank to keep current)</label>
-                            <input type="password" id="password" name="password" placeholder="••••••••" 
-                                class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all" />
-                        </div>
                     </div>
                 </div>
 

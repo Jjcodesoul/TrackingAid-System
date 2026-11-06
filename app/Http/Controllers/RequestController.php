@@ -13,39 +13,69 @@ use Illuminate\Validation\ValidationException;
 
 class RequestController extends Controller
 {
-    public function index(InventorySyncService $inventorySync)
+    public function index(InventorySyncService $inventorySync, Request $httpRequest)
     {
         $inventorySync->syncAllItems();
 
-        $requests = SupplyRequest::with(['inventory.item', 'approvedBy'])
-            ->latest()
-            ->get();
+        $search = trim((string) $httpRequest->query('search', ''));
+        $status = (string) $httpRequest->query('status', 'all');
+        $allowedStatuses = ['Pending', 'Approved', 'Partially Released', 'Released', 'Rejected'];
+        abort_unless($status === 'all' || in_array($status, $allowedStatuses, true), 404);
+
+        $requestsQuery = SupplyRequest::with(['inventory.item', 'approvedBy'])->latest();
+        if ($search !== '') {
+            $requestsQuery->where(function ($query) use ($search): void {
+                $query->where('request_code', 'like', "%{$search}%")
+                    ->orWhere('source', 'like', "%{$search}%")
+                    ->orWhere('responder_email', 'like', "%{$search}%")
+                    ->orWhereHas('inventory', fn ($inventory) => $inventory->where('name', 'like', "%{$search}%")->orWhere('sku', 'like', "%{$search}%"));
+            });
+        }
+        if ($status !== 'all') $requestsQuery->where('status', $status);
+        $requests = $requestsQuery->paginate(15, ['*'], 'request_page')->withQueryString();
 
         $stockAvailability = $this->stockAvailability($requests);
 
         // 2. Fetch external forwarded requests sent by ResQOperation
-        $forwardedRequests = ResqoperationForwardedRequest::latest()->get();
+        $forwardedQuery = ResqoperationForwardedRequest::latest();
+        if ($search !== '') {
+            $forwardedQuery->where(function ($query) use ($search): void {
+                $query->where('tracking_reference', 'like', "%{$search}%")
+                    ->orWhere('resqperation_request_id', 'like', "%{$search}%")
+                    ->orWhere('requested_by', 'like', "%{$search}%")
+                    ->orWhere('item_name', 'like', "%{$search}%")
+                    ->orWhere('resource_type', 'like', "%{$search}%");
+            });
+        }
+        if ($status !== 'all') {
+            $statusValue = strtolower($status);
+            if ($statusValue === 'partially released') {
+                $forwardedQuery->whereRaw('1 = 0');
+            } elseif ($statusValue === 'pending') {
+                $forwardedQuery->whereRaw("LOWER(COALESCE(resqperation_status, 'forwarded')) IN (?, ?)", ['pending', 'forwarded']);
+            } else {
+                $forwardedQuery->whereRaw('LOWER(COALESCE(resqperation_status, ?)) = ?', ['forwarded', $statusValue]);
+            }
+        }
+        $forwardedRequests = $forwardedQuery->paginate(15, ['*'], 'forwarded_page')->withQueryString();
         $forwardedAvailability = $forwardedRequests->mapWithKeys(fn (ResqoperationForwardedRequest $forwardedRequest): array => [
             $forwardedRequest->id => $this->externalStockAvailability($forwardedRequest->item_name ?: $forwardedRequest->resource_type, (int) $forwardedRequest->quantity),
         ]);
 
-        $forwardedStatusGroup = fn ($forwardedRequest) => match (strtolower($forwardedRequest->resqperation_status ?? 'forwarded')) {
-            'approved' => 'approved',
-            'rejected' => 'rejected',
-            'released' => 'released',
-            default => 'pending',
-        };
-        $forwardedStats = $forwardedRequests->countBy($forwardedStatusGroup);
+        $forwardedStats = ResqoperationForwardedRequest::query()
+            ->selectRaw("LOWER(COALESCE(resqperation_status, 'forwarded')) as status_key, COUNT(*) as total")
+            ->groupBy('status_key')
+            ->pluck('total', 'status_key');
 
         $stats = [
-            'pending'  => $requests->where('status', 'Pending')->count() + $forwardedStats->get('pending', 0),
-            'approved' => $requests->where('status', 'Approved')->count() + $forwardedStats->get('approved', 0),
-            'released' => $requests->where('status', 'Released')->count() + $forwardedStats->get('released', 0),
-            'rejected' => $requests->where('status', 'Rejected')->count() + $forwardedStats->get('rejected', 0),
+            'pending'  => SupplyRequest::where('status', 'Pending')->count() + $forwardedStats->except(['approved', 'rejected', 'released'])->sum(),
+            'approved' => SupplyRequest::where('status', 'Approved')->count() + $forwardedStats->get('approved', 0),
+            'released' => SupplyRequest::whereIn('status', ['Released', 'Partially Released'])->count() + $forwardedStats->get('released', 0),
+            'rejected' => SupplyRequest::where('status', 'Rejected')->count() + $forwardedStats->get('rejected', 0),
         ];
 
         // 4. Pass all variables to view
-        return view('requests.index', compact('requests', 'forwardedRequests', 'stats', 'stockAvailability', 'forwardedAvailability'));
+        return view('requests.index', compact('requests', 'forwardedRequests', 'stats', 'stockAvailability', 'forwardedAvailability', 'search', 'status'));
     }
 
     public function approve(Request $httpRequest, SupplyRequest $request, InventorySyncService $inventorySync)
@@ -112,9 +142,13 @@ class RequestController extends Controller
             ->with('success', 'Request approved and stock reserved. It is ready for release review.');
     }
 
-    public function reject(SupplyRequest $request)
+    public function reject(Request $httpRequest, SupplyRequest $request)
     {
-        DB::transaction(function () use ($request): void {
+        $validated = $httpRequest->validate([
+            'approval_notes' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        DB::transaction(function () use ($request, $validated): void {
             $supplyRequest = SupplyRequest::whereKey($request->id)->lockForUpdate()->firstOrFail();
 
             if ($supplyRequest->status !== 'Pending') {
@@ -127,7 +161,10 @@ class RequestController extends Controller
                 'status' => 'Rejected',
                 'notification_status' => 'Request rejected in TrackingAid',
                 'rejected_at' => now(),
+                'rejected_by_user_id' => auth()->id(),
+                'approval_notes' => $validated['approval_notes'] ?? null,
                 'approved_at' => null,
+                'approved_by_user_id' => null,
             ]);
         });
 
@@ -136,24 +173,40 @@ class RequestController extends Controller
 
     public function approveForwarded(ResqoperationForwardedRequest $forwardedRequest)
     {
-        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+        $updated = DB::transaction(function () use ($forwardedRequest): bool {
+            $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
+            if (! in_array(strtolower($lockedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+                return false;
+            }
+
+            $lockedRequest->resqperation_status = 'approved';
+            $lockedRequest->save();
+            return true;
+        });
+
+        if (! $updated) {
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
-
-        $forwardedRequest->resqperation_status = 'approved';
-        $forwardedRequest->save();
 
         return back()->with('success', 'Forwarded request marked approved in TrackingAid. No external status sync is configured.');
     }
 
     public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest)
     {
-        if (! in_array(strtolower($forwardedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+        $updated = DB::transaction(function () use ($forwardedRequest): bool {
+            $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
+            if (! in_array(strtolower($lockedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
+                return false;
+            }
+
+            $lockedRequest->resqperation_status = 'rejected';
+            $lockedRequest->save();
+            return true;
+        });
+
+        if (! $updated) {
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
-
-        $forwardedRequest->resqperation_status = 'rejected';
-        $forwardedRequest->save();
 
         return back()->with('success', 'Forwarded request marked rejected in TrackingAid. No external status sync is configured.');
     }

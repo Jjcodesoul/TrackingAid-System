@@ -13,6 +13,7 @@ use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsurePasswordUpdated;
 use App\Http\Middleware\SuperAdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -25,11 +26,11 @@ Route::get('/', function () {
             default => redirect()->route('dashboard'),
         };
     }
-    return redirect('/login');
-});
+    return view('welcome');
+})->name('welcome');
 
 // All authenticated routes (Admin + User/Staff)
-Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
+Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::class])->group(function () {
 
     // 2. Regular User Dashboard
     Route::get('/dashboard', function () {
@@ -69,8 +70,6 @@ Route::middleware(['auth', EnsureActiveAccount::class])->group(function () {
         Route::post('/inventory/update/{id}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete'])->name('inventory.delete');
         Route::post('/inventory/import', [InventoryController::class, 'import'])->name('inventory.import');
-        Route::post('/inventory/locations', [InventoryController::class, 'storeLocation'])->name('inventory.locations.store');
-
         Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
         Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
 

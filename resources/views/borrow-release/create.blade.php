@@ -109,7 +109,8 @@
                                 $approvedQuantity = (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity);
                                 $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
                                 $availableQuantity = max((int) ($inventory?->quantity ?? 0), 0);
-                                $canReleaseApprovedQuantity = $remainingQuantity > 0 && $availableQuantity >= $remainingQuantity;
+                                $availableAtLocations = $locationAvailability[$approvedRequest->id] ?? [];
+                                $canReleaseApprovedQuantity = $remainingQuantity > 0 && collect($availableAtLocations)->contains(fn ($quantity) => $quantity >= $remainingQuantity);
                                 $isOldInput = old('request_id') == $approvedRequest->id;
                             @endphp
                             <tr class="align-top">
@@ -168,6 +169,16 @@
                                                     </select>
                                                 </div>
                                                 <div>
+                                                    <label class="form-label" for="source-location-{{ $approvedRequest->id }}">Source storage location</label>
+                                                    <select id="source-location-{{ $approvedRequest->id }}" name="source_storage_location" class="form-select" required>
+                                                        <option value="">Choose a source location...</option>
+                                                        @foreach($storageLocations as $storageLocation)
+                                                            @php($locationQuantity = $availableAtLocations[$storageLocation->id] ?? 0)
+                                                            <option value="{{ $storageLocation->id }}" @selected($isOldInput && old('source_storage_location') == $storageLocation->id) @disabled($locationQuantity < $remainingQuantity)>{{ $storageLocation->warehouse_name }} — {{ $storageLocation->name }} ({{ number_format($locationQuantity) }} available)</option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                                <div>
                                                     <label class="form-label" for="location-{{ $approvedRequest->id }}">Destination</label>
                                                     <input id="location-{{ $approvedRequest->id }}" name="location" type="text" value="{{ $isOldInput ? old('location') : '' }}" class="form-input" maxlength="255" required>
                                                 </div>
@@ -175,7 +186,7 @@
                                             </form>
                                         </details>
                                         @elseif($remainingQuantity > 0)
-                                            <span class="text-[12px] text-rose-700">Insufficient stock ({{ number_format($availableQuantity) }} available).</span>
+                                            <span class="text-[12px] text-rose-700">No single active storage location has the required {{ number_format($remainingQuantity) }} units ({{ number_format($availableQuantity) }} total across locations).</span>
                                         @else
                                             <span class="text-[12px] text-rose-700">No quantity remains to release.</span>
                                         @endif
@@ -231,7 +242,7 @@
             <div><dt>Approved request</dt><dd id="reviewReleaseRequest"></dd></div>
             <div><dt>Item / variant</dt><dd id="reviewReleaseItem"></dd></div>
             <div><dt>Approved quantity</dt><dd id="reviewReleaseApproved"></dd></div>
-            <div><dt>Available stock</dt><dd id="reviewReleaseAvailable"></dd></div>
+            <div><dt>Source location and available stock</dt><dd id="reviewReleaseAvailable"></dd></div>
             <div><dt>Quantity in this release</dt><dd id="reviewReleaseQuantity"></dd></div>
             <div><dt>Delivery personnel</dt><dd id="reviewReleaseDelivery"></dd></div>
             <div><dt>Destination</dt><dd id="reviewReleaseLocation"></dd></div>
@@ -271,13 +282,15 @@
 
                 const delivery = form.querySelector('[name="delivery_personnel_id"]');
                 const deliveryName = delivery.options[delivery.selectedIndex]?.text || 'Not selected';
+                const source = form.querySelector('[name="source_storage_location"]');
+                const sourceName = source.options[source.selectedIndex]?.text || 'Not selected';
                 const quantity = Number(form.querySelector('[name="quantity"]').value);
                 const available = Number(form.dataset.available);
 
                 document.getElementById('reviewReleaseRequest').textContent = form.dataset.request;
                 document.getElementById('reviewReleaseItem').textContent = `${form.dataset.sku} - ${form.dataset.item}${form.dataset.variant ? ` (${form.dataset.variant})` : ''}`;
                 document.getElementById('reviewReleaseApproved').textContent = form.dataset.approved;
-                document.getElementById('reviewReleaseAvailable').textContent = form.dataset.available;
+                document.getElementById('reviewReleaseAvailable').textContent = sourceName;
                 document.getElementById('reviewReleaseQuantity').textContent = String(quantity);
                 document.getElementById('reviewReleaseDelivery').textContent = deliveryName;
                 document.getElementById('reviewReleaseLocation').textContent = form.querySelector('[name="location"]').value;

@@ -183,17 +183,7 @@
                                 </div>
                             </div>
 
-                            <div>
-                                <label for="password" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">Temporary Password</label>
-                                <div class="relative w-full">
-                                    <input type="text" id="password" name="password" value="Temp_123" readonly
-                                        class="w-full text-sm px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-800 font-mono focus:outline-none box-border cursor-not-allowed select-all" />
-                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-400 text-xs">
-                                        <i class="fa-solid fa-lock"></i>
-                                    </div>
-                                </div>
-                                <p class="text-[11px] text-slate-500 mt-1 mb-0">System-generated temporary password (<strong>Temp_123</strong>). The user will be required to change it upon first login.</p>
-                            </div>
+                            <p class="text-sm text-slate-600 self-center">A secure password setup link will be emailed to this address.</p>
                         </div>
                     </div>
 

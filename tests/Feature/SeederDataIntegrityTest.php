@@ -32,15 +32,19 @@ class SeederDataIntegrityTest extends TestCase
         $this->assertGreaterThan(0, Item::count());
         $this->assertSame(Item::count(), Item::query()->distinct('sku')->count('sku'));
         foreach (Item::all() as $item) {
-            $this->assertMatchesRegularExpression('/^[A-Z0-9]{12,20}$/', $item->sku);
-            $this->assertSame($skuGenerator->generate(
-                $item->category,
-                $item->name,
-                $item->size_weight,
-                $item->variant,
-                $item->target_beneficiary,
-                $item->type,
-            ), $item->sku);
+            if (preg_match('/^[A-Z0-9]{7,12}$/', $item->sku)) {
+                $this->assertSame($skuGenerator->generate(
+                    $item->category,
+                    $item->name,
+                    $item->size_weight,
+                    $item->variant,
+                    $item->target_beneficiary,
+                    $item->type,
+                ), $item->sku);
+            } else {
+                // Preserve legacy seeded identifiers and all their references.
+                $this->assertMatchesRegularExpression('/^[A-Z0-9]{12,20}$/', $item->sku);
+            }
             $this->assertDatabaseHas('inventory', ['sku' => $item->sku]);
         }
 

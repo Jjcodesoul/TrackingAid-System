@@ -8,6 +8,7 @@ use App\Models\BorrowRelease;
 use App\Models\Item;
 use App\Models\ReturnItem;
 use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use App\Models\User;
 use App\Observers\ActivityLogObserver;
 use App\Services\NotificationService;
@@ -24,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        foreach ([User::class, Item::class, StockBatch::class, SupplyRequest::class, BorrowRelease::class, ReturnItem::class] as $model) {
+        foreach ([User::class, Item::class, StockBatch::class, StorageLocation::class, SupplyRequest::class, BorrowRelease::class, ReturnItem::class] as $model) {
             $model::observe(ActivityLogObserver::class);
         }
 

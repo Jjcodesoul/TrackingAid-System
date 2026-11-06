@@ -9,22 +9,27 @@ use App\Models\StorageLocation;
 use App\Services\InventorySyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class StockController extends Controller
 {
     public function create()
     {
-        $items = Item::all()->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
+        $storageLocations = StorageLocation::availableInMambaling()
+            ->orderBy('warehouse_name')->orderBy('name')->get();
+        $items = Item::with('stockBatches')
+            ->get()->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->values();
 
-        $categories = Item::distinct()->pluck('category')->sort()->values();
+        $categories = $items->pluck('category')->unique()->sort()->values();
 
-        return view('stock.create', compact('items', 'categories'));
+        return view('stock.create', compact('items', 'categories', 'storageLocations'));
     }
 
     public function store(Request $request, InventorySyncService $inventorySync)
     {
         $validated = $request->validate([
             'item_id' => 'required|exists:items,id',
+            'storage_location_id' => ['required', 'integer', Rule::exists('storage_locations', 'id')->where(fn ($query) => $query->where('is_active', true)->where('warehouse_name', 'like', '%Mambaling%'))],
             'quantity' => 'required|integer|min:1',
             'supplier' => 'nullable|string|max:255',
             'date_received' => 'required|date',
@@ -33,8 +38,10 @@ class StockController extends Controller
 
         DB::transaction(function () use ($validated, $request, $inventorySync) {
             $item = Item::whereKey($validated['item_id'])->lockForUpdate()->firstOrFail();
-            if (! StorageLocation::where('name', $item->storage_location)->where('is_active', true)->exists()) {
-                throw ValidationException::withMessages(['item_id' => 'This item has an unverified storage location. Verify or update its location before recording stock-in.']);
+            $location = StorageLocation::availableInMambaling()->whereKey($validated['storage_location_id'])
+                ->lockForUpdate()->first();
+            if (! $location) {
+                throw ValidationException::withMessages(['storage_location_id' => 'Select an active verified Mambaling storage location.']);
             }
             $batch = StockBatch::create([
                 'item_id' => $item->id,
@@ -44,7 +51,7 @@ class StockController extends Controller
                 'expiration_date' => $validated['expiration_date'] ?? null,
                 'created_by_user_id' => $request->user()->id,
                 'movement_type' => 'stock-in',
-                'storage_location' => $item->storage_location,
+                'storage_location' => $location->name,
             ]);
             $inventorySync->syncItem($item->fresh('stockBatches'));
         });

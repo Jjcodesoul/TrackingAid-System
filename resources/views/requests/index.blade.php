@@ -35,23 +35,26 @@
     <section class="panel" style="padding:0; overflow:hidden;">
         <div class="requests-toolbar">
             <div class="request-filter-tabs">
-                <button onclick="filterStatus('all')" id="tab-all" class="request-filter-tab is-active" type="button" aria-pressed="true">All</button>
-                <button onclick="filterStatus('Pending')" id="tab-pending" class="request-filter-tab" type="button" aria-pressed="false">
+                <a href="{{ route('requests.index', ['status' => 'all', 'search' => $search]) }}" class="request-filter-tab {{ $status === 'all' ? 'is-active' : '' }}" aria-current="{{ $status === 'all' ? 'page' : 'false' }}">All</a>
+                <a href="{{ route('requests.index', ['status' => 'Pending', 'search' => $search]) }}" id="tab-pending" class="request-filter-tab {{ $status === 'Pending' ? 'is-active' : '' }}" aria-current="{{ $status === 'Pending' ? 'page' : 'false' }}">
                     Pending
                     <span class="request-count">
                         {{ $stats['pending'] ?? 0 }}
                     </span>
-                </button>
-                <button onclick="filterStatus('Approved')" id="tab-approved" class="request-filter-tab" type="button" aria-pressed="false">Approved</button>
-                <button onclick="filterStatus('Partially Released')" id="tab-partially-released" class="request-filter-tab" type="button" aria-pressed="false">Partially Released</button>
-                <button onclick="filterStatus('Released')" id="tab-released" class="request-filter-tab" type="button" aria-pressed="false">Released</button>
-                <button onclick="filterStatus('Rejected')" id="tab-rejected" class="request-filter-tab" type="button" aria-pressed="false">Rejected</button>
+                </a>
+                @foreach(['Approved', 'Partially Released', 'Released', 'Rejected'] as $filterStatus)
+                    <a href="{{ route('requests.index', ['status' => $filterStatus, 'search' => $search]) }}" class="request-filter-tab {{ $status === $filterStatus ? 'is-active' : '' }}" aria-current="{{ $status === $filterStatus ? 'page' : 'false' }}">{{ $filterStatus }}</a>
+                @endforeach
             </div>
 
-            <label class="sr-only" for="searchInput">Search requests</label>
-            <input type="search" id="searchInput" class="request-search" aria-label="Search requests" placeholder="Search requests..." oninput="searchTable()">
+            <form method="GET" action="{{ route('requests.index') }}" class="requests-search-form">
+                <input type="hidden" name="status" value="{{ $status }}">
+                <label class="sr-only" for="searchInput">Search requests</label>
+                <input type="search" id="searchInput" name="search" class="request-search" value="{{ $search }}" aria-label="Search requests" placeholder="Search requests...">
+                <button type="submit" class="btn-soft">Search</button>
+                @if($search !== '')<a class="btn-secondary" href="{{ route('requests.index', ['status' => $status]) }}">Clear</a>@endif
+            </form>
         </div>
-
         <div style="overflow-x:auto;">
             <table class="table-ui requests-table" style="width:100%; border-collapse:collapse;">
                 <thead>
@@ -267,6 +270,14 @@
             </table>
             <p id="requestNoResults" role="status" style="display:none; text-align:center; padding:24px; color:#64748b; font-size:13px;">No requests match these filters.</p>
         </div>
+        <div class="requests-pagination">
+            @if($requests->total() > 0)
+                <div><span class="pagination-label">Requests: {{ $requests->firstItem() }}–{{ $requests->lastItem() }} of {{ $requests->total() }}</span>{{ $requests->links() }}</div>
+            @endif
+            @if($forwardedRequests->total() > 0)
+                <div><span class="pagination-label">Forwarded: {{ $forwardedRequests->firstItem() }}–{{ $forwardedRequests->lastItem() }} of {{ $forwardedRequests->total() }}</span>{{ $forwardedRequests->links() }}</div>
+            @endif
+        </div>
     </section>
 
     <dialog id="localRequestDialog" class="request-review-dialog request-review-dialog--side" aria-labelledby="localRequestDialogTitle">
@@ -307,6 +318,8 @@
                 </form>
                 <form id="localRejectForm" method="POST" onsubmit="return confirm('Reject this request?')">
                     @csrf
+                    <label class="form-label" for="rejectionNotes">Reason for rejection</label>
+                    <textarea id="rejectionNotes" name="approval_notes" class="form-textarea" maxlength="1000"></textarea>
                     <button type="submit" class="btn-danger">Reject request</button>
                 </form>
             </div>

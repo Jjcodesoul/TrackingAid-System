@@ -21,6 +21,9 @@
 @if(session('error'))
     <div class="alert-box alert-error">{{ session('error') }}</div>
 @endif
+@if($errors->any())
+    <div class="alert-box alert-error" role="alert">{{ $errors->first() }}</div>
+@endif
 
 <style>
     .stock-category-picker { position:relative; }
@@ -75,6 +78,16 @@
                 <div class="stock-picker-pager"><button type="button" id="categoryPickerPrev">Previous</button><span id="categoryPickerPage"></span><button type="button" id="categoryPickerNext">Next</button></div>
             </div>
             </div>
+        </div>
+
+        <div style="margin-bottom:18px;">
+            <label class="form-label" for="stockStorageLocation">Storage location</label>
+            <select id="stockStorageLocation" name="storage_location_id" class="form-select" required>
+                <option value="">Select an active Mambaling location</option>
+                @foreach($storageLocations as $location)
+                    <option value="{{ $location->id }}" @selected(old('storage_location_id') == $location->id)>{{ $location->name }} — {{ $location->warehouse_name }}</option>
+                @endforeach
+            </select>
         </div>
 
         {{-- SEARCHABLE ITEM SKU --}}
@@ -177,6 +190,10 @@
                         <span style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Current Stock</span>
                         <p id="summaryStock" style="margin:2px 0 0; font-size:13px; color:#374151;"></p>
                     </div>
+                    <div>
+                        <span style="font-size:10px; font-weight:700; color:#94a3b8; text-transform:uppercase; letter-spacing:.05em;">Storage Location</span>
+                        <p id="summaryLocation" style="margin:2px 0 0; font-size:13px; color:#374151;"></p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -236,6 +253,8 @@ const summarySku = document.getElementById('summarySku');
 const summaryName = document.getElementById('summaryName');
 const summaryCategory = document.getElementById('summaryCategory');
 const summaryStock = document.getElementById('summaryStock');
+const summaryLocation = document.getElementById('summaryLocation');
+const storageLocationSelect = document.getElementById('stockStorageLocation');
 
 function getFilteredItems() {
     const category = categoryFilter.value;
@@ -357,6 +376,7 @@ function selectItem(item) {
     summaryName.innerText = item.name;
     summaryCategory.innerText = item.category.charAt(0) + item.category.slice(1).toLowerCase();
     summaryStock.innerText = item.stock + ' units in stock';
+    summaryLocation.innerText = storageLocationSelect.selectedOptions[0]?.textContent || 'Select a location';
 
     const banner = document.getElementById('summaryTypeBanner');
     const icon = document.getElementById('summaryTypeIcon');
@@ -392,6 +412,12 @@ function selectItem(item) {
         expirationWrapper.style.opacity = '1';
     }
 }
+
+storageLocationSelect.addEventListener('change', () => {
+    if (itemIdField.value) {
+        summaryLocation.innerText = storageLocationSelect.selectedOptions[0]?.textContent || 'Select a location';
+    }
+});
 
 function resetSummary() {
     itemEmptyState.style.display = 'block';

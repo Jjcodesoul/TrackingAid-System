@@ -50,6 +50,26 @@ class ReportsTest extends TestCase
         $response->assertSee('120');
     }
 
+    public function test_inventory_report_splits_stock_balances_by_batch_location(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+        $item = Item::create([
+            'name' => 'Split-location water', 'category' => 'FOOD', 'unit_type' => 'BOX',
+            'type' => 'consumable', 'storage_location' => 'Warehouse A', 'sku' => 'FOOD-LOCATION-SPLIT',
+        ]);
+        StockBatch::create(['item_id' => $item->id, 'quantity' => 4, 'date_received' => now()->toDateString(), 'storage_location' => 'Warehouse A']);
+        StockBatch::create(['item_id' => $item->id, 'quantity' => 7, 'date_received' => now()->toDateString(), 'storage_location' => 'Warehouse B']);
+
+        $this->get(route('reports.index', ['report' => 'inventory']))
+            ->assertOk()
+            ->assertViewHas('report', function (array $report): bool {
+                $rows = $report['rows']->getCollection()->filter(fn (array $row): bool => $row['csv'][0] === 'FOOD-LOCATION-SPLIT');
+                return $rows->count() === 2
+                    && $rows->pluck('csv.3')->sort()->values()->all() === ['4', '7']
+                    && $rows->pluck('csv.7')->sort()->values()->all() === ['Warehouse A', 'Warehouse B'];
+            });
+    }
+
     public function test_request_report_aggregates_monthly_approval_history(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'admin']));

@@ -53,12 +53,14 @@
                             $returnStatus = $returnedQuantity > 0 ? 'Partially returned' : 'Awaiting return';
                             $item = $release->inventory?->item;
                             $variant = collect([$item?->size_weight, $item?->variant && strtoupper($item->variant) !== 'NONE' ? $item->variant : null])->filter()->join(' / ');
+                            $returnLocationVerified = $release->source_storage_location && $verifiedLocationNames->contains($release->source_storage_location);
                         @endphp
                         <tr>
                             <td>
                                 <strong>{{ $release->request?->request_code ?? 'Request unavailable' }}</strong>
                                 <div class="text-sm text-slate-600">{{ $release->request?->source ?? $release->request?->responder_email ?? 'Borrower not recorded' }}</div>
                                 <div class="text-sm text-slate-600">{{ $release->location ?: 'Destination not recorded' }}</div>
+                                <div class="text-sm {{ $returnLocationVerified ? 'text-slate-600' : 'text-rose-700' }}">Source: {{ $release->source_storage_location ?: 'not recorded' }}{{ $returnLocationVerified ? '' : ' — location verification required' }}</div>
                             </td>
                             <td>
                                 <strong>{{ $release->inventory?->name ?? 'Item unavailable' }}</strong>
@@ -73,6 +75,7 @@
                             <td><span class="status-badge {{ $returnedQuantity > 0 ? 'status-info' : 'status-pending' }}">{{ $returnStatus }}</span></td>
                             <td>{{ $release->released_at?->format('M d, Y') ?? '—' }}</td>
                             <td class="min-w-[280px]">
+                                @if($returnLocationVerified)
                                 <details>
                                     <summary class="btn-main cursor-pointer">Record return</summary>
                                     <form action="{{ route('returns.store') }}" method="POST" class="return-form mt-3 space-y-3" onsubmit="return confirmReturn(this)">
@@ -92,12 +95,20 @@
                                             </select>
                                         </div>
                                         <div>
+                                            <label class="form-label" for="returned-by-{{ $release->id }}">Returned by</label>
+                                            <input id="returned-by-{{ $release->id }}" name="returned_by_name" type="text" class="form-input" maxlength="255" required autocomplete="name">
+                                            <p class="form-help">The signed-in user will be recorded as receiving and inspecting the return.</p>
+                                        </div>
+                                        <div>
                                             <label class="form-label" for="return-notes-{{ $release->id }}">Notes</label>
                                             <textarea id="return-notes-{{ $release->id }}" name="notes" class="form-textarea" maxlength="2000"></textarea>
                                         </div>
                                         <button type="submit" class="btn-main">Confirm return</button>
                                     </form>
                                 </details>
+                                @else
+                                    <span class="text-sm text-rose-700">An administrator must verify this release location before a return can be recorded.</span>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -124,7 +135,9 @@
                         <th>Item / SKU</th>
                         <th>Quantity</th>
                         <th>Condition</th>
-                        <th>Processed by</th>
+                        <th>Returned by</th>
+                        <th>Received / inspected by</th>
+                        <th>Date and time</th>
                         <th>Notes</th>
                     </tr>
                 </thead>
@@ -135,11 +148,13 @@
                             <td>{{ $return->inventory?->name ?? 'Item unavailable' }} <span class="sku-code">{{ $return->inventory?->sku }}</span></td>
                             <td>{{ number_format($return->quantity) }}</td>
                             <td><span class="status-badge {{ $return->condition === 'Good' ? 'status-approved' : ($return->condition === 'Damaged' ? 'status-pending' : 'status-rejected') }}">{{ $return->condition === 'Missing' ? 'Missing / lost' : $return->condition }}</span></td>
-                            <td>{{ $return->processedBy?->name ?? '—' }}</td>
+                            <td>{{ $return->returned_by_name ?: 'Not recorded' }}</td>
+                            <td>{{ $return->receivedBy?->name ?? $return->processedBy?->name ?? 'Not recorded' }}</td>
+                            <td>{{ $return->created_at?->format('M d, Y H:i') ?? '—' }}</td>
                             <td>{{ $return->notes ?: '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="text-center text-slate-600 py-8">No returns recorded yet.</td></tr>
+                        <tr><td colspan="8" class="text-center text-slate-600 py-8">No returns recorded yet.</td></tr>
                     @endforelse
                 </tbody>
             </table>

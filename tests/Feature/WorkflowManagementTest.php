@@ -4,8 +4,11 @@ namespace Tests\Feature;
 
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
+use App\Models\Item;
 use App\Models\Request;
 use App\Models\ReturnItem;
+use App\Models\StorageLocation;
+use App\Models\StockBatch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -212,9 +215,42 @@ class WorkflowManagementTest extends TestCase
             'inventory_id' => $inventory->id,
             'quantity' => 3,
             'processed_by_user_id' => $staff->id,
+            'source_storage_location' => 'Warehouse A',
         ]);
         $this->assertSame(7, (int) $inventory->fresh()->quantity);
         $this->assertSame('Released', $request->fresh()->status);
+    }
+
+    public function test_release_deducts_only_from_the_selected_location(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $item = Item::create([
+            'name' => 'Location split stock', 'category' => 'RELIEF', 'unit_type' => 'PCS',
+            'type' => 'consumable', 'storage_location' => 'Warehouse A', 'sku' => 'REL-SPLIT-LOC-1',
+        ]);
+        $batchA = StockBatch::create(['item_id' => $item->id, 'quantity' => 2, 'date_received' => now()->toDateString(), 'storage_location' => 'Warehouse A']);
+        $batchB = StockBatch::create(['item_id' => $item->id, 'quantity' => 8, 'date_received' => now()->toDateString(), 'storage_location' => 'Warehouse B']);
+        $inventory = Inventory::create(['name' => $item->name, 'category' => $item->category, 'sku' => $item->sku, 'type' => 'Consumable', 'quantity' => 10, 'storage_location' => 'Warehouse A']);
+        $request = Request::create(['request_code' => 'REQ-SPLIT-LOC', 'inventory_id' => $inventory->id, 'quantity' => 3, 'status' => 'Approved']);
+        $deliveryPerson = User::factory()->create(['role' => 'delivery_personnel']);
+        $payload = $this->releasePayload($request, $deliveryPerson, 3);
+
+        $this->actingAs($staff)->post(route('borrow-release.store'), [
+            ...$payload,
+            'source_storage_location' => StorageLocation::where('name', 'Warehouse A')->value('id'),
+        ])->assertSessionHasErrors('quantity');
+        $this->assertSame(2, (int) $batchA->fresh()->quantity);
+        $this->assertSame(8, (int) $batchB->fresh()->quantity);
+
+        $this->post(route('borrow-release.store'), [
+            ...$payload,
+            'idempotency_key' => (string) Str::uuid(),
+            'source_storage_location' => StorageLocation::where('name', 'Warehouse B')->value('id'),
+        ])->assertRedirect(route('borrow-release.create'));
+
+        $this->assertSame(2, (int) $batchA->fresh()->quantity);
+        $this->assertSame(5, (int) $batchB->fresh()->quantity);
+        $this->assertDatabaseHas('borrow_releases', ['request_id' => $request->id, 'source_storage_location' => 'Warehouse B']);
     }
 
     public function test_super_admin_can_record_a_release(): void
@@ -402,7 +438,7 @@ class WorkflowManagementTest extends TestCase
         $staff = User::factory()->create(['role' => 'staff']);
         $inventory = Inventory::create([
             'name' => 'Response blanket', 'category' => 'Relief', 'sku' => 'RETURN-TEST-1',
-            'type' => 'Returnable', 'quantity' => 10,
+            'type' => 'Returnable', 'quantity' => 10, 'storage_location' => 'Warehouse A',
         ]);
         $request = Request::create([
             'request_code' => 'REQ-RETURN-TEST-1', 'inventory_id' => $inventory->id,
@@ -410,7 +446,7 @@ class WorkflowManagementTest extends TestCase
         ]);
         $release = BorrowRelease::create([
             'request_id' => $request->id, 'inventory_id' => $inventory->id,
-            'unit' => 'PCS', 'quantity' => 6, 'purpose' => 'Response', 'released_at' => now(),
+            'unit' => 'PCS', 'quantity' => 6, 'purpose' => 'Response', 'source_storage_location' => 'Warehouse A', 'released_at' => now(),
         ]);
 
         $this->actingAs($staff);
@@ -419,6 +455,7 @@ class WorkflowManagementTest extends TestCase
             'idempotency_key' => (string) Str::uuid(),
             'quantity' => 2,
             'condition' => 'Damaged',
+            'returned_by_name' => 'Relief recipient',
         ];
         $this->post(route('returns.store'), $damagedPayload)->assertRedirect();
         $this->assertSame(10, (int) $inventory->fresh()->quantity);
@@ -435,6 +472,7 @@ class WorkflowManagementTest extends TestCase
             'idempotency_key' => (string) Str::uuid(),
             'quantity' => 1,
             'condition' => 'Good',
+            'returned_by_name' => 'Relief recipient',
         ];
         $this->post(route('returns.store'), $goodPayload)->assertRedirect();
         $this->post(route('returns.store'), $goodPayload)->assertRedirect();
@@ -444,8 +482,40 @@ class WorkflowManagementTest extends TestCase
         $this->assertDatabaseHas('returns', [
             'borrow_release_id' => $release->id,
             'processed_by_user_id' => $staff->id,
+            'received_by_user_id' => $staff->id,
+            'returned_by_name' => 'Relief recipient',
             'condition' => 'Good',
         ]);
+        $this->assertNotNull(ReturnItem::where('borrow_release_id', $release->id)->where('condition', 'Good')->firstOrFail()->returned_at);
+    }
+
+    public function test_good_return_goes_back_to_the_original_release_location(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+        $item = Item::create([
+            'name' => 'Reusable response kit', 'category' => 'RELIEF', 'unit_type' => 'KIT',
+            'type' => 'returnable', 'storage_location' => 'Warehouse A', 'sku' => 'REL-RETURN-LOC-1',
+        ]);
+        StockBatch::create(['item_id' => $item->id, 'quantity' => 5, 'date_received' => now()->toDateString(), 'storage_location' => 'Warehouse B']);
+        $inventory = Inventory::create(['name' => $item->name, 'category' => $item->category, 'sku' => $item->sku, 'type' => 'Returnable', 'quantity' => 5, 'storage_location' => 'Warehouse A']);
+        $request = Request::create(['request_code' => 'REQ-RETURN-LOC', 'inventory_id' => $inventory->id, 'quantity' => 2, 'status' => 'Approved']);
+        $deliveryPerson = User::factory()->create(['role' => 'delivery_personnel']);
+        $this->actingAs($staff)->post(route('borrow-release.store'), [
+            ...$this->releasePayload($request, $deliveryPerson, 2),
+            'source_storage_location' => StorageLocation::where('name', 'Warehouse B')->value('id'),
+        ])->assertRedirect(route('borrow-release.create'));
+        $release = BorrowRelease::where('request_id', $request->id)->firstOrFail();
+
+        $this->post(route('returns.store'), [
+            'borrow_release_id' => $release->id,
+            'idempotency_key' => (string) Str::uuid(),
+            'quantity' => 1,
+            'condition' => 'Good',
+            'returned_by_name' => 'Responder',
+        ])->assertRedirect();
+
+        $this->assertDatabaseHas('returns', ['borrow_release_id' => $release->id, 'storage_location' => 'Warehouse B']);
+        $this->assertDatabaseHas('stock_batches', ['item_id' => $item->id, 'storage_location' => 'Warehouse B', 'movement_type' => 'return-good', 'quantity' => 1]);
     }
 
     public function test_notifications_page_lists_request_status_updates(): void
@@ -508,12 +578,14 @@ class WorkflowManagementTest extends TestCase
 
     private function releasePayload(Request $request, User $deliveryPerson, int $quantity): array
     {
+        $sourceLocationId = StorageLocation::where('name', 'Warehouse A')->value('id');
         return [
             'request_id' => $request->id,
             'idempotency_key' => (string) Str::uuid(),
             'delivery_personnel_id' => $deliveryPerson->id,
             'quantity' => $quantity,
             'location' => 'Zone 1',
+            'source_storage_location' => $sourceLocationId,
         ];
     }
 }

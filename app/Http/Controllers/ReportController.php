@@ -9,6 +9,7 @@ use App\Models\ReportRequest;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
 use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -210,7 +211,10 @@ class ReportController extends Controller
         }
 
         $expiresAt = now()->addMinutes(30);
-        URL::forceRootUrl(config('app.url'));
+        $applicationUrl = rtrim((string) config('app.url'), '/');
+        $applicationScheme = parse_url($applicationUrl, PHP_URL_SCHEME) ?: 'https';
+        URL::forceRootUrl($applicationUrl);
+        URL::forceScheme($applicationScheme);
 
         try {
             $downloadUrl = URL::temporarySignedRoute(
@@ -220,6 +224,7 @@ class ReportController extends Controller
             );
         } finally {
             URL::forceRootUrl(null);
+            URL::forceScheme(null);
         }
 
         return response()->json([
@@ -401,23 +406,38 @@ class ReportController extends Controller
             ->groupBy(fn (Item $item): string => strtoupper($item->category ?: 'Uncategorized'))
             ->map(fn (Collection $items): int => $items->count());
 
-        $rows = $items->map(function (Item $item) use ($stockFor): array {
-            $stock = $stockFor($item);
-            $threshold = (int) ($item->min_stock ?? 10);
-            $status = $stock <= 0 ? 'Out of Stock' : ($stock < $threshold ? 'Low Stock' : 'In Stock');
-            $statusTone = $stock <= 0 ? 'danger' : ($stock < $threshold ? 'warning' : 'success');
+        $verifiedLocationNames = StorageLocation::availableInMambaling()->pluck('name')->flip();
 
-            return $this->tableRow([
-                $this->cell($item->sku, mono: true),
-                $this->cell($item->name),
-                $this->cell(ucfirst(strtolower($item->category))),
-                $this->cell(number_format($stock), $statusTone),
-                $this->cell($item->unit_type),
-                $this->cell(ucfirst($item->type)),
-                $this->cell($status, $statusTone),
-                $this->cell($item->storage_location),
-                $this->cell($item->next_expiration_date ? Carbon::parse($item->next_expiration_date)->format('M d, Y') : '-'),
-            ]);
+        $rows = $items->flatMap(function (Item $item) use ($verifiedLocationNames): array {
+            $locationBatches = $item->stockBatches->groupBy(
+                fn (StockBatch $batch): string => $batch->storage_location ?: 'Location not recorded'
+            );
+            if ($locationBatches->isEmpty()) {
+                $locationBatches->put($item->storage_location ?: 'Location not recorded', collect());
+            }
+
+            return $locationBatches->map(function (Collection $batches, string $location) use ($item, $verifiedLocationNames): array {
+                $stock = (int) $batches->sum('quantity');
+                $threshold = (int) ($item->min_stock ?? 10);
+                $status = $stock <= 0 ? 'Out of Stock' : ($stock < $threshold ? 'Low Stock' : 'In Stock');
+                $statusTone = $stock <= 0 ? 'danger' : ($stock < $threshold ? 'warning' : 'success');
+                $expiration = $batches->filter(fn (StockBatch $batch): bool => (int) $batch->quantity > 0 && filled($batch->expiration_date))
+                    ->map(fn (StockBatch $batch) => Carbon::parse($batch->expiration_date))->sort()->first() ?: $item->expiration_date;
+
+                return $this->tableRow([
+                    $this->cell($item->sku, mono: true),
+                    $this->cell($item->name),
+                    $this->cell(ucfirst(strtolower($item->category))),
+                    $this->cell(number_format($stock), $statusTone),
+                    $this->cell($item->unit_type),
+                    $this->cell(ucfirst($item->type)),
+                    $this->cell($status, $statusTone),
+                    $this->cell($verifiedLocationNames->has($location) || $location === 'Location not recorded'
+                        ? $location
+                        : $location.' (unverified/inactive)'),
+                    $this->cell($expiration ? Carbon::parse($expiration)->format('M d, Y') : '-'),
+                ]);
+            })->values()->all();
         })->values()->all();
 
         return [
@@ -625,6 +645,10 @@ class ReportController extends Controller
     private function stockMovementReport(array $filters = []): array
     {
         $events = collect();
+        $verifiedLocationNames = StorageLocation::availableInMambaling()->pluck('name')->flip();
+        $locationLabel = fn (?string $location): string => ! filled($location)
+            ? 'Location not recorded'
+            : ($verifiedLocationNames->has($location) ? $location : $location.' (unverified/inactive)');
 
         $batchesQuery = StockBatch::with('item');
         if (! empty($filters['category'])) {
@@ -641,7 +665,7 @@ class ReportController extends Controller
                 'sku' => $batch->item?->sku ?? '—',
                 'change' => (int) $batch->quantity,
                 'detail' => 'Received',
-                'location' => $batch->item?->storage_location ?? '—',
+                'location' => $locationLabel($batch->storage_location),
             ]);
         }
 
@@ -660,7 +684,7 @@ class ReportController extends Controller
                 'sku' => $release->inventory?->sku ?? '—',
                 'change' => -((int) $release->quantity),
                 'detail' => $release->delivery_status ?: 'Released',
-                'location' => $release->location ?: '—',
+                'location' => $locationLabel($release->source_storage_location),
             ]);
         }
 
@@ -689,7 +713,7 @@ class ReportController extends Controller
                 'quantity' => (int) $return->quantity,
                 'change' => $return->condition === 'Good' ? (int) $return->quantity : 0,
                 'detail' => $return->condition,
-                'location' => $return->borrowRelease?->location ?? '—',
+                'location' => $locationLabel($return->storage_location ?: $return->borrowRelease?->source_storage_location),
             ]);
         }
 

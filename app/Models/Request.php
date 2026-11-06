@@ -13,6 +13,7 @@ class Request extends Model
         'quantity',
         'approved_quantity',
         'approved_by_user_id',
+        'rejected_by_user_id',
         'approval_notes',
         'status',
         'purpose',
@@ -40,5 +41,10 @@ class Request extends Model
     public function approvedBy()
     {
         return $this->belongsTo(User::class, 'approved_by_user_id');
+    }
+
+    public function rejectedBy()
+    {
+        return $this->belongsTo(User::class, 'rejected_by_user_id');
     }
 }
