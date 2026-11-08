@@ -141,7 +141,7 @@
                     </button>
                 </div>
 
-                <form method="POST" action="/users" class="m-0 p-0">
+                <form method="POST" action="{{ route('users.store') }}" class="m-0 p-0">
                     @csrf
                     
                     <div class="p-6 space-y-4">
@@ -169,7 +169,7 @@
                             <div>
                                 <label for="role" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">System Role *</label>
                                 <div class="relative w-full">
-                                    <select id="role" name="role" required 
+                                    <select id="role" name="role" required
                                         class="w-full text-sm px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 appearance-none focus:outline-none focus:border-emerald-500 focus:bg-white box-border transition-all cursor-pointer">
                                         <option value="" disabled selected>Select option...</option>
                                         <option value="user">User</option>

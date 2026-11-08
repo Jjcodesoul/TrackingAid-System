@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Notifications\AccountSetupNotification;
 
 // FIXED: Added 'role' inside the Fillable PHP attribute array
 #[Fillable(['name', 'first_name', 'last_name', 'email', 'password', 'role', 'must_change_password', 'is_active', 'last_login_at'])]
@@ -59,4 +60,13 @@ class User extends Authenticatable
             'last_login_at' => 'datetime',
         ];
     }
+
+    /**
+     * Send the custom account setup notification.
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new AccountSetupNotification($token));
+    }
+
 }

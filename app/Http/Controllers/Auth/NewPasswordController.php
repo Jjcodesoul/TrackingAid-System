@@ -38,6 +38,7 @@ class NewPasswordController extends Controller
                     'remember_token' => Str::random(60),
                     'auth_version' => $user->auth_version + 1,
                     'must_change_password' => false,
+                    'email_verified_at' => now(),
                 ])->save();
 
                 event(new PasswordReset($user));

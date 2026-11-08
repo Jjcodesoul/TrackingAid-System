@@ -210,16 +210,14 @@ class ReportController extends Controller
             throw $exception;
         }
 
-        $expiresAt = now()->addMinutes(30);
         $applicationUrl = rtrim((string) config('app.url'), '/');
         $applicationScheme = parse_url($applicationUrl, PHP_URL_SCHEME) ?: 'https';
         URL::forceRootUrl($applicationUrl);
         URL::forceScheme($applicationScheme);
 
         try {
-            $downloadUrl = URL::temporarySignedRoute(
+            $downloadUrl = URL::signedRoute(
                 'api.external-reports.download',
-                $expiresAt,
                 ['reportRequest' => $record->id]
             );
         } finally {
@@ -236,7 +234,6 @@ class ReportController extends Controller
             'format' => $format,
             'file_name' => $fileName,
             'download_url' => $downloadUrl,
-            'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }
 

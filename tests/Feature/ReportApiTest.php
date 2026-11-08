@@ -45,7 +45,8 @@ class ReportApiTest extends TestCase
     public function test_external_report_endpoint_returns_a_signed_csv_download(): void
     {
         config(['services.trackingaid_reports.api_key' => 'test-report-key']);
-        config(['app.url' => 'https://reports.example.test']);
+        config(['app.url' => 'http://reports.example.test']);
+
         Storage::fake('local');
 
         $response = $this->withHeader('X-API-KEY', 'test-report-key')
@@ -60,23 +61,41 @@ class ReportApiTest extends TestCase
             ->assertJsonPath('report_type', 'inventory')
             ->assertJsonPath('format', 'csv')
             ->assertJsonPath('member_id', 'member-42')
-            ->assertJsonStructure(['request_id', 'file_name', 'download_url', 'expires_at']);
+            ->assertJsonStructure([
+                'request_id',
+                'file_name',
+                'download_url',
+            ]);
 
-        $this->assertSame('https', parse_url($response->json('download_url'), PHP_URL_SCHEME));
-        $this->assertSame('reports.example.test', parse_url($response->json('download_url'), PHP_URL_HOST));
-        parse_str((string) parse_url($response->json('download_url'), PHP_URL_QUERY), $query);
-        $expiresAt = Carbon::parse($response->json('expires_at'));
-        $this->assertSame($expiresAt->timestamp, (int) $query['expires']);
-        $this->assertTrue($expiresAt->isFuture());
+        $downloadUrl = $response->json('download_url');
 
-        $downloadResponse = $this->get($response->json('download_url'));
+        $this->assertSame(
+            'http',
+            parse_url($downloadUrl, PHP_URL_SCHEME)
+        );
+
+        $this->assertSame(
+            'reports.example.test',
+            parse_url($downloadUrl, PHP_URL_HOST)
+        );
+
+        parse_str(
+            (string) parse_url($downloadUrl, PHP_URL_QUERY),
+            $query
+        );
+
+        $this->assertArrayHasKey('signature', $query);
+        $this->assertArrayNotHasKey('expires', $query);
+
+        $downloadResponse = $this->get($downloadUrl);
 
         $downloadResponse->assertOk()
             ->assertHeader('content-disposition');
 
-        $this->assertStringContainsString('SKU', $downloadResponse->streamedContent());
-        $this->travelTo($expiresAt->addSecond());
-        $this->get($response->json('download_url'))->assertForbidden();
+        $this->assertStringContainsString(
+            'SKU',
+            $downloadResponse->streamedContent()
+        );
 
         $this->assertDatabaseHas('report_requests', [
             'id' => $response->json('request_id'),

@@ -8,6 +8,7 @@ use App\Models\BorrowRelease;
 use App\Models\Request as SupplyRequest;
 use App\Models\UserLoginEvent;
 use App\Models\User;
+use App\Notifications\AccountSetupNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
@@ -203,7 +204,7 @@ class SuperAdminTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        Notification::assertSentTo($target, \Illuminate\Auth\Notifications\ResetPassword::class);
+        Notification::assertSentTo($target, AccountSetupNotification::class);
         $this->assertSame(0, $target->tokens()->count());
         $this->assertDatabaseHas('activity_logs', [
             'actor_id' => $superAdmin->id,

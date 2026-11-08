@@ -46,17 +46,41 @@ class LoginRequest extends FormRequest
 
         $user = User::where('email', $this->input('email'))->first();
 
-        if (! Auth::attempt($this->only('email', 'password') + ['is_active' => true], $this->boolean('remember'))) {
+        // Determine failure reason to show an appropriate error message.
+        $isDeliveryPersonnel = $user?->role === 'delivery_personnel';
+
+        $authenticated = ! $isDeliveryPersonnel && Auth::attempt(
+            $this->only('email', 'password') + ['is_active' => true],
+            $this->boolean('remember')
+        );
+
+        if (! $authenticated) {
             RateLimiter::hit($this->throttleKey());
-            app(LoginHistoryService::class)->record($user, (string) $this->input('email'), false, $this);
+
+            app(LoginHistoryService::class)->record(
+                $user,
+                (string) $this->input('email'),
+                false,
+                $this
+            );
+
+            $message = $isDeliveryPersonnel
+                ? 'Delivery Personnel accounts cannot access TrackingAid Web. Please use the TrackingAid Mobile App to manage your deliveries.'
+                : trans('auth.failed');
 
             throw ValidationException::withMessages([
-                'email' => trans('auth.failed'),
+                'email' => $message,
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
-        app(LoginHistoryService::class)->record(Auth::user(), (string) $this->input('email'), true, $this);
+
+        app(LoginHistoryService::class)->record(
+            Auth::user(),
+            (string) $this->input('email'),
+            true,
+            $this
+        );
     }
 
     /**
