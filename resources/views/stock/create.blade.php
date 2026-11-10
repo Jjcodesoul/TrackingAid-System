@@ -50,6 +50,7 @@
 
 <form method="POST" action="/stock-in/store" id="stockInForm" class="inventory-form">
 @csrf
+<input type="hidden" name="submission_key" value="{{ $submissionKey }}">
 
 <div style="display:grid; grid-template-columns:1fr 340px; gap:24px; align-items:start;">
 
@@ -82,12 +83,9 @@
 
         <div style="margin-bottom:18px;">
             <label class="form-label" for="stockStorageLocation">Storage location</label>
-            <select id="stockStorageLocation" name="storage_location_id" class="form-select" required>
-                <option value="">Select an active Mambaling location</option>
-                @foreach($storageLocations as $location)
-                    <option value="{{ $location->id }}" @selected(old('storage_location_id') == $location->id)>{{ $location->name }} — {{ $location->warehouse_name }}</option>
-                @endforeach
-            </select>
+            <div id="stockStorageLocation" class="form-input" aria-readonly="true" style="display:flex; align-items:center; min-height:42px; background:#f8fafc;">
+                {{ $storageLocation->name }} - {{ $storageLocation->warehouse_name }}
+            </div>
         </div>
 
         {{-- SEARCHABLE ITEM SKU --}}
@@ -254,7 +252,7 @@ const summaryName = document.getElementById('summaryName');
 const summaryCategory = document.getElementById('summaryCategory');
 const summaryStock = document.getElementById('summaryStock');
 const summaryLocation = document.getElementById('summaryLocation');
-const storageLocationSelect = document.getElementById('stockStorageLocation');
+const fixedStorageLocation = document.getElementById('stockStorageLocation').textContent.trim();
 
 function getFilteredItems() {
     const category = categoryFilter.value;
@@ -376,7 +374,7 @@ function selectItem(item) {
     summaryName.innerText = item.name;
     summaryCategory.innerText = item.category.charAt(0) + item.category.slice(1).toLowerCase();
     summaryStock.innerText = item.stock + ' units in stock';
-    summaryLocation.innerText = storageLocationSelect.selectedOptions[0]?.textContent || 'Select a location';
+    summaryLocation.innerText = fixedStorageLocation;
 
     const banner = document.getElementById('summaryTypeBanner');
     const icon = document.getElementById('summaryTypeIcon');
@@ -413,11 +411,6 @@ function selectItem(item) {
     }
 }
 
-storageLocationSelect.addEventListener('change', () => {
-    if (itemIdField.value) {
-        summaryLocation.innerText = storageLocationSelect.selectedOptions[0]?.textContent || 'Select a location';
-    }
-});
 
 function resetSummary() {
     itemEmptyState.style.display = 'block';

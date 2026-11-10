@@ -20,4 +20,10 @@ class StorageLocation extends Model
     {
         return $query->mambaling()->where('is_active', true);
     }
+
+    public function scopeDesignatedMambaling(Builder $query): Builder
+    {
+        return $query->where('name', 'Mambaling Storage')
+            ->where('warehouse_name', 'Mambaling, Cebu City, Philippines');
+    }
 }

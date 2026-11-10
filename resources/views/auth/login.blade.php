@@ -3,7 +3,7 @@
     <div class="signin-shell">
         <section class="signin-showcase" aria-label="TrackingAid disaster logistics">
             <a class="brand-logo-frame signin-showcase-logo" href="{{ route('welcome') }}" aria-label="TrackingAid home">
-                <img class="trackingaid-logo" src="{{ asset('images/trackingaid-logo.jpg') }}" alt="TrackingAid by ResQOperation">
+                <img class="trackingaid-logo" src="{{ asset('images/trackingaid-logo-transparent.png') }}" alt="TrackingAid">
             </a>
             <div class="signin-showcase-copy">
                 <p class="signin-showcase-kicker"><span></span> Disaster logistics management</p>

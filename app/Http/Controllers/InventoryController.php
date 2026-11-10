@@ -26,7 +26,7 @@ class InventoryController extends Controller
             : null;
         abort_if($selectedLocationId !== null && ! $selectedLocation, 404);
 
-        $allItems = Item::with('stockBatches')
+        $allItems = Item::with(['storageLocation', 'stockBatches.storageLocation'])
             ->get()
             ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE);
 
@@ -34,12 +34,12 @@ class InventoryController extends Controller
             $allItems = $allItems->filter(function (Item $item) use ($selectedLocation): bool {
                 $allBatches = $item->stockBatches;
                 $locationBatches = $allBatches->filter(fn (StockBatch $batch): bool =>
-                    $batch->storage_location === $selectedLocation->name
+                    ($batch->storageLocation?->name ?? $batch->storage_location) === $selectedLocation->name
                 );
                 $item->setRelation('stockBatches', $locationBatches->values());
 
                 return $allBatches->isEmpty()
-                    ? $item->storage_location === $selectedLocation->name
+                    ? ($item->storageLocation?->name ?? $item->storage_location) === $selectedLocation->name
                     : $locationBatches->isNotEmpty();
             });
         }
@@ -124,7 +124,7 @@ public function create()
         ->orderBy('variant')
         ->pluck('variant');
 
-    $storageLocations = StorageLocation::availableInMambaling()->orderBy('name')->get();
+    $storageLocation = StorageLocation::designatedMambaling()->where('is_active', true)->firstOrFail();
     $existingSkus = Item::withTrashed()->pluck('sku')
         ->merge(Inventory::withTrashed()->pluck('sku'))
         ->filter()->unique()->values();
@@ -133,7 +133,7 @@ public function create()
         'customUnits',
         'customSizes',
         'customTargets',
-            'customVariants', 'storageLocations', 'existingSkus'
+            'customVariants', 'storageLocation', 'existingSkus'
     ));
 }
     public function store(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
@@ -146,12 +146,11 @@ public function create()
             'target_beneficiary' => 'required|string|max:100',
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
-            'storage_location_id' => ['required', 'integer', Rule::exists('storage_locations', 'id')->where(fn ($query) => $query->where('is_active', true)->where('warehouse_name', 'like', '%Mambaling%'))],
             'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
 
-        $storageLocation = StorageLocation::availableInMambaling()->whereKey($validated['storage_location_id'])->firstOrFail();
+        $storageLocation = StorageLocation::designatedMambaling()->where('is_active', true)->firstOrFail();
 
         // "Reusable" is the user-facing term; keep the established database
         // value so existing inventory and API consumers remain compatible.
@@ -203,8 +202,7 @@ public function create()
         $customCategories = Item::whereNotIn('category', $defaultCategories)
             ->distinct()->pluck('category');
 
-        $storageLocations = StorageLocation::availableInMambaling()->orderBy('name')->get();
-        return view('inventory.edit', compact('item', 'customCategories', 'storageLocations'));
+        return view('inventory.edit', compact('item', 'customCategories'));
     }
 
     public function update(Request $request, InventorySyncService $inventorySync, $id)
@@ -218,12 +216,9 @@ public function create()
             'target_beneficiary' => 'nullable|string|max:100',
             'variant' => 'nullable|string|max:100',
             'type' => 'required|in:consumable,reusable,returnable',
-            'storage_location_id' => ['required', 'integer', Rule::exists('storage_locations', 'id')->where(fn ($query) => $query->where('is_active', true)->where('warehouse_name', 'like', '%Mambaling%'))],
             'min_stock' => 'nullable|integer|min:0',
             'expiration_date' => 'nullable|date',
         ]);
-
-        $storageLocation = StorageLocation::availableInMambaling()->whereKey($validated['storage_location_id'])->firstOrFail();
 
         if (($validated['type'] ?? null) === 'reusable') {
             $validated['type'] = 'returnable';
@@ -233,8 +228,7 @@ public function create()
             $validated['category'] = strtoupper($validated['category']);
         }
 
-        unset($validated['storage_location_id']);
-        $validated['storage_location'] = $storageLocation->name;
+        // Existing assignments are historical text values and are retained until manually verified.
         $item->update($validated);
         $inventorySync->syncItem($item->fresh('stockBatches'));
 
@@ -324,7 +318,7 @@ public function create()
             fclose($handle);
             return back()->withErrors(['csv_file' => 'CSV headers must be exactly: '.implode(',', $required)]);
         }
-        $locations = StorageLocation::availableInMambaling()->pluck('name')->all();
+        $locations = StorageLocation::designatedMambaling()->where('is_active', true)->pluck('name')->all();
         $usedSkus = Item::withTrashed()->pluck('sku')->merge(Inventory::withTrashed()->pluck('sku'))->filter()->map(fn ($sku) => strtoupper($sku))->all();
         $validRows = []; $errors = []; $rowNumber = 1;
         while (($values = fgetcsv($handle)) !== false) {

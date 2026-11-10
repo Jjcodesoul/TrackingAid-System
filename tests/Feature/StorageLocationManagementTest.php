@@ -19,66 +19,41 @@ class StorageLocationManagementTest extends TestCase
             ->assertNotFound();
     }
 
-    public function test_temporary_locations_are_consistent_in_item_stock_in_and_inventory_pages(): void
+    public function test_only_the_designated_location_is_offered_for_inventory_and_stock_in(): void
     {
-        $names = [
-            'Main Warehouse',
-            'Relief Goods Storage',
-            'Food and Water Storage',
-            'Medical Supplies Storage',
-            'Clothing and Essentials Storage',
-            'Equipment and Tools Storage',
-        ];
-        foreach ($names as $name) {
-            $location = StorageLocation::where('name', $name)->firstOrFail();
-            $this->assertTrue($location->is_active);
-            $this->assertStringContainsString('Mambaling', $location->warehouse_name);
-            $this->assertStringContainsString('temporary', strtolower($location->warehouse_name));
-        }
+        $location = StorageLocation::designatedMambaling()->where('is_active', true)->firstOrFail();
+        $this->assertSame('Mambaling, Cebu City, Philippines', $location->warehouse_name);
 
         $admin = User::factory()->create(['role' => 'admin']);
         foreach ([route('inventory.create'), route('stock.create'), route('inventory.index')] as $url) {
-            $response = $this->actingAs($admin)->get($url)->assertOk();
-            foreach ($names as $name) {
-                $response->assertSeeText($name);
-            }
+            $this->actingAs($admin)->get($url)->assertOk()->assertSeeText('Mambaling Storage');
         }
+
+        $this->actingAs($admin)->get(route('inventory.create'))
+            ->assertDontSeeText('Main Warehouse')->assertDontSeeText('Equipment and Tools Storage');
+        $this->actingAs($admin)->get(route('stock.create'))
+            ->assertDontSeeText('Main Warehouse')->assertDontSeeText('Equipment and Tools Storage');
     }
 
-    public function test_stock_in_can_move_an_item_from_an_inactive_default_location_to_an_active_location(): void
+    public function test_new_inventory_uses_designated_location_even_if_client_posts_another_id(): void
     {
-        $location = StorageLocation::create([
-            'name' => 'Mambaling Closed Bay',
-            'warehouse_name' => 'Mambaling Operations',
-            'is_active' => false,
-        ]);
-        $item = Item::create([
-            'name' => 'Water kit', 'category' => 'RELIEF', 'unit_type' => 'BOX',
-            'type' => 'consumable', 'storage_location' => $location->name, 'sku' => 'REL-WATER-KIT-01',
-        ]);
         $admin = User::factory()->create(['role' => 'admin']);
 
-        $this->actingAs($admin)->get(route('stock.create'))->assertOk()->assertSee('REL-WATER-KIT-01');
-        $this->post(route('stock.store'), [
-            'item_id' => $item->id,
+        $this->actingAs($admin)->post(route('inventory.store'), [
+            'name' => 'Emergency Water',
+            'category' => 'FOOD',
+            'unit_type' => 'BOTTLE',
+            'target_beneficiary' => 'ALL',
+            'type' => 'consumable',
             'storage_location_id' => StorageLocation::where('name', 'Warehouse A')->value('id'),
-            'quantity' => 5,
-            'date_received' => now()->toDateString(),
         ])->assertRedirect('/inventory')->assertSessionHasNoErrors();
 
-        $this->assertDatabaseHas('stock_batches', [
-            'item_id' => $item->id, 'storage_location' => 'Warehouse A', 'quantity' => 5,
-        ]);
-        $this->post(route('stock.store'), [
-            'item_id' => $item->id,
-            'storage_location_id' => $location->id,
-            'quantity' => 1,
-            'date_received' => now()->toDateString(),
-        ])->assertSessionHasErrors('storage_location_id');
+        $this->assertDatabaseHas('items', ['name' => 'Emergency Water', 'storage_location' => 'Mambaling Storage']);
     }
 
-    public function test_stock_in_records_the_selected_active_mambaling_location(): void
+    public function test_stock_in_uses_designated_location_and_preserves_existing_item_assignment(): void
     {
+        $submissionKey = (string) \Illuminate\Support\Str::uuid();
         $item = Item::create([
             'name' => 'Water kit', 'category' => 'RELIEF', 'unit_type' => 'BOX',
             'type' => 'consumable', 'storage_location' => 'Warehouse A', 'sku' => 'REL-WATER-STOCK-IN',
@@ -87,6 +62,16 @@ class StorageLocationManagementTest extends TestCase
 
         $this->actingAs($operator)->post(route('stock.store'), [
             'item_id' => $item->id,
+            'submission_key' => $submissionKey,
+            'storage_location_id' => StorageLocation::where('name', 'Warehouse B')->value('id'),
+            'quantity' => 5,
+            'supplier' => 'Test supplier',
+            'date_received' => now()->toDateString(),
+        ])->assertRedirect('/inventory')->assertSessionHasNoErrors();
+
+        $this->actingAs($operator)->post(route('stock.store'), [
+            'item_id' => $item->id,
+            'submission_key' => $submissionKey,
             'storage_location_id' => StorageLocation::where('name', 'Warehouse B')->value('id'),
             'quantity' => 5,
             'supplier' => 'Test supplier',
@@ -94,8 +79,9 @@ class StorageLocationManagementTest extends TestCase
         ])->assertRedirect('/inventory')->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('stock_batches', [
-            'item_id' => $item->id, 'quantity' => 5, 'storage_location' => 'Warehouse B', 'movement_type' => 'stock-in',
+            'item_id' => $item->id, 'quantity' => 5, 'storage_location' => 'Mambaling Storage', 'movement_type' => 'stock-in',
         ]);
+        $this->assertSame(1, \App\Models\StockBatch::where('submission_key', $submissionKey)->count());
         $this->assertSame('Warehouse A', $item->fresh()->storage_location);
     }
 }

@@ -14,6 +14,7 @@ class StockBatch extends Model
         'expiration_date',
         'created_by_user_id',
         'movement_type',
+        'submission_key',
         'storage_location',
     ];
 
@@ -25,6 +26,11 @@ class StockBatch extends Model
     public function item()
     {
         return $this->belongsTo(Item::class);
+    }
+
+    public function storageLocation()
+    {
+        return $this->belongsTo(StorageLocation::class, 'storage_location', 'name');
     }
 
     public function creator()

@@ -1120,3 +1120,7 @@ a {
     html[data-theme="dark"] .dropdown-menu,
     html[data-theme="dark"] [role="menu"] { color: var(--ink); background-color: var(--surface); border-color: var(--line); }
 }
+
+/* The white TrackingAid wordmark is legible on a dark field on the public pages. */
+.public-header .brand-logo-frame,
+.signin-showcase .brand-logo-frame { border-color: #183d40; background: #0b252e; box-shadow: none; }

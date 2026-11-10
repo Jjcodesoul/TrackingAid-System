@@ -12,7 +12,7 @@
 <body class="public-page">
     <header class="public-header">
         <a class="public-brand" href="{{ route('welcome') }}" aria-label="TrackingAid home">
-            <span class="brand-logo-frame"><img class="trackingaid-logo" src="{{ asset('images/trackingaid-logo.jpg') }}" alt="TrackingAid by ResQOperation"></span>
+            <span class="brand-logo-frame"><img class="trackingaid-logo" src="{{ asset('images/trackingaid-logo-transparent.png') }}" alt="TrackingAid"></span>
         </a>
         <nav class="public-nav" aria-label="Main navigation">
             <a href="#capabilities">Capabilities</a>

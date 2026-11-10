@@ -541,12 +541,12 @@
                                 $statusFilters[] = 'expiring';
                             }
                             $locationQuantities = $item->stockBatches
-                                ->groupBy(fn ($batch) => $batch->storage_location ?: 'Location not recorded')
+                                ->groupBy(fn ($batch) => ($batch->storageLocation?->name ?? $batch->storage_location) ?: 'Location not recorded')
                                 ->map(fn ($batches) => (int) $batches->sum('quantity'));
                             $locationSummary = $selectedLocation
                                 ? $selectedLocation->name
                                 : $locationQuantities->map(fn ($quantity, $location) => $location.': '.number_format($quantity))->join(' · ');
-                            if ($locationSummary === '') $locationSummary = $item->storage_location ?: 'Location not recorded';
+                            if ($locationSummary === '') $locationSummary = ($item->storageLocation?->name ?? $item->storage_location) ?: 'Location not recorded';
                         @endphp
 
                         <tr
@@ -642,7 +642,7 @@
 
                             {{-- LOCATION --}}
                             <td style="padding:14px 16px; font-size:13px; color:#4a5568;">
-                                {{ $locationSummary }}{{ $item->storage_location && ! $availableStorageLocations->contains('name', $item->storage_location) ? ' (unverified/inactive)' : '' }}
+                                {{ $locationSummary }}{{ $item->storage_location && ! $availableStorageLocations->contains('name', $item->storageLocation?->name ?? $item->storage_location) ? ' (unverified/inactive)' : '' }}
                             </td>
 
                             {{-- ACTIONS --}}

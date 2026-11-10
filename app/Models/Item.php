@@ -34,6 +34,11 @@ class Item extends Model
         return $this->hasMany(StockBatch::class);
     }
 
+    public function storageLocation()
+    {
+        return $this->belongsTo(StorageLocation::class, 'storage_location', 'name');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
