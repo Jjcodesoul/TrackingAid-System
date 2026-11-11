@@ -47,7 +47,7 @@
         <div><p class="dashboard-stat-label">Approved Requests</p><h2 class="dashboard-stat-value">{{ number_format($approvedRequests) }}</h2></div>
         <span class="dashboard-stat-icon" aria-hidden="true"><i class="fa-regular fa-circle-check"></i></span>
     </a>
-    <a href="{{ route('borrow-release.create') }}" class="dashboard-stat-card">
+    <a href="{{ route('inventory.index') }}" class="dashboard-stat-card">
         <div><p class="dashboard-stat-label">Items Released</p><h2 class="dashboard-stat-value">{{ number_format($releasedItems) }}</h2></div>
         <span class="dashboard-stat-icon tone-info" aria-hidden="true"><i class="fa-solid fa-box-open"></i></span>
     </a>
@@ -63,7 +63,7 @@
         <div><p class="dashboard-stat-label">Completed Deliveries</p><h2 class="dashboard-stat-value">{{ number_format($completedDeliveries) }}</h2><p class="dashboard-stat-hint">Arrived this month</p></div>
         <span class="dashboard-stat-icon tone-info" aria-hidden="true"><i class="fa-solid fa-truck"></i></span>
     </a>
-    <a href="{{ route('returns.create') }}" class="dashboard-stat-card">
+    <a href="{{ route('inventory.index') }}" class="dashboard-stat-card">
         <div><p class="dashboard-stat-label">Items Returned</p><h2 class="dashboard-stat-value">{{ number_format($returnedItems) }}</h2></div>
         <span class="dashboard-stat-icon" aria-hidden="true"><i class="fa-solid fa-rotate-left"></i></span>
     </a>
@@ -127,7 +127,7 @@
 <section class="panel dashboard-panel" style="margin-top:20px;">
     <div class="page-header" style="margin-bottom:16px;">
         <div>
-            <h2 class="dashboard-section-title">Recent System Activity</h2>
+            <h2 class="dashboard-section-title">Recent User &amp; System Activities</h2>
             <p class="page-subtitle">Changes to accounts, inventory, requests, releases, and returns.</p>
         </div>
         <a href="{{ route('super-admin.activity-logs') }}" class="btn-soft">View all activity</a>
@@ -154,6 +154,62 @@
                     </tr>
                 @empty
                     <tr><td colspan="4" class="p-6 text-center text-slate-500">No recorded system activity yet.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel dashboard-panel" style="margin-top:20px;">
+    <div class="page-header" style="margin-bottom:16px;">
+        <div>
+            <h2 class="dashboard-section-title">Latest Inventory Activity</h2>
+            <p class="page-subtitle">Recent inventory registrations, updates, and stock receipts.</p>
+        </div>
+        <a href="{{ route('inventory.index') }}" class="btn-soft">View inventory</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="table-ui" style="width:100%;">
+            <thead><tr><th scope="col">Date and time</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Affected record</th></tr></thead>
+            <tbody>
+                @forelse($recentInventoryLogs as $entry)
+                    @php($log = $entry['log'])
+                    <tr>
+                        <td>{{ $log->created_at->format('M d, Y H:i:s') }}</td>
+                        <td>{{ $log->actor?->name ?? 'System / external' }}</td>
+                        <td>{{ $entry['summary'] }}</td>
+                        <td>{{ $entry['record'] }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="p-6 text-center text-slate-500">No inventory activities are recorded yet.</td></tr>
+                @endforelse
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="panel dashboard-panel" style="margin-top:20px;">
+    <div class="page-header" style="margin-bottom:16px;">
+        <div>
+            <h2 class="dashboard-section-title">Recent Request Activity</h2>
+            <p class="page-subtitle">Recent submitted, approved, rejected, and updated supply requests.</p>
+        </div>
+        <a href="{{ route('requests.index') }}" class="btn-soft">View requests</a>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="table-ui" style="width:100%;">
+            <thead><tr><th scope="col">Date and time</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Affected record</th></tr></thead>
+            <tbody>
+                @forelse($recentRequestLogs as $entry)
+                    @php($log = $entry['log'])
+                    <tr>
+                        <td>{{ $log->created_at->format('M d, Y H:i:s') }}</td>
+                        <td>{{ $log->actor?->name ?? 'System / external' }}</td>
+                        <td>{{ $entry['summary'] }}</td>
+                        <td>{{ $entry['record'] }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="p-6 text-center text-slate-500">No request activities are recorded yet.</td></tr>
                 @endforelse
             </tbody>
         </table>

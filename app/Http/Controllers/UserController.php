@@ -23,11 +23,14 @@ class UserController extends Controller
 
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
-            'role' => ['nullable', 'in:admin,user,staff,delivery_personnel'],
+            'role' => ['nullable', 'in:super_admin,admin,user,staff,delivery_personnel'],
             'is_active' => ['nullable', 'in:0,1'],
         ]);
 
-        $usersQuery = User::where('role', '!=', 'super_admin');
+        $usersQuery = User::query();
+        if (Auth::user()->role !== 'super_admin') {
+            $usersQuery->where('role', '!=', 'super_admin');
+        }
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
@@ -138,6 +141,11 @@ class UserController extends Controller
         $user->last_name = $validated['last_name'];
         $user->name = trim("{$validated['first_name']} {$validated['last_name']}");
         $user->email = $validated['email'];
+        abort_if(
+            Auth::id() === $user->id && $user->role !== $validated['role'],
+            403,
+            'You cannot change your own role.'
+        );
         $user->role = $validated['role'];
 
         $user->save();

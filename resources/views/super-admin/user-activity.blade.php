@@ -6,7 +6,11 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">{{ $userItem->name }}</h1>
-        <p class="page-subtitle">{{ $userItem->email }} · {{ match($userItem->role) { 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel', default => ucfirst(str_replace('_', ' ', $userItem->role)) } }}</p>
+        <p class="page-subtitle">
+            {{ $userItem->email }} · {{ match($userItem->role) { 'super_admin' => 'Super Admin', 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel', default => ucfirst(str_replace('_', ' ', $userItem->role)) } }}
+            · {{ $userItem->is_active ? 'Active account' : 'Inactive account' }}
+            · Created {{ $userItem->created_at?->format('M d, Y H:i') ?? 'date not recorded' }}
+        </p>
     </div>
     <a href="{{ route('super-admin.activity-logs', ['tab' => 'users']) }}" class="btn-soft">Back to users</a>
 </div>
@@ -20,13 +24,32 @@
 <section class="panel dashboard-panel" style="margin-top:20px; padding:0; overflow:hidden;">
     <div class="p-5">
         <h2 class="dashboard-section-title">System Activity</h2>
+        <p class="page-subtitle">Only recorded activity is shown; actions from before tracking was enabled may be unavailable.</p>
         <form method="GET" action="{{ route('super-admin.activity-logs.users.show', $userItem) }}" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; margin-top:14px;">
             <div style="min-width:160px;">
                 <label for="user-event-type" class="form-label">Action</label>
                 <select id="user-event-type" name="event_type" class="form-select">
                     <option value="">All actions</option>
-                    @foreach(['created' => 'Created', 'updated' => 'Updated', 'deleted' => 'Deleted', 'security_action' => 'Security action', 'password_reset_link_sent' => 'Password reset'] as $value => $label)
+                    @foreach(['created' => 'Created', 'updated' => 'Updated', 'deleted' => 'Deleted', 'csv_imported' => 'CSV imported', 'security_action' => 'Security action', 'password_reset_link_sent' => 'Password reset link sent', 'logged_in' => 'Logged in', 'logged_out' => 'Logged out'] as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['event_type'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="min-width:160px;">
+                <label for="user-role-filter" class="form-label">Actor role</label>
+                <select id="user-role-filter" name="role" class="form-select">
+                    <option value="">All roles</option>
+                    @foreach($roleOptions as $role)
+                        <option value="{{ $role }}" @selected(($filters['role'] ?? '') === $role)>{{ match($role) { 'super_admin' => 'Super Admin', 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel', default => ucfirst(str_replace('_', ' ', $role)) } }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="min-width:160px;">
+                <label for="user-module-filter" class="form-label">Module</label>
+                <select id="user-module-filter" name="module" class="form-select">
+                    <option value="">All modules</option>
+                    @foreach(['accounts' => 'User Accounts', 'authentication' => 'Authentication', 'inventory' => 'Inventory', 'stock' => 'Stock-In', 'requests' => 'Supply Requests', 'borrow_release' => 'Borrow / Release', 'returns' => 'Returns', 'storage' => 'Storage Locations'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['module'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
             </div>
@@ -39,12 +62,14 @@
 
     <div class="overflow-x-auto">
         <table class="table-ui" style="width:100%;">
-            <thead><tr><th scope="col">Date and time</th><th scope="col">Action</th><th scope="col">Affected record</th><th scope="col">Changes</th></tr></thead>
+            <thead><tr><th scope="col">Date and time</th><th scope="col">Actor</th><th scope="col">Module</th><th scope="col">Action</th><th scope="col">Affected record</th><th scope="col">Changes</th></tr></thead>
             <tbody>
                 @forelse($logs as $entry)
                     @php($log = $entry['log'])
                     <tr>
                         <td>{{ $log->created_at->format('M d, Y H:i:s') }}</td>
+                        <td>{{ $log->actor?->name ?? 'System / external' }}</td>
+                        <td>{{ $entry['module'] }}</td>
                         <td>{{ $entry['summary'] }}</td>
                         <td>{{ $entry['record'] }}</td>
                         <td>
@@ -68,7 +93,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="p-8 text-center text-slate-500">No activity matches the selected filters.</td></tr>
+                    <tr><td colspan="6" class="p-8 text-center text-slate-500">No activity matches the selected filters.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -54,7 +54,7 @@ class ActivityLogObserver
 
     private function safeAttributes(array $attributes): array
     {
-        foreach (['password', 'remember_token', 'token', 'api_token', 'auth_version', 'last_login_at'] as $sensitiveKey) {
+        foreach (['password', 'password_confirmation', 'current_password', 'new_password', 'remember_token', 'token', 'api_token', 'access_token', 'secret', 'auth_version', 'last_login_at', 'payload_json'] as $sensitiveKey) {
             unset($attributes[$sensitiveKey]);
         }
 

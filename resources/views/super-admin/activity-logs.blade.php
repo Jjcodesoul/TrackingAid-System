@@ -6,7 +6,7 @@
 <div class="page-header">
     <div>
         <h1 class="page-title">System Activity Logs</h1>
-        <p class="page-subtitle">Auditable record of account and operational data changes.</p>
+        <p class="page-subtitle">Recorded account and operational activity. Older actions that were not logged are unavailable and are not reconstructed.</p>
     </div>
     <a href="{{ route('super-admin.dashboard') }}" class="btn-soft">Back to dashboard</a>
 </div>
@@ -23,6 +23,23 @@
             <div style="flex:1; min-width:180px;">
                 <label for="user-search" class="form-label">Search users</label>
                 <input id="user-search" name="search" type="search" value="{{ $filters['search'] ?? '' }}" class="form-input" placeholder="Name, email, or role">
+            </div>
+            <div style="min-width:150px;">
+                <label for="users-role" class="form-label">Role</label>
+                <select id="users-role" name="role" class="form-select">
+                    <option value="">All roles</option>
+                    @foreach(['super_admin' => 'Super Admin', 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['role'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="min-width:150px;">
+                <label for="users-status" class="form-label">Account status</label>
+                <select id="users-status" name="is_active" class="form-select">
+                    <option value="">All statuses</option>
+                    <option value="1" @selected(($filters['is_active'] ?? '') === '1')>Active</option>
+                    <option value="0" @selected(($filters['is_active'] ?? '') === '0')>Inactive</option>
+                </select>
             </div>
             <button type="submit" class="btn-main">Search</button>
             <a href="{{ route('super-admin.activity-logs', ['tab' => 'users']) }}" class="btn-soft">Clear</a>
@@ -53,18 +70,45 @@
     @else
         <form method="GET" action="{{ route('super-admin.activity-logs') }}" class="panel" style="display:flex; gap:12px; align-items:end; flex-wrap:wrap; border:0; border-bottom:1px solid #e2e8f0; border-radius:0;">
             <input type="hidden" name="tab" value="recent">
-            <div style="flex:1; min-width:180px;">
-                <label for="activity-search" class="form-label">User or record</label>
-                <input id="activity-search" name="search" type="search" value="{{ $filters['search'] ?? '' }}" class="form-input" placeholder="Name, email, model, or record ID">
+            <div style="min-width:180px;">
+                <label for="activity-user" class="form-label">User</label>
+                <select id="activity-user" name="user_id" class="form-select">
+                    <option value="">All users</option>
+                    @foreach($filterUsers as $filterUser)
+                        <option value="{{ $filterUser->id }}" @selected((string) ($filters['user_id'] ?? '') === (string) $filterUser->id)>{{ $filterUser->name }} ({{ $filterUser->email }})</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="min-width:150px;">
+                <label for="activity-role" class="form-label">User role</label>
+                <select id="activity-role" name="role" class="form-select">
+                    <option value="">All roles</option>
+                    @foreach(['super_admin' => 'Super Admin', 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['role'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
             </div>
             <div style="min-width:150px;">
                 <label for="event-type" class="form-label">Action</label>
                 <select id="event-type" name="event_type" class="form-select">
                     <option value="">All actions</option>
-                    @foreach(['created' => 'Created', 'updated' => 'Updated', 'deleted' => 'Deleted'] as $value => $label)
+                    @foreach(['created' => 'Created', 'updated' => 'Updated', 'deleted' => 'Deleted', 'csv_imported' => 'CSV imported', 'security_action' => 'Security action', 'password_reset_link_sent' => 'Password reset link sent', 'logged_in' => 'Logged in', 'logged_out' => 'Logged out'] as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['event_type'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
+            </div>
+            <div style="min-width:150px;">
+                <label for="activity-module" class="form-label">Module</label>
+                <select id="activity-module" name="module" class="form-select">
+                    <option value="">All modules</option>
+                    @foreach(['accounts' => 'User Accounts', 'authentication' => 'Authentication', 'inventory' => 'Inventory', 'stock' => 'Stock-In', 'requests' => 'Supply Requests', 'borrow_release' => 'Borrow / Release', 'returns' => 'Returns', 'storage' => 'Storage Locations'] as $value => $label)
+                        <option value="{{ $value }}" @selected(($filters['module'] ?? '') === $value)>{{ $label }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div style="flex:1; min-width:180px;">
+                <label for="activity-search" class="form-label">Record or user search</label>
+                <input id="activity-search" name="search" type="search" value="{{ $filters['search'] ?? '' }}" class="form-input" placeholder="Name, email, model, or record ID">
             </div>
             <div>
                 <label for="date-from" class="form-label">From date</label>
@@ -80,7 +124,7 @@
 
         <div class="overflow-x-auto">
             <table class="table-ui" style="width:100%;">
-                <thead><tr><th scope="col">Date and time</th><th scope="col">User</th><th scope="col">Action</th><th scope="col">Affected record</th><th scope="col">Changed values</th></tr></thead>
+                <thead><tr><th scope="col">Date and time</th><th scope="col">User</th><th scope="col">Role</th><th scope="col">Module</th><th scope="col">Action</th><th scope="col">Affected record</th><th scope="col">Changed values</th></tr></thead>
                 <tbody>
                     @forelse($logs as $entry)
                         @php($log = $entry['log'])
@@ -93,6 +137,8 @@
                                     System / external
                                 @endif
                             </td>
+                            <td>{{ $log->actor ? match($log->actor->role) { 'super_admin' => 'Super Admin', 'admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel', default => ucfirst(str_replace('_', ' ', $log->actor->role)) } : 'Not recorded' }}</td>
+                            <td>{{ $entry['module'] }}</td>
                             <td>{{ $entry['summary'] }}</td>
                             <td>{{ $entry['record'] }}</td>
                             <td>
@@ -120,7 +166,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="5" class="p-8 text-center text-slate-500">No matching activity was found. Adjust your filters or date range.</td></tr>
+                        <tr><td colspan="7" class="p-8 text-center text-slate-500">No matching activity was found. Adjust your filters or date range.</td></tr>
                     @endforelse
                 </tbody>
             </table>

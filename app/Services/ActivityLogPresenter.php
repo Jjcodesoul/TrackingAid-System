@@ -8,6 +8,7 @@ use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
+use App\Models\ResqoperationForwardedRequest;
 use App\Models\StockBatch;
 use App\Models\User;
 
@@ -23,8 +24,16 @@ class ActivityLogPresenter
         'id',
         'remember_token',
         'password',
+        'password_confirmation',
+        'current_password',
+        'new_password',
         'token',
         'api_token',
+        'access_token',
+        'secret',
+        'payload_json',
+        'auth_version',
+        'last_login_at',
         'idempotency_key',
         'created_at',
         'updated_at',
@@ -65,6 +74,9 @@ class ActivityLogPresenter
         'notification_status' => 'Notification status',
         'approved_at' => 'Approved at',
         'rejected_at' => 'Rejected at',
+        'resqperation_status' => 'Status',
+        'tracking_reference' => 'Tracking reference',
+        'request_source' => 'Request source',
     ];
 
     public function present(ActivityLog $log): array
@@ -72,9 +84,32 @@ class ActivityLogPresenter
         return [
             'log' => $log,
             'summary' => $this->summary($log),
+            'module' => $this->moduleName($log),
             'record' => $this->recordLabel($log),
             'changes' => $this->changes($log),
         ];
+    }
+
+    private function forwardedRequestSummary(ActivityLog $log, string $action, array $attributes): string
+    {
+        $reference = $attributes['tracking_reference'] ?? '#'.$log->subject_id;
+        $oldStatus = strtolower((string) ($log->properties['old']['resqperation_status'] ?? ''));
+        $newStatus = strtolower((string) ($log->properties['new']['resqperation_status'] ?? ''));
+
+        if ($log->event_type === 'created') {
+            return 'Received forwarded request '.$reference;
+        }
+        if ($newStatus === 'approved' && $oldStatus !== 'approved') {
+            return 'Approved forwarded request '.$reference;
+        }
+        if ($newStatus === 'rejected' && $oldStatus !== 'rejected') {
+            return 'Rejected forwarded request '.$reference;
+        }
+        if ($newStatus !== '' && $oldStatus !== '' && $newStatus !== $oldStatus) {
+            return "Updated forwarded request {$reference} from {$oldStatus} to {$newStatus}";
+        }
+
+        return ucfirst($action).' forwarded request '.$reference;
     }
 
     public function presentMany(iterable $logs): array
@@ -85,6 +120,7 @@ class ActivityLogPresenter
             Item::class,
             StockBatch::class,
             SupplyRequest::class,
+            ResqoperationForwardedRequest::class,
             BorrowRelease::class,
             ReturnItem::class,
         ];
@@ -136,9 +172,17 @@ class ActivityLogPresenter
 
     public function recordLabel(ActivityLog $log): string
     {
+        if (in_array($log->event_type, ['logged_in', 'logged_out'], true)) {
+            return 'Authentication for '.($log->actor?->name ?? 'User #'.$log->subject_id);
+        }
+        if ($log->event_type === 'csv_imported') {
+            return 'CSV inventory import ('.($log->properties['new']['item_count'] ?? 0).' items)';
+        }
+
         return match ($log->subject_type) {
             BorrowRelease::class => 'Borrow/Release #'.$log->subject_id,
             SupplyRequest::class => 'Request '.($log->properties['new']['request_code'] ?? $log->properties['old']['request_code'] ?? '#'.$log->subject_id),
+            ResqoperationForwardedRequest::class => 'Forwarded request '.($log->properties['new']['tracking_reference'] ?? $log->properties['old']['tracking_reference'] ?? '#'.$log->subject_id),
             ReturnItem::class => 'Return #'.$log->subject_id,
             StockBatch::class => 'Stock-In #'.$log->subject_id,
             Item::class => 'Inventory Item '.$this->itemName($log->properties['new'] ?? $log->properties['old'] ?? []),
@@ -149,6 +193,18 @@ class ActivityLogPresenter
 
     private function summary(ActivityLog $log): string
     {
+        if ($log->event_type === 'csv_imported') {
+            return 'Imported '.($log->properties['new']['item_count'] ?? 0).' inventory item(s) from CSV';
+        }
+
+        if ($log->event_type === 'logged_in') {
+            return 'User signed in: '.($log->actor?->name ?? 'User #'.$log->subject_id);
+        }
+
+        if ($log->event_type === 'logged_out') {
+            return 'User signed out: '.($log->actor?->name ?? 'User #'.$log->subject_id);
+        }
+
         if ($log->event_type === 'security_action') {
             return (string) ($log->properties['action'] ?? 'Security action performed for user account');
         }
@@ -162,6 +218,13 @@ class ActivityLogPresenter
             $log->properties['new'] ?? $log->properties['old'] ?? []
         );
         $subject = $this->subjectName($log, $attributes);
+        if ($log->subject_type === User::class
+            && array_key_exists('is_active', $log->properties['old'] ?? [])
+            && array_key_exists('is_active', $log->properties['new'] ?? [])
+            && (bool) $log->properties['old']['is_active'] !== (bool) $log->properties['new']['is_active']) {
+            return ((bool) $log->properties['new']['is_active'] ? 'Activated' : 'Deactivated').' account: '.$subject;
+        }
+
         $action = match ($log->event_type) {
             'created' => 'created',
             'updated' => 'updated',
@@ -174,9 +237,28 @@ class ActivityLogPresenter
             Item::class => ucfirst($action).' inventory item: '.$subject,
             StockBatch::class => $this->stockBatchSummary($log, $attributes, $action, $subject),
             SupplyRequest::class => $this->requestSummary($log, $attributes, $action, $subject),
+            ResqoperationForwardedRequest::class => $this->forwardedRequestSummary($log, $action, $attributes),
             BorrowRelease::class => $this->releaseSummary($log, $attributes, $action, $subject),
             ReturnItem::class => $this->returnSummary($log, $attributes, $action, $subject),
             default => ucfirst($action).' '.class_basename($log->subject_type).' #'.$log->subject_id,
+        };
+    }
+
+    private function moduleName(ActivityLog $log): string
+    {
+        if (in_array($log->event_type, ['logged_in', 'logged_out'], true)) {
+            return 'Authentication';
+        }
+
+        return match ($log->subject_type) {
+            User::class => 'User Accounts',
+            Item::class => 'Inventory',
+            StockBatch::class => 'Stock-In',
+            SupplyRequest::class => 'Supply Requests',
+            ResqoperationForwardedRequest::class => 'Supply Requests',
+            BorrowRelease::class => 'Borrow / Release',
+            ReturnItem::class => 'Returns',
+            default => class_basename($log->subject_type),
         };
     }
 
@@ -301,6 +383,7 @@ class ActivityLogPresenter
             Item::class => $this->itemName($attributes),
             StockBatch::class, ReturnItem::class => $this->inventoryName($attributes['inventory_id'] ?? null),
             SupplyRequest::class => $this->inventoryName($attributes['inventory_id'] ?? null),
+            ResqoperationForwardedRequest::class => $attributes['item_name'] ?? $attributes['resource_type'] ?? 'Forwarded request',
             BorrowRelease::class => $this->inventoryName($attributes['inventory_id'] ?? null),
             default => class_basename($log->subject_type).' #'.$log->subject_id,
         };
@@ -321,6 +404,7 @@ class ActivityLogPresenter
             Item::class,
             StockBatch::class,
             SupplyRequest::class,
+            ResqoperationForwardedRequest::class,
             BorrowRelease::class,
             ReturnItem::class,
         ];

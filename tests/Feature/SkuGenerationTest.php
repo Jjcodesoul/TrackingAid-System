@@ -91,8 +91,8 @@ class SkuGenerationTest extends TestCase
     {
         $csv = implode("\n", [
             'name,category,unit_type,size_weight,target_beneficiary,variant,type,storage_location,quantity,min_stock,expiration_date',
-            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Main Warehouse,10,10,',
-            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Main Warehouse,5,10,',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Mambaling Storage,10,10,',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Mambaling Storage,5,10,',
         ]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']))

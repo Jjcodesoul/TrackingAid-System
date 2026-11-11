@@ -17,7 +17,6 @@
         <nav class="public-nav" aria-label="Main navigation">
             <a href="#capabilities">Capabilities</a>
             <a href="#about">About</a>
-            <a class="btn-main public-nav-cta" href="{{ route('login') }}"><i class="fa-solid fa-arrow-right-to-bracket" aria-hidden="true"></i> Access System</a>
         </nav>
     </header>
 
@@ -99,7 +98,6 @@
     <footer class="public-footer">
         <span class="footer-brand">TrackingAid <span>by ResQOperation</span></span>
         <span>Disaster logistics information system</span>
-        <a href="{{ route('login') }}">Access System <i class="fa-solid fa-arrow-right" aria-hidden="true"></i></a>
     </footer>
 </body>
 </html>

@@ -10,6 +10,7 @@ use App\Services\SkuGenerator;
 use App\Models\StorageLocation;
 use App\Models\ActivityLog;
 use App\Models\StockBatch;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -80,8 +81,10 @@ class InventoryController extends Controller
     }
 
     
-public function create()
+public function create(Request $request)
 {
+    abort_unless(in_array($request->user()?->role, ['admin', 'super_admin'], true), 403);
+
     $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
     $defaultUnits = ['BOX', 'PACK', 'PCS', 'SACK', 'BOTTLE'];
     $defaultSizes = ['SM', 'MD', 'LG', '50KG', '25KG', '500ML', '1L', 'REG'];
@@ -138,6 +141,8 @@ public function create()
 }
     public function store(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
     {
+        abort_unless(in_array($request->user()?->role, ['admin', 'super_admin'], true), 403);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:100',
@@ -359,6 +364,19 @@ public function create()
                     }
                     $inventorySync->syncItem($item->fresh('stockBatches'));
                     $imported++;
+                }
+
+                if ($imported > 0) {
+                    ActivityLog::create([
+                        'actor_id' => Auth::id(),
+                        'event_type' => 'csv_imported',
+                        'subject_type' => Item::class,
+                        'subject_id' => 'csv-import',
+                        'properties' => [
+                            'action' => 'Imported inventory items from CSV',
+                            'new' => ['item_count' => $imported],
+                        ],
+                    ]);
                 }
             });
         } catch (\Throwable $exception) {

@@ -25,7 +25,7 @@
                         {{ __('Inventory') }}
                     </x-nav-link>
 
-                    @if(Auth::check() && in_array(Auth::user()->role, ['admin', 'super_admin'], true))
+                    @if(Auth::check() && Auth::user()->role === 'admin')
                         <x-nav-link :href="url('/stock-in')" :active="request()->is('stock-in*')">
                             {{ __('Stock In') }}
                         </x-nav-link>
@@ -117,7 +117,7 @@
                 {{ __('Inventory') }}
             </x-responsive-nav-link>
 
-            @if(Auth::check() && in_array(Auth::user()->role, ['admin', 'super_admin'], true))
+            @if(Auth::check() && Auth::user()->role === 'admin')
                 <x-responsive-nav-link :href="url('/stock-in')" :active="request()->is('stock-in*')">
                     {{ __('Stock In') }}
                 </x-responsive-nav-link>

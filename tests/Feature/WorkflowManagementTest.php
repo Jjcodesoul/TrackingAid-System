@@ -253,23 +253,21 @@ class WorkflowManagementTest extends TestCase
         $this->assertDatabaseHas('borrow_releases', ['request_id' => $request->id, 'source_storage_location' => 'Warehouse B']);
     }
 
-    public function test_super_admin_can_record_a_release(): void
+    public function test_super_admin_cannot_record_a_release(): void
     {
         $superAdmin = User::factory()->create(['role' => 'super_admin']);
         [$inventory, $request, $deliveryPerson] = $this->createReleaseFixture();
 
         $this->actingAs($superAdmin)
             ->post(route('borrow-release.store'), $this->releasePayload($request, $deliveryPerson, 3))
-            ->assertRedirect(route('borrow-release.create'));
+            ->assertForbidden();
 
-        $this->assertDatabaseHas('borrow_releases', [
+        $this->assertDatabaseMissing('borrow_releases', [
             'request_id' => $request->id,
-            'inventory_id' => $inventory->id,
-            'quantity' => 3,
             'processed_by_user_id' => $superAdmin->id,
         ]);
-        $this->assertSame(7, (int) $inventory->fresh()->quantity);
-        $this->assertSame('Released', $request->fresh()->status);
+        $this->assertSame(10, (int) $inventory->fresh()->quantity);
+        $this->assertSame('Approved', $request->fresh()->status);
     }
 
     public function test_delivery_personnel_can_record_a_release(): void

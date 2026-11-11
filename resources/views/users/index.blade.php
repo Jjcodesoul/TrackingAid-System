@@ -42,7 +42,7 @@
                 <label for="user-role-filter" class="form-label">Role</label>
                 <select id="user-role-filter" name="role" class="form-select">
                     <option value="">All roles</option>
-                    @foreach(['admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel'] as $value => $label)
+                    @foreach(array_merge($isSuperAdmin ? ['super_admin' => 'Super Admin'] : [], ['admin' => 'Administrator', 'staff' => 'Staff', 'user' => 'User / Borrower', 'delivery_personnel' => 'Delivery Personnel']) as $value => $label)
                         <option value="{{ $value }}" @selected(($filters['role'] ?? '') === $value)>{{ $label }}</option>
                     @endforeach
                 </select>
@@ -93,26 +93,28 @@
                                             @if($isSuperAdmin)
                                                 <a href="{{ route('super-admin.activity-logs.users.show', $userItem) }}" class="users-action">Activity</a>
                                             @endif
-                                            <a href="{{ route('users.edit', $userItem->id) }}" class="users-action">Edit</a>
-                                            
-                                            <form action="{{ route('users.destroy', $userItem->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this user access?');" class="m-0 p-0 inline">
-                                                @csrf
-                                                <button type="submit" class="users-action is-danger">Remove</button>
-                                            </form>
-                                            @if($isSuperAdmin)
-                                                <form action="{{ route('super-admin.users.status', $userItem) }}" method="POST" class="m-0 p-0 inline">
+                                            @if(! $isSuperAdmin || $userItem->role !== 'super_admin')
+                                                <a href="{{ route('users.edit', $userItem->id) }}" class="users-action">Edit</a>
+
+                                                <form action="{{ route('users.destroy', $userItem->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to remove this user access?');" class="m-0 p-0 inline">
                                                     @csrf
-                                                    <input type="hidden" name="is_active" value="{{ $userItem->is_active ? 0 : 1 }}">
-                                                    <button type="submit" class="users-action">{{ $userItem->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                                    <button type="submit" class="users-action is-danger">Remove</button>
                                                 </form>
-                                                <form action="{{ route('super-admin.users.force-logout', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Revoke all current sessions and API tokens for this account?');">
-                                                    @csrf
-                                                    <button type="submit" class="users-action">Force logout</button>
-                                                </form>
-                                                <form action="{{ route('super-admin.users.password-reset', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Send an expiring password reset link to this user?');">
-                                                    @csrf
-                                                    <button type="submit" class="users-action">Reset password</button>
-                                                </form>
+                                                @if($isSuperAdmin)
+                                                    <form action="{{ route('super-admin.users.status', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('{{ $userItem->is_active ? 'Deactivate this account and revoke access?' : 'Reactivate this account?' }}');">
+                                                        @csrf
+                                                        <input type="hidden" name="is_active" value="{{ $userItem->is_active ? 0 : 1 }}">
+                                                        <button type="submit" class="users-action">{{ $userItem->is_active ? 'Deactivate' : 'Activate' }}</button>
+                                                    </form>
+                                                    <form action="{{ route('super-admin.users.force-logout', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Revoke all current sessions and API tokens for this account?');">
+                                                        @csrf
+                                                        <button type="submit" class="users-action">Force logout</button>
+                                                    </form>
+                                                    <form action="{{ route('super-admin.users.password-reset', $userItem) }}" method="POST" class="m-0 p-0 inline" onsubmit="return confirm('Send an expiring password reset link to this user?');">
+                                                        @csrf
+                                                        <button type="submit" class="users-action">Reset password</button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </div>
                                     </td>

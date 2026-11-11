@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        foreach ([User::class, Item::class, StockBatch::class, StorageLocation::class, SupplyRequest::class, BorrowRelease::class, ReturnItem::class] as $model) {
+        foreach ([User::class, Item::class, StockBatch::class, StorageLocation::class, SupplyRequest::class, ResqoperationForwardedRequest::class, BorrowRelease::class, ReturnItem::class] as $model) {
             $model::observe(ActivityLogObserver::class);
         }
 

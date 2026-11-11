@@ -29,10 +29,10 @@ class UiUxSmokeTest extends TestCase
                 'variant' => 'REG',
                 'type' => 'reusable',
                 'storage_location_id' => 999999,
-                'min_stock' => 10,
+                'min_stock' => -1,
             ])
             ->assertRedirect(route('inventory.create'))
-            ->assertSessionHasErrors('storage_location_id');
+            ->assertSessionHasErrors('min_stock');
 
         $this->get(route('inventory.create'))
             ->assertOk()

@@ -13,7 +13,9 @@ use App\Http\Controllers\SuperAdminController;
 use App\Http\Controllers\UserController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Middleware\EnsureActiveAccount;
+use App\Http\Middleware\EnsureNotSuperAdmin;
 use App\Http\Middleware\EnsurePasswordUpdated;
+use App\Http\Middleware\InventoryRegistrationMiddleware;
 use App\Http\Middleware\SuperAdminMiddleware;
 use Illuminate\Support\Facades\Route;
 
@@ -57,15 +59,10 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
     Route::middleware(AdminMiddleware::class)->group(function () {
         
         Route::get('/admin/dashboard', function () {
-            if (! in_array(auth()->user()->role, ['admin', 'super_admin'], true)) {
-                return redirect()->route('dashboard')->with('error', 'Access denied.');
-            }
             return app(DashboardController::class)->adminIndex();
         })->name('admin.dashboard');
 
-        // Admin Only Inventory Actions
-        Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
-        Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
+        // Logistics operations are reserved for the Logistics Administrator.
         Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit'])->name('inventory.edit');
         Route::post('/inventory/update/{id}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete'])->name('inventory.delete');
@@ -81,13 +78,21 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
         Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
         Route::get('/reports/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export');
         Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+    });
 
-        // 👥 User Management Actions (Fixed to work perfectly with standard browser form submissions)
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::get('/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
-        Route::post('/users/update/{id}', [UserController::class, 'update'])->name('users.update');
-        Route::post('/users/delete/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    // Both administrators can manage regular user accounts; the controller
+    // enforces this role check independently of the navigation.
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
+    Route::post('/users/update/{id}', [UserController::class, 'update'])->name('users.update');
+    Route::post('/users/delete/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+
+    // Super Admin may register catalog items but does not receive stock or
+    // other logistics transaction permissions.
+    Route::middleware(InventoryRegistrationMiddleware::class)->group(function () {
+        Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
+        Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
     });
 
 
@@ -95,14 +100,16 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
     Route::get('/inventory/{item}/history', [InventoryController::class, 'history'])->name('inventory.history');
     Route::get('/requests', [RequestController::class, 'index'])->name('requests.index');
-    Route::get('/borrow-release', [BorrowReleaseController::class, 'create'])->name('borrow-release.create');
-    Route::post('/borrow-release', [BorrowReleaseController::class, 'store'])->name('borrow-release.store');
+    Route::middleware(EnsureNotSuperAdmin::class)->group(function () {
+        Route::get('/borrow-release', [BorrowReleaseController::class, 'create'])->name('borrow-release.create');
+        Route::post('/borrow-release', [BorrowReleaseController::class, 'store'])->name('borrow-release.store');
+        Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
+        Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
+    });
     Route::get('/delivery-monitoring', [
     BorrowReleaseController::class,
     'monitoring'
 ])->name('delivery-monitoring.index');
-    Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
-    Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
 
     // System Utilities
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

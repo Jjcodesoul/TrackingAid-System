@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Inventory;
 use App\Models\BorrowRelease;
 use App\Models\Request as SupplyRequest;
+use App\Models\ResqoperationForwardedRequest;
 use App\Models\UserLoginEvent;
 use App\Models\User;
 use App\Notifications\AccountSetupNotification;
@@ -13,6 +14,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class SuperAdminTest extends TestCase
@@ -109,6 +111,9 @@ class SuperAdminTest extends TestCase
             ->get(route('super-admin.activity-logs.users.show', $firstUser))
             ->assertOk()
             ->assertSee($firstUser->name)
+            ->assertSee($firstUser->email)
+            ->assertSee('Created')
+            ->assertSee('Active account')
             ->assertSee('Activity Today')
             ->assertSee('Login History')
             ->assertSee('192.0.2.10')
@@ -151,6 +156,11 @@ class SuperAdminTest extends TestCase
             'user_id' => $user->id,
             'succeeded' => true,
         ]);
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $user->id,
+            'event_type' => 'logged_in',
+            'subject_id' => (string) $user->id,
+        ]);
 
         auth()->logout();
         $this->post('/login', ['email' => $user->email, 'password' => 'incorrect-password'])
@@ -177,8 +187,17 @@ class SuperAdminTest extends TestCase
 
         $this->assertFalse($target->fresh()->is_active);
         $this->assertSame(0, $target->tokens()->count());
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $superAdmin->id,
+            'event_type' => 'updated',
+            'subject_type' => User::class,
+            'subject_id' => (string) $target->id,
+        ]);
 
-        $target->update(['is_active' => true]);
+        $this->actingAs($superAdmin)
+            ->post(route('super-admin.users.status', $target), ['is_active' => 1])
+            ->assertRedirect();
+        $this->assertTrue($target->fresh()->is_active);
         $oldVersion = $target->fresh()->auth_version;
 
         $this->post(route('super-admin.users.force-logout', $target))
@@ -213,22 +232,192 @@ class SuperAdminTest extends TestCase
         ]);
     }
 
-    public function test_super_admin_can_use_existing_admin_pages_without_changing_admin_access(): void
+    public function test_super_admin_can_register_inventory_but_cannot_access_logistics_operations(): void
     {
         $superAdmin = User::factory()->create(['role' => 'super_admin']);
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAs($superAdmin)
             ->get('/admin/dashboard')
-            ->assertOk();
+            ->assertForbidden();
+
+        $this->get(route('inventory.create'))->assertOk();
+        $this->post(route('inventory.store'), [
+            'name' => 'Supervisor registered item',
+            'category' => 'FOOD',
+            'unit_type' => 'BOX',
+            'target_beneficiary' => 'ALL',
+            'type' => 'consumable',
+        ])->assertRedirect('/inventory')->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('items', ['name' => 'Supervisor registered item']);
+        $this->get(route('inventory.index'))
+            ->assertOk()
+            ->assertSee('Add Item')
+            ->assertDontSee('Import CSV');
 
         $this->actingAs($superAdmin)
             ->get(route('users.index'))
             ->assertOk();
+        $this->get(route('stock.create'))->assertForbidden();
+        $this->get(route('reports.index'))->assertForbidden();
+        $this->get(route('borrow-release.create'))->assertForbidden();
+        $this->get(route('returns.create'))->assertForbidden();
 
         $this->actingAs($admin)
             ->get('/admin/dashboard')
             ->assertOk();
+        $this->get(route('stock.create'))->assertOk();
+    }
+
+    public function test_staff_cannot_open_super_admin_account_tools_or_register_inventory(): void
+    {
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        $this->actingAs($staff)
+            ->get(route('users.index'))
+            ->assertForbidden();
+        $this->get(route('inventory.create'))
+            ->assertRedirect(route('dashboard'))
+            ->assertSessionHas('error');
+        $this->post(route('super-admin.users.status', User::factory()->create(['role' => 'staff'])), ['is_active' => 0])
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_cannot_change_their_own_role_or_create_another_super_admin_through_account_forms(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
+
+        $this->actingAs($superAdmin)
+            ->post(route('users.update', $staff->id), [
+                'first_name' => $staff->first_name,
+                'last_name' => $staff->last_name,
+                'email' => $staff->email,
+                'role' => 'super_admin',
+            ])
+            ->assertSessionHasErrors('role');
+
+        $this->actingAs($superAdmin)
+            ->post(route('users.update', $superAdmin->id), [
+                'first_name' => $superAdmin->first_name,
+                'last_name' => $superAdmin->last_name,
+                'email' => $superAdmin->email,
+                'role' => 'admin',
+            ])
+            ->assertForbidden();
+
+        $this->assertSame('staff', $staff->fresh()->role);
+        $this->assertSame('super_admin', $superAdmin->fresh()->role);
+    }
+
+    public function test_activity_log_filters_support_user_role_module_action_and_date_range(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
+        ActivityLog::create([
+            'actor_id' => $staff->id,
+            'event_type' => 'updated',
+            'subject_type' => \App\Models\Item::class,
+            'subject_id' => '42',
+            'properties' => ['old' => ['name' => 'Water'], 'new' => ['name' => 'Drinking Water']],
+        ]);
+        ActivityLog::create([
+            'actor_id' => $staff->id,
+            'event_type' => 'created',
+            'subject_type' => \App\Models\Request::class,
+            'subject_id' => '43',
+            'properties' => ['new' => ['request_code' => 'REQ-43']],
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('super-admin.activity-logs', [
+                'user_id' => $staff->id,
+                'role' => 'staff',
+                'module' => 'inventory',
+                'event_type' => 'updated',
+                'date_from' => now()->toDateString(),
+                'date_to' => now()->toDateString(),
+            ]))
+            ->assertOk()
+            ->assertSee('Drinking Water')
+            ->assertDontSee('REQ-43')
+            ->assertSee('Inventory');
+    }
+
+    public function test_forwarded_requests_are_audited_and_included_in_super_admin_request_activity(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $logisticsAdmin = User::factory()->create(['role' => 'admin']);
+        $forwardedRequest = ResqoperationForwardedRequest::create([
+            'tracking_reference' => 'REQ-RESQ-101',
+            'resqperation_request_id' => 'RESQ-101',
+            'item_name' => 'Emergency Water',
+            'quantity' => 12,
+            'payload_json' => ['private_payload_value' => 'must-not-be-audited'],
+        ]);
+
+        $createdLog = ActivityLog::where('subject_type', ResqoperationForwardedRequest::class)
+            ->where('subject_id', (string) $forwardedRequest->id)
+            ->where('event_type', 'created')
+            ->firstOrFail();
+        $this->assertNull($createdLog->actor_id);
+        $this->assertArrayNotHasKey('payload_json', $createdLog->properties['new']);
+        $this->assertStringNotContainsString('must-not-be-audited', json_encode($createdLog->properties));
+
+        $this->actingAs($logisticsAdmin);
+        $forwardedRequest->update(['resqperation_status' => 'approved']);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $logisticsAdmin->id,
+            'event_type' => 'updated',
+            'subject_type' => ResqoperationForwardedRequest::class,
+            'subject_id' => (string) $forwardedRequest->id,
+        ]);
+
+        $this->actingAs($superAdmin)
+            ->get(route('super-admin.activity-logs', [
+                'module' => 'requests',
+                'event_type' => 'updated',
+            ]))
+            ->assertOk()
+            ->assertSee('Approved forwarded request REQ-RESQ-101')
+            ->assertSee('Supply Requests');
+
+        $this->get(route('super-admin.dashboard'))
+            ->assertOk()
+            ->assertSee('Approved forwarded request REQ-RESQ-101');
+    }
+
+    public function test_web_logout_is_recorded_without_logging_credentials(): void
+    {
+        $user = User::factory()->create(['role' => 'staff']);
+
+        $this->actingAs($user)->post(route('logout'))->assertRedirect('/');
+
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $user->id,
+            'event_type' => 'logged_out',
+            'subject_id' => (string) $user->id,
+        ]);
+    }
+
+    public function test_successful_csv_import_is_recorded_as_a_system_activity(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $csv = UploadedFile::fake()->createWithContent(
+            'inventory.csv',
+            "name,category,unit_type,size_weight,target_beneficiary,variant,type,storage_location,quantity,min_stock,expiration_date\nCSV Relief Pack,RELIEF,BOX,,ALL,NONE,consumable,Mambaling Storage,3,10,\n"
+        );
+
+        $this->actingAs($admin)
+            ->post(route('inventory.import'), ['csv_file' => $csv])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => $admin->id,
+            'event_type' => 'csv_imported',
+            'subject_type' => \App\Models\Item::class,
+        ]);
     }
 
     public function test_super_admin_activity_logs_record_actor_changes_and_exclude_passwords(): void

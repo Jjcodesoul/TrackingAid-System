@@ -8,7 +8,9 @@ use App\Models\Item;
 use App\Models\Inventory;
 use App\Models\Request as SupplyRequest;
 use App\Models\ReturnItem;
+use App\Models\ResqoperationForwardedRequest;
 use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use App\Models\UserLoginEvent;
 use App\Models\User;
 use App\Services\ActivityLogPresenter;
@@ -20,6 +22,27 @@ use Illuminate\View\View;
 
 class SuperAdminController extends Controller
 {
+    private const ACTIVITY_MODULES = [
+        'accounts' => User::class,
+        'inventory' => Item::class,
+        'stock' => StockBatch::class,
+        'requests' => [SupplyRequest::class, ResqoperationForwardedRequest::class],
+        'borrow_release' => BorrowRelease::class,
+        'returns' => ReturnItem::class,
+        'storage' => StorageLocation::class,
+    ];
+
+    private const ACTIVITY_TYPES = [
+        'created',
+        'updated',
+        'deleted',
+        'csv_imported',
+        'security_action',
+        'password_reset_link_sent',
+        'logged_in',
+        'logged_out',
+    ];
+
     public function dashboard(ActivityLogPresenter $presenter, \App\Http\Controllers\DashboardController $dashboardController): View
     {
         $roleCounts = User::query()
@@ -35,12 +58,26 @@ class SuperAdminController extends Controller
             'activeUserCount' => User::where('is_active', true)->count(),
             'inactiveUserCount' => User::where('is_active', false)->count(),
             'roleCounts' => $roleCounts,
-            'recentUsers' => User::where('role', '!=', 'super_admin')
+            'recentUsers' => User::query()
                 ->orderByRaw('CASE WHEN last_login_at IS NULL THEN 1 ELSE 0 END')
                 ->orderByDesc('last_login_at')
                 ->limit(8)
                 ->get(),
             'recentLogs' => $presenter->presentMany(ActivityLog::with('actor')->latest()->take(10)->get()),
+            'recentInventoryLogs' => $presenter->presentMany(
+                ActivityLog::with('actor')
+                    ->whereIn('subject_type', [Item::class, StockBatch::class])
+                    ->latest()
+                    ->take(6)
+                    ->get()
+            ),
+            'recentRequestLogs' => $presenter->presentMany(
+                ActivityLog::with('actor')
+                    ->whereIn('subject_type', self::ACTIVITY_MODULES['requests'])
+                    ->latest()
+                    ->take(6)
+                    ->get()
+            ),
         ]);
     }
 
@@ -48,8 +85,12 @@ class SuperAdminController extends Controller
     {
         $validated = $request->validate([
             'tab' => ['nullable', 'in:recent,users'],
-            'event_type' => ['nullable', 'in:created,updated,deleted'],
+            'event_type' => ['nullable', 'in:'.implode(',', self::ACTIVITY_TYPES)],
             'search' => ['nullable', 'string', 'max:100'],
+            'user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'role' => ['nullable', 'in:super_admin,admin,user,staff,delivery_personnel'],
+            'module' => ['nullable', 'in:'.implode(',', [...array_keys(self::ACTIVITY_MODULES), 'authentication'])],
+            'is_active' => ['nullable', 'in:0,1'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
@@ -73,8 +114,11 @@ class SuperAdminController extends Controller
                     'users.last_login_at',
                     DB::raw('COALESCE(user_activity.activity_count, 0) as activity_count'),
                     'user_activity.last_activity',
-                ])
-                ->where('users.role', '!=', 'super_admin');
+                ]);
+
+            if (Auth::user()->role !== 'super_admin') {
+                $usersQuery->where('users.role', '!=', 'super_admin');
+            }
 
             if (! empty($validated['search'])) {
                 $search = $validated['search'];
@@ -83,6 +127,12 @@ class SuperAdminController extends Controller
                         ->orWhere('users.email', 'like', "%{$search}%")
                         ->orWhere('users.role', 'like', "%{$search}%");
                 });
+            }
+            if (! empty($validated['role'])) {
+                $usersQuery->where('users.role', $validated['role']);
+            }
+            if (array_key_exists('is_active', $validated)) {
+                $usersQuery->where('users.is_active', (bool) $validated['is_active']);
             }
 
             return view('super-admin.activity-logs', [
@@ -93,6 +143,9 @@ class SuperAdminController extends Controller
                     ->paginate(25)
                     ->withQueryString(),
                 'filters' => $validated,
+                'filterUsers' => User::orderBy('name')->get(['id', 'name', 'role']),
+                'activityTypes' => self::ACTIVITY_TYPES,
+                'modules' => self::ACTIVITY_MODULES,
             ]);
         }
 
@@ -101,6 +154,14 @@ class SuperAdminController extends Controller
         if (! empty($validated['event_type'])) {
             $logsQuery->where('event_type', $validated['event_type']);
         }
+
+        if (! empty($validated['user_id'])) {
+            $logsQuery->where('actor_id', $validated['user_id']);
+        }
+        if (! empty($validated['role'])) {
+            $logsQuery->whereHas('actor', fn ($query) => $query->where('role', $validated['role']));
+        }
+        $this->applyModuleFilter($logsQuery, $validated['module'] ?? null);
 
         if (! empty($validated['search'])) {
             $search = $validated['search'];
@@ -129,24 +190,38 @@ class SuperAdminController extends Controller
             'tab' => $tab,
             'logs' => $logs,
             'filters' => $validated,
+            'filterUsers' => User::orderBy('name')->get(['id', 'name', 'role']),
+            'activityTypes' => self::ACTIVITY_TYPES,
+            'modules' => self::ACTIVITY_MODULES,
         ]);
     }
 
     public function userActivity(Request $request, User $user, ActivityLogPresenter $presenter): View
     {
-        abort_if($user->role === 'super_admin', 404);
-
         $validated = $request->validate([
-            'event_type' => ['nullable', 'in:created,updated,deleted,security_action,password_reset_link_sent'],
+            'event_type' => ['nullable', 'in:'.implode(',', self::ACTIVITY_TYPES)],
+            'role' => ['nullable', 'in:super_admin,admin,user,staff,delivery_personnel'],
+            'module' => ['nullable', 'in:'.implode(',', [...array_keys(self::ACTIVITY_MODULES), 'authentication'])],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
         ]);
 
-        $logsQuery = ActivityLog::with('actor')->where('actor_id', $user->id)->latest();
+        $userActivity = fn () => ActivityLog::with('actor')->where(function ($query) use ($user): void {
+            $query->where('actor_id', $user->id)
+                ->orWhere(function ($affectedAccount) use ($user): void {
+                    $affectedAccount->where('subject_type', User::class)
+                        ->where('subject_id', (string) $user->id);
+                });
+        });
+        $logsQuery = $userActivity()->latest();
 
         if (! empty($validated['event_type'])) {
             $logsQuery->where('event_type', $validated['event_type']);
         }
+        if (! empty($validated['role'])) {
+            $logsQuery->whereHas('actor', fn ($query) => $query->where('role', $validated['role']));
+        }
+        $this->applyModuleFilter($logsQuery, $validated['module'] ?? null);
         if (! empty($validated['date_from'])) {
             $logsQuery->whereDate('created_at', '>=', $validated['date_from']);
         }
@@ -157,18 +232,25 @@ class SuperAdminController extends Controller
         $today = now()->toDateString();
         $logs = $logsQuery->paginate(20)->withQueryString();
         $logs->setCollection(collect($presenter->presentMany($logs->getCollection())));
+        $loginEventsQuery = UserLoginEvent::where('user_id', $user->id)->latest();
+        if (! empty($validated['date_from'])) {
+            $loginEventsQuery->whereDate('created_at', '>=', $validated['date_from']);
+        }
+        if (! empty($validated['date_to'])) {
+            $loginEventsQuery->whereDate('created_at', '<=', $validated['date_to']);
+        }
 
         return view('super-admin.user-activity', [
             'userItem' => $user,
-            'totalActivity' => ActivityLog::where('actor_id', $user->id)->count(),
-            'todayActivity' => ActivityLog::where('actor_id', $user->id)->whereDate('created_at', $today)->count(),
-            'lastActivity' => ActivityLog::where('actor_id', $user->id)->max('created_at'),
+            'totalActivity' => $userActivity()->count(),
+            'todayActivity' => $userActivity()->whereDate('created_at', $today)->count(),
+            'lastActivity' => $userActivity()->max('created_at'),
             'logs' => $logs,
-            'loginEvents' => UserLoginEvent::where('user_id', $user->id)
-                ->latest()
-                ->paginate(15, ['*'], 'login_page')
-                ->withQueryString(),
+            'loginEvents' => $loginEventsQuery->paginate(15, ['*'], 'login_page')->withQueryString(),
             'filters' => $validated,
+            'activityTypes' => self::ACTIVITY_TYPES,
+            'modules' => self::ACTIVITY_MODULES,
+            'roleOptions' => ['super_admin', 'admin', 'staff', 'user', 'delivery_personnel'],
         ]);
     }
 
@@ -250,5 +332,15 @@ class SuperAdminController extends Controller
         });
 
         return back()->with('success', 'Password reset link sent to '.$user->email.'. Existing sessions have been revoked.');
+    }
+
+    private function applyModuleFilter($query, ?string $module): void
+    {
+        if ($module === 'authentication') {
+            $query->whereIn('event_type', ['logged_in', 'logged_out']);
+        } elseif ($module !== null && isset(self::ACTIVITY_MODULES[$module])) {
+            $subjectTypes = self::ACTIVITY_MODULES[$module];
+            $query->whereIn('subject_type', is_array($subjectTypes) ? $subjectTypes : [$subjectTypes]);
+        }
     }
 }

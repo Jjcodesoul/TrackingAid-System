@@ -310,7 +310,7 @@
 @endif
 
 {{-- ADMIN INVENTORY IMPORT --}}
-@if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
+@if(auth()->user()->role === 'admin')
     <div class="card-ui" style="margin:16px 0; padding:16px 20px;">
         <h3 style="margin:0 0 10px; font-size:15px;">Import inventory</h3>
 
@@ -655,7 +655,7 @@
                                         History
                                     </a>
 
-                                    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
+                                    @if(auth()->user()->role === 'admin')
                                         <a
                                             href="{{ route('inventory.edit', $item->id) }}"
                                             class="btn-soft btn-compact"
