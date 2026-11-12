@@ -1,3 +1,4 @@
+
 import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
@@ -8,15 +9,11 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
         }),
-        tailwindcss(), 
+        tailwindcss(),
     ],
     server: {
-        host: true, // 👈 Allows access from other local network devices dynamically
-        hmr: {
-            host: undefined, // 👈 Let Vite automatically handle the hot reload IP
-        },
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
-        },
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
     },
 });

@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Services\LoginHistoryService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 
 class AuthController extends Controller
 {
@@ -48,6 +49,58 @@ class AuthController extends Controller
             ],
         ], 200);
     }
+
+    public function sendPasswordResetLink(Request $request)
+    {
+        $request->validate([
+            'email' => ['required', 'email'],
+        ]);
+
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
+
+        if ($status === Password::RESET_THROTTLED) {
+            return response()->json([
+                'message' => 'Please wait before requesting another password reset email.',
+            ], 429);
+        }
+
+        return response()->json([
+            'message' => 'If an account exists with that email address, a password reset link will be sent.',
+        ], 200);
+    }
+
+
+    public function verifyPasswordAndSendResetLink(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+        ]);
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'message' => 'Current password is incorrect.',
+            ], 422);
+        }
+
+        $status = Password::sendResetLink([
+            'email' => $user->email,
+        ]);
+
+        if ($status === Password::RESET_THROTTLED) {
+            return response()->json([
+                'message' => 'Please wait before requesting another password reset email.',
+            ], 429);
+        }
+
+        return response()->json([
+            'message' => 'A password reset link has been sent to your registered email address.',
+        ], 200);
+    }
+
 
     public function changePassword(Request $request)
     {

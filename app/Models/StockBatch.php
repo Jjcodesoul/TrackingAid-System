@@ -19,8 +19,9 @@ class StockBatch extends Model
     ];
 
     protected $casts = [
-        'date_received' => 'date',
-        'expiration_date' => 'date',
+    'quantity' => 'integer',
+    'date_received' => 'date',
+    'expiration_date' => 'date',
     ];
 
     public function item()

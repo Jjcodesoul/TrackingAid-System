@@ -21,8 +21,7 @@ class NewPasswordController extends Controller
     {
         return view('auth.reset-password', ['request' => $request]);
     }
-
-       public function store(Request $request): RedirectResponse
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'token' => ['required'],
@@ -45,9 +44,18 @@ class NewPasswordController extends Controller
             }
         );
 
-        return $status == Password::PASSWORD_RESET
-                    ? redirect()->route('login')->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        if ($status == Password::PASSWORD_RESET) {
+            if ($user = User::where('email', $request->email)->first()) {
+                if ($user->role === 'delivery_personnel') {
+                    return redirect('trackingaidmobile://');
+                }
+            }
+
+            return redirect()->route('login')->with('status', __($status));
+        }
+
+        return back()->withInput($request->only('email'))
+            ->withErrors(['email' => __($status)]);
     }
+
 }

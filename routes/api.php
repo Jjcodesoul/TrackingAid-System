@@ -19,8 +19,13 @@ Route::post('/incoming-requests', [RequestController::class, 'storeResqData'])
     ->middleware(ValidateResqOperationApiKey::class);
 Route::post('/login', [AuthController::class, 'login']);
 
+Route::post('/forgot-password', [AuthController::class, 'sendPasswordResetLink'])
+    ->middleware('throttle:6,1');
+
 Route::middleware(['auth:sanctum', EnsureActiveAccount::class])->group(function () {
     Route::post('/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/verify-password-reset', [AuthController::class, 'verifyPasswordAndSendResetLink'])
+    ->middleware('throttle:6,1');
     Route::get('/dashboard', [DeliveryController::class, 'dashboard']);
 
     Route::get('/deliveries', [DeliveryController::class, 'index']);
