@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Str;
 
 class NotificationController extends Controller
 {
@@ -14,12 +15,27 @@ class NotificationController extends Controller
         $notifications = $notificationsService->all($lastViewedAt);
 
         // Mark current notifications as read after calculating row badges.
+        $requestUser = auth()->user();
+        $requestUser->unreadNotifications->markAsRead();
         session(['notifications_last_viewed_at' => now()]);
 
         return view('notifications', [
             'notifications' => $notifications,
             'unreadCount' => 0,
         ]);
+    }
+
+    public function open(Request $request, string $notification)
+    {
+        $record = $request->user()->notifications()->whereKey($notification)->firstOrFail();
+        $record->markAsRead();
+
+        $target = $record->data['url'] ?? route('requests.index', [], false);
+        if (! is_string($target) || ! Str::startsWith($target, '/') || Str::startsWith($target, '//')) {
+            $target = route('requests.index', [], false);
+        }
+
+        return redirect()->to($target);
     }
 
     /**

@@ -549,7 +549,7 @@ class ReportController extends Controller
 
     private function borrowReturnReport(array $filters = []): array
     {
-        $releasesQuery = BorrowRelease::with(['inventory', 'request']);
+        $releasesQuery = BorrowRelease::with(['inventory', 'request', 'forwardedRequest']);
         if (! empty($filters['category'])) {
             $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
         }
@@ -666,7 +666,7 @@ class ReportController extends Controller
             ]);
         }
 
-        $releasesQuery = BorrowRelease::with(['inventory', 'request']);
+        $releasesQuery = BorrowRelease::with(['inventory', 'request', 'forwardedRequest']);
         if (! empty($filters['category'])) {
             $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
         }
@@ -676,7 +676,7 @@ class ReportController extends Controller
                 'date' => Carbon::parse($release->released_at),
                 'kind' => 'release',
                 'label' => 'Release',
-                'reference' => $release->request?->request_code ?? 'Release #'.$release->id,
+                'reference' => $release->request?->request_code ?? $release->forwardedRequest?->tracking_reference ?? 'Release #'.$release->id,
                 'name' => $release->inventory?->name ?? 'Unknown item',
                 'sku' => $release->inventory?->sku ?? '—',
                 'change' => -((int) $release->quantity),
@@ -685,7 +685,7 @@ class ReportController extends Controller
             ]);
         }
 
-        $returnsQuery = ReturnItem::with(['inventory', 'borrowRelease.request']);
+        $returnsQuery = ReturnItem::with(['inventory', 'borrowRelease.request', 'borrowRelease.forwardedRequest']);
         if (! empty($filters['category'])) {
             $returnsQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
         }
@@ -704,7 +704,7 @@ class ReportController extends Controller
                     'damaged-return' => 'Damaged Return',
                     default => 'Missing / Lost',
                 },
-                'reference' => $return->borrowRelease?->request?->request_code ?? 'Unlinked legacy return',
+                'reference' => $return->borrowRelease?->request?->request_code ?? $return->borrowRelease?->forwardedRequest?->tracking_reference ?? 'Unlinked legacy return',
                 'name' => $return->inventory?->name ?? 'Unknown item',
                 'sku' => $return->inventory?->sku ?? '—',
                 'quantity' => (int) $return->quantity,
@@ -763,7 +763,7 @@ class ReportController extends Controller
 
     private function distributionReport(array $filters = []): array
     {
-        $releasesQuery = BorrowRelease::with(['inventory', 'request'])->latest('released_at');
+        $releasesQuery = BorrowRelease::with(['inventory', 'request', 'forwardedRequest'])->latest('released_at');
         if (! empty($filters['category'])) {
             $releasesQuery->whereHas('inventory', fn ($query) => $query->where('category', $filters['category']));
         }

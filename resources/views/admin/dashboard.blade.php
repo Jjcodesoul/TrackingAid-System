@@ -115,6 +115,7 @@
             $total = max($totalRequests, 1);
             $pendingPct  = round(($activeRequests / $total) * 100);
             $approvedPct = round(($approvedRequests / $total) * 100);
+            $inProgressPct = round(($inProgressRequests / $total) * 100);
             $releasedPct = round(($releasedRequests / $total) * 100);
             $rejectedPct = round(($rejectedRequests / $total) * 100);
         @endphp
@@ -126,6 +127,15 @@
                 </div>
                 <div class="dashboard-progress-track">
                     <span class="dashboard-progress-fill is-pending" style="width:{{ $pendingPct }}%"></span>
+                </div>
+            </div>
+            <div class="dashboard-progress-item">
+                <div class="dashboard-progress-label">
+                    <span>In Progress</span>
+                    <strong>{{ $inProgressRequests }}</strong>
+                </div>
+                <div class="dashboard-progress-track">
+                    <span class="dashboard-progress-fill" style="width:{{ $inProgressPct }}%"></span>
                 </div>
             </div>
             <div class="dashboard-progress-item">

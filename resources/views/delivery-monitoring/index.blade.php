@@ -58,10 +58,9 @@
             <tbody id="deliveryTableBody">
                 @forelse ($deliveries as $delivery)
                     @php
-                        $requestId = $delivery->request
-                            ? ($delivery->request->request_id
-                                ?? $delivery->request->id)
-                            : 'N/A';
+                        $requestId = $delivery->request?->request_code
+                            ?? $delivery->forwardedRequest?->tracking_reference
+                            ?? 'Release #'.$delivery->id;
 
                         $destination = $delivery->location ?: 'N/A';
 

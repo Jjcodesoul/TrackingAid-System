@@ -164,11 +164,13 @@
                                     'approved' => 'Approved',
                                     'rejected' => 'Rejected',
                                     'released' => 'Released',
+                                    'partially released', 'in progress', 'in_progress' => 'Partially Released',
                                     default => 'Pending',
                                 };
                                 $statusClass = match ($statusKey) {
                                     'Pending' => 'status-pending',
                                     'Approved' => 'status-approved',
+                                    'Partially Released' => 'status-pending',
                                     'Released' => 'status-released',
                                     'Rejected' => 'status-rejected',
                                     default => 'status-neutral',

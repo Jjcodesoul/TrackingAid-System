@@ -117,6 +117,7 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/unread-json', [NotificationController::class, 'unreadJson'])->name('notifications.unread-json');
+    Route::get('/notifications/{notification}', [NotificationController::class, 'open'])->name('notifications.open');
 });
 
 require __DIR__.'/auth.php';

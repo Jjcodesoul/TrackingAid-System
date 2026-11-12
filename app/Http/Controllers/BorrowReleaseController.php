@@ -5,10 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\BorrowRelease;
 use App\Models\Inventory;
 use App\Models\Request;
+use App\Models\ResqoperationForwardedRequest;
 use App\Models\StockBatch;
 use App\Models\StorageLocation;
 use App\Models\User;
 use App\Services\InventorySyncService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request as HttpRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -52,22 +54,54 @@ class BorrowReleaseController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        $forwardedQuery = ResqoperationForwardedRequest::with(['inventory.item.stockBatches'])
+            ->withSum('borrowReleases as released_quantity', 'quantity')
+            ->whereIn(DB::raw('LOWER(resqperation_status)'), ['approved', 'partially released', 'in progress', 'in_progress'])
+            ->whereNotNull('inventory_id')
+            ->whereRaw('COALESCE(approved_quantity, quantity) > COALESCE((SELECT SUM(borrow_releases.quantity) FROM borrow_releases WHERE borrow_releases.forwarded_request_id = resqperation_forwarded_requests.id), 0)');
+        if ($search !== '') {
+            $forwardedQuery->where(function ($query) use ($search): void {
+                $query->where('tracking_reference', 'like', "%{$search}%")
+                    ->orWhere('requested_by', 'like', "%{$search}%")
+                    ->orWhereHas('inventory', fn ($inventoryQuery) => $inventoryQuery
+                        ->where('sku', 'like', "%{$search}%")
+                        ->orWhere('name', 'like', "%{$search}%"));
+            });
+        }
+        $approvedForwardedRequests = $forwardedQuery
+            ->latest()
+            ->paginate(15, ['*'], 'forwarded_release_page')
+            ->withQueryString();
+
         $storageLocations = StorageLocation::availableInMambaling()
             ->orderBy('warehouse_name')->orderBy('name')->get();
         $locationAvailability = [];
-        foreach ($approvedRequests as $approvedRequest) {
+        $releaseRows = $approvedRequests->getCollection();
+        foreach ($approvedForwardedRequests as $forwardedRequest) {
+            $forwardedRequest->is_forwarded_request = true;
+            $forwardedRequest->request_code = $forwardedRequest->tracking_reference;
+            $forwardedRequest->source = $forwardedRequest->requested_by ?? $forwardedRequest->request_source;
+            $forwardedRequest->quantity = $forwardedRequest->quantity;
+            $releaseRows->push($forwardedRequest);
+        }
+        foreach ($releaseRows as $approvedRequest) {
             $inventory = $approvedRequest->inventory;
             $item = $inventory?->item;
+            $releaseKey = ! empty($approvedRequest->is_forwarded_request)
+                ? 'forwarded-'.$approvedRequest->id
+                : (string) $approvedRequest->id;
             foreach ($storageLocations as $storageLocation) {
-                $locationAvailability[$approvedRequest->id][$storageLocation->id] = $item
+                $locationAvailability[$releaseKey][$storageLocation->id] = $item
                     ? (int) $item->stockBatches->filter(fn ($batch) => (int) $batch->quantity > 0
                         && $batch->storage_location === $storageLocation->name)->sum('quantity')
                     : (($inventory?->storage_location === $storageLocation->name) ? (int) ($inventory?->quantity ?? 0) : 0);
             }
         }
+        $approvedRequests->setCollection($releaseRows);
 
         $recentReleases = BorrowRelease::with([
             'request',
+            'forwardedRequest',
             'inventory',
             'deliveryPersonnel',
             'processedBy',
@@ -80,6 +114,7 @@ class BorrowReleaseController extends Controller
             'borrow-release.create',
             compact(
                 'approvedRequests',
+                'approvedForwardedRequests',
                 'recentReleases',
                 'deliveryPersonnel',
                 'search',
@@ -91,12 +126,14 @@ class BorrowReleaseController extends Controller
 
     public function store(
         HttpRequest $request,
-        InventorySyncService $inventorySync
+        InventorySyncService $inventorySync,
+        NotificationService $notifications,
     ) {
-        abort_unless(in_array($request->user()->role, ['admin', 'super_admin', 'staff', 'delivery_personnel'], true), 403);
+        abort_unless(in_array($request->user()->role, ['admin', 'staff', 'delivery_personnel'], true), 403);
 
         $validated = $request->validate([
-            'request_id' => 'required|exists:requests,id',
+            'request_id' => 'nullable|required_without:forwarded_request_id|exists:requests,id',
+            'forwarded_request_id' => 'nullable|required_without:request_id|exists:resqperation_forwarded_requests,id',
             'idempotency_key' => 'required|uuid',
             'delivery_personnel_id' => [
                 'required',
@@ -114,27 +151,37 @@ class BorrowReleaseController extends Controller
             'source_storage_location' => ['required', 'integer', Rule::exists('storage_locations', 'id')->where(fn ($query) => $query->where('is_active', true)->where('warehouse_name', 'like', '%Mambaling%'))],
         ]);
 
-        return DB::transaction(function () use ($validated, $inventorySync) {
+        if (! empty($validated['request_id']) && ! empty($validated['forwarded_request_id'])) {
+            throw ValidationException::withMessages([
+                'request_id' => 'A release must be linked to exactly one request.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($validated, $inventorySync, $notifications, $request) {
             $sourceLocation = StorageLocation::availableInMambaling()
                 ->whereKey($validated['source_storage_location'])->lockForUpdate()->first();
             if (! $sourceLocation) {
                 throw ValidationException::withMessages(['source_storage_location' => 'Choose an active Mambaling storage location.']);
             }
-            $supplyRequest = Request::whereKey($validated['request_id'])
-                ->lockForUpdate()
-                ->first();
-
-            if (! $supplyRequest) {
-                throw ValidationException::withMessages([
-                    'request_id' => 'The selected request no longer exists.',
-                ]);
+            $isForwarded = ! empty($validated['forwarded_request_id']);
+            $supplyRequest = $isForwarded
+                ? null
+                : Request::whereKey($validated['request_id'])->lockForUpdate()->first();
+            $forwardedRequest = $isForwarded
+                ? ResqoperationForwardedRequest::whereKey($validated['forwarded_request_id'])->lockForUpdate()->first()
+                : null;
+            if (! $supplyRequest && ! $forwardedRequest) {
+                throw ValidationException::withMessages(['request_id' => 'The selected request no longer exists.']);
             }
 
             $previousRelease = BorrowRelease::where('idempotency_key', $validated['idempotency_key'])
                 ->first();
 
             if ($previousRelease) {
-                if ((int) $previousRelease->request_id === (int) $supplyRequest->id) {
+                $sameRequest = $isForwarded
+                    ? (int) $previousRelease->forwarded_request_id === (int) $forwardedRequest->id
+                    : (int) $previousRelease->request_id === (int) $supplyRequest->id;
+                if ($sameRequest) {
                     return redirect()
                         ->route('borrow-release.create')
                         ->with('success', 'This release was already processed.');
@@ -145,20 +192,29 @@ class BorrowReleaseController extends Controller
                 ]);
             }
 
-            if (! in_array($supplyRequest->status, ['Approved', 'Partially Released'], true)) {
+            $requestStatus = $isForwarded
+                ? strtolower((string) $forwardedRequest->resqperation_status)
+                : $supplyRequest->status;
+            $approvedStatuses = $isForwarded
+                ? ['approved', 'partially released', 'in progress', 'in_progress']
+                : ['Approved', 'Partially Released'];
+            if (! in_array($requestStatus, $approvedStatuses, true)) {
                 throw ValidationException::withMessages([
                     'request_id' => 'Only approved requests with an outstanding quantity can be released.',
                 ]);
             }
 
-            $releasedQuantity = (int) BorrowRelease::where('request_id', $supplyRequest->id)
+            $releaseQuery = BorrowRelease::query()
+                ->when($isForwarded, fn ($query) => $query->where('forwarded_request_id', $forwardedRequest->id))
+                ->when(! $isForwarded, fn ($query) => $query->where('request_id', $supplyRequest->id));
+            $releasedQuantity = (int) $releaseQuery
                 ->sum('quantity');
-            $approvedQuantity = (int) ($supplyRequest->approved_quantity ?? $supplyRequest->quantity);
+            $approvedQuantity = (int) ($isForwarded
+                ? ($forwardedRequest->approved_quantity ?? $forwardedRequest->quantity)
+                : ($supplyRequest->approved_quantity ?? $supplyRequest->quantity));
             $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
 
             if ($remainingQuantity === 0) {
-                $supplyRequest->update(['status' => 'Released']);
-
                 throw ValidationException::withMessages([
                     'request_id' => 'This request has already been fully released.',
                 ]);
@@ -170,7 +226,8 @@ class BorrowReleaseController extends Controller
                 ]);
             }
 
-            $inventory = Inventory::whereKey($supplyRequest->inventory_id)
+            $inventoryId = $isForwarded ? $forwardedRequest->inventory_id : $supplyRequest->inventory_id;
+            $inventory = Inventory::whereKey($inventoryId)
                 ->lockForUpdate()
                 ->first();
 
@@ -191,15 +248,20 @@ class BorrowReleaseController extends Controller
                 throw ValidationException::withMessages(['quantity' => 'Available stock at the selected location is lower than the requested release quantity.']);
             }
 
+            $requestCode = $isForwarded ? $forwardedRequest->tracking_reference : $supplyRequest->request_code;
+            $purpose = $isForwarded
+                ? ($forwardedRequest->description ?: 'Approved request '.$requestCode)
+                : ($supplyRequest->purpose ?: 'Approved request '.$requestCode);
             BorrowRelease::create([
-                'request_id' => $supplyRequest->id,
+                'request_id' => $supplyRequest?->id,
+                'forwarded_request_id' => $forwardedRequest?->id,
                 'inventory_id' => $inventory->id,
                 'delivery_personnel_id' => $validated['delivery_personnel_id'],
                 'processed_by_user_id' => auth()->id(),
                 'idempotency_key' => $validated['idempotency_key'],
                 'unit' => $item?->unit_type ?: 'Unit',
                 'quantity' => $validated['quantity'],
-                'purpose' => $supplyRequest->purpose ?: 'Approved request '.$supplyRequest->request_code,
+                'purpose' => $purpose,
                 'location' => $validated['location'],
                 'source_storage_location' => $sourceLocation->name,
                 'released_at' => now(),
@@ -212,12 +274,27 @@ class BorrowReleaseController extends Controller
                 $sourceLocation->name
             );
 
-            $supplyRequest->update([
-                'status' => $releasedQuantity + (int) $validated['quantity'] >= $approvedQuantity
-                    ? 'Released'
-                    : 'Partially Released',
-                'notification_status' => 'Responder notified: items released',
-            ]);
+            $isComplete = $releasedQuantity + (int) $validated['quantity'] >= $approvedQuantity;
+            if ($isForwarded) {
+                $forwardedRequest->update([
+                    'resqperation_status' => $isComplete ? 'released' : 'partially released',
+                ]);
+            } else {
+                $supplyRequest->update([
+                    'status' => $isComplete ? 'Released' : 'Partially Released',
+                    'notification_status' => 'Responder notified: items released',
+                ]);
+            }
+
+            $notifications->notifyRoles(
+                ['admin', 'staff'],
+                'Items released',
+                "Items for request {$requestCode} were released to delivery.",
+                route('delivery-monitoring.index', [], false),
+                'items_released',
+                $requestCode,
+                $inventory->name,
+            );
 
             return redirect()
                 ->route('borrow-release.create')
@@ -232,6 +309,7 @@ class BorrowReleaseController extends Controller
     {
         $deliveries = BorrowRelease::with([
             'request',
+            'forwardedRequest',
             'inventory',
             'deliveryPersonnel',
         ])

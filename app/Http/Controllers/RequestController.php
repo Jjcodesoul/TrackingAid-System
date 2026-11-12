@@ -7,6 +7,7 @@ use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\ResqoperationForwardedRequest;
 use App\Services\InventorySyncService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -49,10 +50,10 @@ class RequestController extends Controller
         }
         if ($status !== 'all') {
             $statusValue = strtolower($status);
-            if ($statusValue === 'partially released') {
-                $forwardedQuery->whereRaw('1 = 0');
-            } elseif ($statusValue === 'pending') {
+            if ($statusValue === 'pending') {
                 $forwardedQuery->whereRaw("LOWER(COALESCE(resqperation_status, 'forwarded')) IN (?, ?)", ['pending', 'forwarded']);
+            } elseif ($statusValue === 'partially released') {
+                $forwardedQuery->whereRaw("LOWER(COALESCE(resqperation_status, 'forwarded')) IN (?, ?, ?)", ['partially released', 'in progress', 'in_progress']);
             } else {
                 $forwardedQuery->whereRaw('LOWER(COALESCE(resqperation_status, ?)) = ?', ['forwarded', $statusValue]);
             }
@@ -68,9 +69,9 @@ class RequestController extends Controller
             ->pluck('total', 'status_key');
 
         $stats = [
-            'pending'  => SupplyRequest::where('status', 'Pending')->count() + $forwardedStats->except(['approved', 'rejected', 'released'])->sum(),
+            'pending'  => SupplyRequest::where('status', 'Pending')->count() + $forwardedStats->except(['approved', 'rejected', 'released', 'partially released', 'in progress', 'in_progress'])->sum(),
             'approved' => SupplyRequest::where('status', 'Approved')->count() + $forwardedStats->get('approved', 0),
-            'released' => SupplyRequest::whereIn('status', ['Released', 'Partially Released'])->count() + $forwardedStats->get('released', 0),
+            'released' => SupplyRequest::whereIn('status', ['Released', 'Partially Released'])->count() + $forwardedStats->only(['released', 'partially released', 'in progress', 'in_progress'])->sum(),
             'rejected' => SupplyRequest::where('status', 'Rejected')->count() + $forwardedStats->get('rejected', 0),
         ];
 
@@ -78,7 +79,7 @@ class RequestController extends Controller
         return view('requests.index', compact('requests', 'forwardedRequests', 'stats', 'stockAvailability', 'forwardedAvailability', 'search', 'status'));
     }
 
-    public function approve(Request $httpRequest, SupplyRequest $request, InventorySyncService $inventorySync)
+    public function approve(Request $httpRequest, SupplyRequest $request, InventorySyncService $inventorySync, NotificationService $notifications)
     {
         $validated = $httpRequest->validate([
             'approved_quantity' => ['required', 'integer', 'min:1'],
@@ -137,12 +138,22 @@ class RequestController extends Controller
             ]);
         });
 
+        $notifications->notifyRoles(
+            ['admin', 'staff'],
+            'Request approved',
+            "Request {$request->request_code} was approved and is ready for release.",
+            route('borrow-release.create', [], false),
+            'request_approved',
+            $request->request_code,
+            $request->inventory?->name,
+        );
+
         return redirect()
             ->route('borrow-release.create')
             ->with('success', 'Request approved and stock reserved. It is ready for release review.');
     }
 
-    public function reject(Request $httpRequest, SupplyRequest $request)
+    public function reject(Request $httpRequest, SupplyRequest $request, NotificationService $notifications)
     {
         $validated = $httpRequest->validate([
             'approval_notes' => ['nullable', 'string', 'max:1000'],
@@ -168,17 +179,60 @@ class RequestController extends Controller
             ]);
         });
 
+        $notifications->notifyRoles(
+            ['admin', 'staff'],
+            'Request rejected',
+            "Request {$request->request_code} was rejected.",
+            route('requests.index', [], false),
+            'request_rejected',
+            $request->request_code,
+            $request->inventory?->name,
+        );
+
         return back()->with('success', 'Request rejected.');
     }
 
-    public function approveForwarded(ResqoperationForwardedRequest $forwardedRequest)
+    public function approveForwarded(
+        ResqoperationForwardedRequest $forwardedRequest,
+        InventorySyncService $inventorySync,
+        NotificationService $notifications,
+    )
     {
-        $updated = DB::transaction(function () use ($forwardedRequest): bool {
+        $updated = DB::transaction(function () use ($forwardedRequest, $inventorySync): bool {
             $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
             if (! in_array(strtolower($lockedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
                 return false;
             }
 
+            $inventory = $lockedRequest->inventory;
+            if (! $inventory) {
+                $inventory = $this->matchForwardedInventory(
+                    $lockedRequest->item_name ?: $lockedRequest->resource_type,
+                    $inventorySync,
+                );
+            }
+            if (! $inventory) {
+                throw ValidationException::withMessages([
+                    'request_id' => 'Link this forwarded request to one unambiguous inventory item before approval.',
+                ]);
+            }
+
+            $inventory = Inventory::whereKey($inventory->id)->lockForUpdate()->firstOrFail();
+            $inventory = $inventorySync->syncInventory($inventory);
+            $approvedQuantity = (int) $lockedRequest->quantity;
+            $availableQuantity = $this->availableToAllocateForForwarded($inventory, (int) $lockedRequest->id);
+            if ($approvedQuantity > $availableQuantity) {
+                throw ValidationException::withMessages([
+                    'request_id' => "Only {$availableQuantity} units are available for this request.",
+                ]);
+            }
+
+            $lockedRequest->inventory_id = $inventory->id;
+            $lockedRequest->approved_quantity = $approvedQuantity;
+            $lockedRequest->approved_by_user_id = auth()->id();
+            $lockedRequest->approved_at = now();
+            $lockedRequest->rejected_by_user_id = null;
+            $lockedRequest->rejected_at = null;
             $lockedRequest->resqperation_status = 'approved';
             $lockedRequest->save();
             return true;
@@ -188,10 +242,20 @@ class RequestController extends Controller
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
 
+        $notifications->notifyRoles(
+            ['admin', 'staff'],
+            'Forwarded request approved',
+            "Forwarded request {$forwardedRequest->tracking_reference} was approved and is ready for release.",
+            route('borrow-release.create', [], false),
+            'request_approved',
+            $forwardedRequest->tracking_reference,
+            $forwardedRequest->item_name ?: $forwardedRequest->resource_type,
+        );
+
         return back()->with('success', 'Forwarded request marked approved in TrackingAid. No external status sync is configured.');
     }
 
-    public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest)
+    public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest, NotificationService $notifications)
     {
         $updated = DB::transaction(function () use ($forwardedRequest): bool {
             $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
@@ -199,6 +263,8 @@ class RequestController extends Controller
                 return false;
             }
 
+            $lockedRequest->rejected_by_user_id = auth()->id();
+            $lockedRequest->rejected_at = now();
             $lockedRequest->resqperation_status = 'rejected';
             $lockedRequest->save();
             return true;
@@ -208,10 +274,20 @@ class RequestController extends Controller
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
 
+        $notifications->notifyRoles(
+            ['admin', 'staff'],
+            'Forwarded request rejected',
+            "Forwarded request {$forwardedRequest->tracking_reference} was rejected.",
+            route('requests.index', [], false),
+            'request_rejected',
+            $forwardedRequest->tracking_reference,
+            $forwardedRequest->item_name ?: $forwardedRequest->resource_type,
+        );
+
         return back()->with('success', 'Forwarded request marked rejected in TrackingAid. No external status sync is configured.');
     }
 
-    public function storeResqData(Request $request)
+    public function storeResqData(Request $request, InventorySyncService $inventorySync, NotificationService $notifications)
     {
         if (! $request->filled('resqperation_request_id') && $request->filled('resqoperation_request_id')) {
             $request->merge([
@@ -244,10 +320,33 @@ class RequestController extends Controller
             'forwarded_at'             => 'nullable|date',
         ]);
 
+        $attributes = $validated;
+        if (! isset($attributes['inventory_id'])) {
+            $inventory = $this->matchForwardedInventory(
+                $validated['item_name'] ?? $validated['resource_type'] ?? null,
+                $inventorySync,
+            );
+            if ($inventory) {
+                $attributes['inventory_id'] = $inventory->id;
+            }
+        }
+
         $forwardedRequest = ResqoperationForwardedRequest::updateOrCreate(
             ['tracking_reference' => $validated['tracking_reference']],
-            $validated
+            $attributes
         );
+
+        if ($forwardedRequest->wasRecentlyCreated) {
+            $notifications->notifyRoles(
+                ['admin'],
+                'New ResQperation request',
+                "Request {$forwardedRequest->tracking_reference} was received and is awaiting review.",
+                route('requests.index', [], false),
+                'request_received',
+                $forwardedRequest->tracking_reference,
+                $forwardedRequest->item_name ?: $forwardedRequest->resource_type,
+            );
+        }
 
         $stockAvailability = $this->externalStockAvailability(
             $validated['item_name'] ?? $validated['resource_type'] ?? null,
@@ -260,6 +359,35 @@ class RequestController extends Controller
             'data'    => $forwardedRequest,
             'stock_availability' => $stockAvailability,
         ], $forwardedRequest->wasRecentlyCreated ? 201 : 200);
+    }
+
+    private function matchForwardedInventory(?string $reference, InventorySyncService $inventorySync): ?Inventory
+    {
+        $reference = trim((string) $reference);
+        if ($reference === '') {
+            return null;
+        }
+
+        $item = Item::whereRaw('LOWER(sku) = ?', [mb_strtolower($reference)])->first();
+        if (! $item) {
+            $matches = Item::whereRaw('LOWER(name) = ?', [mb_strtolower($reference)])->limit(2)->get();
+            if ($matches->count() > 1) {
+                return null;
+            }
+            $item = $matches->first();
+        }
+        if ($item) {
+            return $inventorySync->syncItem($item->load('stockBatches'));
+        }
+
+        $inventory = Inventory::whereRaw('LOWER(sku) = ?', [mb_strtolower($reference)])->first();
+        if ($inventory) {
+            return $inventory;
+        }
+
+        $matches = Inventory::whereRaw('LOWER(name) = ?', [mb_strtolower($reference)])->limit(2)->get();
+
+        return $matches->count() === 1 ? $matches->first() : null;
     }
 
 
@@ -318,7 +446,42 @@ class RequestController extends Controller
                 0
             ));
 
-        return max((int) $inventory->quantity - $reserved, 0);
+        $forwardedReserved = ResqoperationForwardedRequest::where('inventory_id', $inventory->id)
+            ->whereIn(DB::raw('LOWER(resqperation_status)'), ['approved', 'in progress', 'in_progress', 'partially released'])
+            ->withSum('borrowReleases as released_quantity', 'quantity')
+            ->get(['id', 'quantity', 'approved_quantity'])
+            ->sum(fn (ResqoperationForwardedRequest $approvedRequest): int => max(
+                (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity)
+                    - (int) ($approvedRequest->released_quantity ?? 0),
+                0
+            ));
+
+        return max((int) $inventory->quantity - $reserved - $forwardedReserved, 0);
+    }
+
+    private function availableToAllocateForForwarded(Inventory $inventory, int $exceptRequestId): int
+    {
+        $localReserved = SupplyRequest::where('inventory_id', $inventory->id)
+            ->whereIn('status', ['Approved', 'Partially Released'])
+            ->withSum('borrowReleases as released_quantity', 'quantity')
+            ->get(['id', 'quantity', 'approved_quantity'])
+            ->sum(fn (SupplyRequest $approvedRequest): int => max(
+                (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity)
+                    - (int) ($approvedRequest->released_quantity ?? 0),
+                0
+            ));
+        $forwardedReserved = ResqoperationForwardedRequest::where('inventory_id', $inventory->id)
+            ->whereKeyNot($exceptRequestId)
+            ->whereIn(DB::raw('LOWER(resqperation_status)'), ['approved', 'in progress', 'in_progress', 'partially released'])
+            ->withSum('borrowReleases as released_quantity', 'quantity')
+            ->get(['id', 'quantity', 'approved_quantity'])
+            ->sum(fn (ResqoperationForwardedRequest $approvedRequest): int => max(
+                (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity)
+                    - (int) ($approvedRequest->released_quantity ?? 0),
+                0
+            ));
+
+        return max((int) $inventory->quantity - $localReserved - $forwardedReserved, 0);
     }
 
     private function externalStockAvailability(?string $itemReference, ?int $requestedQuantity): array

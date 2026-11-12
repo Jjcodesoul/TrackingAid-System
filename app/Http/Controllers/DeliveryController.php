@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\BorrowRelease;
+use App\Services\NotificationService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class DeliveryController extends Controller
@@ -11,6 +13,7 @@ class DeliveryController extends Controller
 {
     $deliveries = BorrowRelease::with([
         'request',
+        'forwardedRequest',
         'inventory',
         'deliveryPersonnel'
     ])
@@ -43,6 +46,7 @@ class DeliveryController extends Controller
 {
     $deliveries = BorrowRelease::with([
         'request',
+        'forwardedRequest',
         'inventory',
         'deliveryPersonnel'
     ])
@@ -65,6 +69,7 @@ public function history()
 {
     $deliveries = BorrowRelease::with([
         'request',
+        'forwardedRequest',
         'inventory',
         'deliveryPersonnel'
     ])
@@ -82,7 +87,7 @@ public function history()
     /**
      * Update delivery status.
      */
-    public function updateStatus(Request $request, BorrowRelease $delivery)
+    public function updateStatus(Request $request, BorrowRelease $delivery, NotificationService $notifications)
     {
 
         if ((int) $delivery->delivery_personnel_id !== (int) auth()->id()) {
@@ -100,46 +105,63 @@ public function history()
         ]);
 
         $newStatus = $validated['status'];
-        $currentStatus = $delivery->delivery_status;
+        $updated = DB::transaction(function () use ($delivery, $newStatus): bool {
+            $lockedDelivery = BorrowRelease::whereKey($delivery->id)->lockForUpdate()->firstOrFail();
+            $allowedTransitions = [
+                'Loading' => ['Dispatched'],
+                'Dispatched' => ['In Transit'],
+                'In Transit' => ['Arrived'],
+                'Arrived' => [],
+            ];
+            if (
+                (int) $lockedDelivery->delivery_personnel_id !== (int) auth()->id()
+                || ! in_array($newStatus, $allowedTransitions[$lockedDelivery->delivery_status] ?? [], true)
+            ) {
+                return false;
+            }
 
-        $allowedTransitions = [
-            'Loading' => ['Dispatched'],
-            'Dispatched' => ['In Transit'],
-            'In Transit' => ['Arrived'],
-            'Arrived' => [],
-        ];
+            $lockedDelivery->delivery_status = $newStatus;
+            if ($newStatus === 'Dispatched') {
+                $lockedDelivery->dispatched_at = now();
+            }
+            if ($newStatus === 'In Transit') {
+                $lockedDelivery->in_transit_at = now();
+            }
+            if ($newStatus === 'Arrived') {
+                $lockedDelivery->arrived_at = now();
+            }
+            $lockedDelivery->save();
 
-        if (
-            !isset($allowedTransitions[$currentStatus]) ||
-            !in_array($newStatus, $allowedTransitions[$currentStatus])
-        ) {
+            return true;
+        });
+
+        if (! $updated) {
             return response()->json([
                 'status' => 'error',
-                'message' => "Cannot change delivery status from {$currentStatus} to {$newStatus}.",
+                'message' => 'The delivery status changed or the requested transition is not allowed. Refresh and try again.',
             ], 422);
         }
 
-        $delivery->delivery_status = $newStatus;
-
-        if ($newStatus === 'Dispatched') {
-            $delivery->dispatched_at = now();
-        }
-
-        if ($newStatus === 'In Transit') {
-            $delivery->in_transit_at = now();
-        }
-
-        if ($newStatus === 'Arrived') {
-            $delivery->arrived_at = now();
-        }
-
-        $delivery->save();
+        $delivery->refresh();
+        $requestCode = $delivery->request?->request_code
+            ?? $delivery->forwardedRequest?->tracking_reference
+            ?? 'Release #'.$delivery->id;
+        $notifications->notifyRoles(
+            ['admin', 'staff'],
+            'Delivery status updated',
+            "Delivery for request {$requestCode} is now {$newStatus}.",
+            route('delivery-monitoring.index', [], false),
+            'delivery_status_updated',
+            $requestCode,
+            $delivery->inventory?->name,
+        );
 
         return response()->json([
             'status' => 'success',
             'message' => 'Delivery status updated successfully.',
             'data' => $delivery->fresh([
                 'request',
+                'forwardedRequest',
                 'inventory'
             ]),
         ]);
@@ -161,6 +183,7 @@ public function history()
         'status' => 'success',
         'data' => $delivery->load([
             'request',
+            'forwardedRequest',
             'inventory',
             'deliveryPersonnel'
         ]),

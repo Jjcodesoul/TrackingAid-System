@@ -3,10 +3,12 @@
 namespace App\Services;
 
 use App\Models\Item;
-use App\Models\Request as SupplyRequest;
 use App\Models\StockBatch;
+use App\Models\User;
+use App\Notifications\LogisticsActivityNotification;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 
 class NotificationService
 {
@@ -15,17 +17,31 @@ class NotificationService
 
     public function all(?Carbon $lastViewedAt = null): Collection
     {
+        $databaseAlerts = Auth::user()?->notifications()
+            ->latest()
+            ->get()
+            ->map(function ($notification): array {
+                return [
+                    ...$notification->data,
+                    'id' => $notification->id,
+                    'url' => route('notifications.open', $notification->id),
+                    'updated_at' => $notification->created_at,
+                    'read' => $notification->read_at !== null,
+                ];
+            }) ?? collect();
+
         return collect()
-            ->merge($this->pendingRequestAlerts())
-            ->merge($this->requestUpdateAlerts())
+            ->merge($databaseAlerts)
             ->merge($this->lowStockAlerts())
             ->merge($this->expiringItemAlerts())
             ->sortByDesc(fn (array $alert): int => $alert['updated_at']->getTimestamp())
             ->values()
             ->map(function (array $alert) use ($lastViewedAt): array {
-                $alert['read'] = $lastViewedAt
+                if (! array_key_exists('read', $alert)) {
+                    $alert['read'] = $lastViewedAt
                     ? $alert['updated_at']->lessThanOrEqualTo($lastViewedAt)
                     : false;
+                }
 
                 return $alert;
             });
@@ -41,6 +57,29 @@ class NotificationService
     public function unreadCount(?Carbon $lastViewedAt = null): int
     {
         return $this->unread($lastViewedAt)->count();
+    }
+
+    public function notifyRoles(
+        array $roles,
+        string $title,
+        string $message,
+        string $url,
+        string $type,
+        ?string $requestCode = null,
+        ?string $itemName = null,
+    ): void {
+        User::query()
+            ->whereIn('role', $roles)
+            ->where('is_active', true)
+            ->get()
+            ->each(fn (User $user) => $user->notify(new LogisticsActivityNotification([
+                'type' => $type,
+                'title' => $title,
+                'message' => $message,
+                'url' => $url,
+                'request_code' => $requestCode,
+                'item_name' => $itemName,
+            ])));
     }
 
     public function lowStockAlerts(): Collection
@@ -76,52 +115,6 @@ class NotificationService
             ->map(fn (Item $item): ?array => $this->expiringAlertForItem($item))
             ->filter()
             ->values();
-    }
-
-    private function pendingRequestAlerts(): Collection
-    {
-        return SupplyRequest::with('inventory')
-            ->where('status', 'Pending')
-            ->latest('updated_at')
-            ->get()
-            ->map(function (SupplyRequest $request): array {
-                $itemLabel = $request->inventory?->name ?? 'requested item';
-
-                return [
-                    'id' => 'pending-request-' . $request->id,
-                    'type' => 'pending_request',
-                    'title' => 'Pending request ' . $request->request_code,
-                    'message' => 'Awaiting review: ' . number_format($request->quantity) . ' ' . $itemLabel . '.',
-                    'request_code' => $request->request_code,
-                    'item_name' => $request->inventory?->name,
-                    'url' => route('requests.index'),
-                    'icon' => 'fa-regular fa-hourglass-half',
-                    'tone' => 'info',
-                    'updated_at' => Carbon::parse($request->updated_at ?? $request->created_at ?? now()),
-                ];
-            });
-    }
-
-    private function requestUpdateAlerts(): Collection
-    {
-        return SupplyRequest::with('inventory')
-            ->whereNotNull('notification_status')
-            ->latest('updated_at')
-            ->get()
-            ->map(function (SupplyRequest $request): array {
-                return [
-                    'id' => 'request-update-' . $request->id,
-                    'type' => 'request_update',
-                    'title' => $request->request_code ?? 'Request update',
-                    'message' => $request->notification_status,
-                    'request_code' => $request->request_code,
-                    'item_name' => $request->inventory?->name,
-                    'url' => route('requests.index'),
-                    'icon' => 'fa-solid fa-bell',
-                    'tone' => $this->requestTone($request->status),
-                    'updated_at' => Carbon::parse($request->updated_at ?? now()),
-                ];
-            });
     }
 
     private function expiringAlertForItem(Item $item): ?array
@@ -188,12 +181,4 @@ class NotificationService
         return $activityTime->greaterThan($thresholdTime) ? $activityTime : $thresholdTime;
     }
 
-    private function requestTone(?string $status): string
-    {
-        return match ($status) {
-            'Approved', 'Released' => 'success',
-            'Rejected' => 'danger',
-            default => 'info',
-        };
-    }
 }

@@ -8,6 +8,7 @@ class BorrowRelease extends Model
 {
     protected $fillable = [
     'request_id',
+    'forwarded_request_id',
     'inventory_id',
     'delivery_personnel_id',
     'processed_by_user_id',
@@ -34,6 +35,11 @@ class BorrowRelease extends Model
     public function request()
     {
         return $this->belongsTo(Request::class);
+    }
+
+    public function forwardedRequest()
+    {
+        return $this->belongsTo(ResqoperationForwardedRequest::class, 'forwarded_request_id');
     }
 
     public function inventory()

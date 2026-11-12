@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Models\Inventory;
 use App\Models\Item;
 use App\Models\StockBatch;
+use App\Models\StorageLocation;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class InventorySyncService
@@ -46,6 +48,60 @@ class InventorySyncService
         $item = Item::with('stockBatches')->where('sku', $inventory->sku)->first();
 
         return $item ? $this->syncItem($item) : $inventory->refresh();
+    }
+
+    public function receiveStock(
+        int $itemId,
+        int $quantity,
+        int $actorId,
+        string $dateReceived,
+        ?string $expirationDate = null,
+        ?string $supplier = null,
+        ?string $submissionKey = null,
+        string $movementType = 'stock-in',
+    ): StockBatch {
+        return DB::transaction(function () use ($itemId, $quantity, $actorId, $dateReceived, $expirationDate, $supplier, $submissionKey, $movementType): StockBatch {
+            $item = Item::whereKey($itemId)->lockForUpdate()->firstOrFail();
+
+            if ($submissionKey !== null) {
+                $priorBatch = StockBatch::where('submission_key', $submissionKey)->first();
+                if ($priorBatch) {
+                    if ((int) $priorBatch->item_id !== $itemId || (int) $priorBatch->quantity !== $quantity) {
+                        throw ValidationException::withMessages([
+                            'submission_key' => 'This receipt has already been submitted with different details.',
+                        ]);
+                    }
+
+                    return $priorBatch;
+                }
+            }
+
+            $location = StorageLocation::designatedMambaling()
+                ->where('is_active', true)
+                ->lockForUpdate()
+                ->first();
+            if (! $location) {
+                throw ValidationException::withMessages([
+                    'storage_location_id' => 'Mambaling Storage is not configured as the active storage location.',
+                ]);
+            }
+
+            $batch = StockBatch::create([
+                'item_id' => $item->id,
+                'quantity' => $quantity,
+                'supplier' => $supplier,
+                'date_received' => $dateReceived,
+                'expiration_date' => $expirationDate,
+                'created_by_user_id' => $actorId,
+                'movement_type' => $movementType,
+                'submission_key' => $submissionKey,
+                'storage_location' => $location->name,
+            ]);
+
+            $this->syncItem($item->fresh('stockBatches'));
+
+            return $batch;
+        });
     }
 
     public function deleteInventoryForItem(Item $item): void

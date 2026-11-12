@@ -35,13 +35,13 @@
 
     <div class="notif-list">
         @forelse($notifications as $notif)
-            <div class="notif-card {{ $notif['updated_at']->greaterThan(session('notifications_last_viewed_at', now()->subYear())) ? 'ring-1 ring-emerald-200' : '' }}">
+            <a href="{{ $notif['url'] }}" class="notif-card {{ ! $notif['read'] ? 'ring-1 ring-emerald-200' : '' }}" style="color:inherit; text-decoration:none;">
                 <div class="notif-icon">
                     <i class="fa-solid fa-bell"></i>
                 </div>
                 <div class="flex-1">
-                    <h3>{{ $notif['request_code'] ?? $notif['title'] ?? 'Request update' }}
-                        @if($notif['updated_at']->greaterThan(session('notifications_last_viewed_at', now()->subYear())))
+                    <h3>{{ $notif['title'] ?? $notif['request_code'] ?? 'Request update' }}
+                        @if(! $notif['read'])
                             <span class="ml-2 px-1.5 py-0.5 text-[10px] font-bold text-white bg-emerald-500 rounded-xl align-middle">NEW</span>
                         @endif
                     </h3>
@@ -53,7 +53,7 @@
                         @endif
                     </div>
                 </div>
-            </div>
+            </a>
         @empty
             <div class="empty-notifications">
                 <i class="fa-regular fa-bell-slash"></i>

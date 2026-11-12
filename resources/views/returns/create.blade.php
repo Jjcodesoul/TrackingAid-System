@@ -57,8 +57,8 @@
                         @endphp
                         <tr>
                             <td>
-                                <strong>{{ $release->request?->request_code ?? 'Request unavailable' }}</strong>
-                                <div class="text-sm text-slate-600">{{ $release->request?->source ?? $release->request?->responder_email ?? 'Borrower not recorded' }}</div>
+                                <strong>{{ $release->request?->request_code ?? $release->forwardedRequest?->tracking_reference ?? 'Request unavailable' }}</strong>
+                                <div class="text-sm text-slate-600">{{ $release->request?->source ?? $release->request?->responder_email ?? $release->forwardedRequest?->requested_by ?? 'Borrower not recorded' }}</div>
                                 <div class="text-sm text-slate-600">{{ $release->location ?: 'Destination not recorded' }}</div>
                                 <div class="text-sm {{ $returnLocationVerified ? 'text-slate-600' : 'text-rose-700' }}">Source: {{ $release->source_storage_location ?: 'not recorded' }}{{ $returnLocationVerified ? '' : ' — location verification required' }}</div>
                             </td>
@@ -144,7 +144,7 @@
                 <tbody>
                     @forelse($recentReturns as $return)
                         <tr>
-                            <td>{{ $return->borrowRelease?->request?->request_code ?? 'Legacy / unlinked' }}</td>
+                            <td>{{ $return->borrowRelease?->request?->request_code ?? $return->borrowRelease?->forwardedRequest?->tracking_reference ?? 'Legacy / unlinked' }}</td>
                             <td>{{ $return->inventory?->name ?? 'Item unavailable' }} <span class="sku-code">{{ $return->inventory?->sku }}</span></td>
                             <td>{{ number_format($return->quantity) }}</td>
                             <td><span class="status-badge {{ $return->condition === 'Good' ? 'status-approved' : ($return->condition === 'Damaged' ? 'status-pending' : 'status-rejected') }}">{{ $return->condition === 'Missing' ? 'Missing / lost' : $return->condition }}</span></td>

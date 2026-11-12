@@ -11,6 +11,7 @@ use App\Models\StorageLocation;
 use App\Models\StockBatch;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -518,7 +519,8 @@ class WorkflowManagementTest extends TestCase
 
     public function test_notifications_page_lists_request_status_updates(): void
     {
-        $this->actingAs(User::factory()->create());
+        $admin = User::factory()->create(['role' => 'admin']);
+        $staff = User::factory()->create(['role' => 'staff']);
 
         $inventory = Inventory::create([
             'name' => 'Water Bottles',
@@ -530,22 +532,35 @@ class WorkflowManagementTest extends TestCase
             'storage_location' => 'Warehouse A',
         ]);
 
-        Request::create([
+        $supplyRequest = Request::create([
             'request_code' => 'REQ-101',
             'inventory_id' => $inventory->id,
             'source' => 'ResQOperation',
             'quantity' => 10,
-
-            'status' => 'Approved',
+            'status' => 'Pending',
             'purpose' => 'Emergency response',
-            'notification_status' => 'Responder notified: request approved',
         ]);
 
-        $response = $this->get(route('notifications.index'));
+        $this->actingAs($admin)
+            ->post(route('requests.approve', $supplyRequest), ['approved_quantity' => 10])
+            ->assertRedirect();
 
-        $response->assertOk();
-        $response->assertSee('Responder notified: request approved');
-        $response->assertSee(route('requests.index'));
+        $this->actingAs($staff)
+            ->get(route('notifications.index'))
+            ->assertOk()
+            ->assertSee('was approved')
+            ->assertSee('REQ-101')
+            ->assertSee(route('borrow-release.create', [], false));
+
+        $notificationId = DB::table('notifications')
+            ->where('notifiable_id', $staff->id)
+            ->value('id');
+        $this->assertNotNull($notificationId);
+        $this->assertNotNull(DB::table('notifications')->where('id', $notificationId)->value('read_at'));
+
+        $this->actingAs(User::factory()->create(['role' => 'staff']))
+            ->get(route('notifications.open', $notificationId))
+            ->assertNotFound();
     }
 
     private function createReleaseFixture(int $approvedQuantity = 3, int $stock = 10, string $status = 'Approved'): array

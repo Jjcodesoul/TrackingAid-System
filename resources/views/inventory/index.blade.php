@@ -289,7 +289,11 @@
 
 <?php if ($summary = session('import_summary')): ?>
     <div class="alert-box <?= $summary['failed'] ? 'alert-error' : 'alert-success' ?>">
-        CSV import: <?= $summary['imported'] ?> imported,
+        CSV import: <?= number_format((int) ($summary['rows_processed'] ?? $summary['imported'])) ?> rows processed,
+        <?= $summary['imported'] ?> imported,
+        <?= $summary['created'] ?? 0 ?> new items,
+        <?= $summary['updated'] ?? 0 ?> existing items updated,
+        <?= number_format((int) ($summary['stock_added'] ?? 0)) ?> stock added,
         <?= $summary['skipped'] ?> skipped,
         <?= $summary['failed'] ?> failed.
 

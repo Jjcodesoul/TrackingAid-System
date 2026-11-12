@@ -87,12 +87,12 @@ class SkuGenerationTest extends TestCase
         $this->assertDatabaseHas('inventory', ['sku' => Item::firstOrFail()->sku, 'type' => 'Returnable']);
     }
 
-    public function test_csv_import_assigns_the_same_sequential_skus_as_item_creation(): void
+    public function test_csv_import_combines_repeated_products_and_adds_each_stock_quantity(): void
     {
         $csv = implode("\n", [
-            'name,category,unit_type,size_weight,target_beneficiary,variant,type,storage_location,quantity,min_stock,expiration_date',
-            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Mambaling Storage,10,10,',
-            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Mambaling Storage,5,10,',
+            'name,category,unit_type,size_weight,target_beneficiary,variant,type,quantity,min_stock,expiration_date',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,10,10,',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,5,10,',
         ]);
 
         $this->actingAs(User::factory()->create(['role' => 'admin']))
@@ -101,8 +101,234 @@ class SkuGenerationTest extends TestCase
             ->assertRedirect(route('inventory.index'))
             ->assertSessionHas('import_summary.imported', 2);
 
-        $this->assertSame(['FORICESK01', 'FORICESK02'], Item::orderBy('id')->pluck('sku')->all());
-        $this->assertSame([10, 5], Item::orderBy('id')->with('stockBatches')->get()->map(fn (Item $item) => (int) $item->stockBatches->sum('quantity'))->all());
+        $this->assertSame(['FORICESK01'], Item::orderBy('id')->pluck('sku')->all());
+        $this->assertSame([15], Item::orderBy('id')->with('stockBatches')->get()->map(fn (Item $item) => (int) $item->stockBatches->sum('quantity'))->all());
+        $this->assertSame(2, \App\Models\StockBatch::where('item_id', Item::firstOrFail()->id)->count());
+    }
+
+    public function test_csv_import_automatically_assigns_fixed_storage_location_without_csv_field(): void
+    {
+        $csv = implode("\n", [
+            'name,category,unit_type,size_weight,target_beneficiary,variant,type,quantity,min_stock,expiration_date',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,10,10,',
+        ]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.imported', 1);
+
+        $this->assertDatabaseHas('items', [
+            'name' => 'Rice',
+            'storage_location' => 'Mambaling Storage',
+        ]);
+        $this->assertDatabaseHas('stock_batches', [
+            'storage_location' => 'Mambaling Storage',
+            'movement_type' => 'initial-import',
+            'quantity' => 10,
+        ]);
+    }
+
+    public function test_csv_import_accepts_reordered_alias_headers_and_adds_stock_to_matching_existing_item(): void
+    {
+        $item = Item::create([
+            'name' => 'Rice',
+            'category' => 'FOOD',
+            'unit_type' => 'SACK',
+            'size_weight' => '5KG',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'NONE',
+            'type' => 'consumable',
+            'storage_location' => 'Mambaling Storage',
+            'sku' => 'FORICESK01',
+        ]);
+        \App\Models\StockBatch::create([
+            'item_id' => $item->id,
+            'quantity' => 6,
+            'supplier' => 'Existing stock',
+            'date_received' => now()->toDateString(),
+            'storage_location' => 'Mambaling Storage',
+        ]);
+        $csv = "\xEF\xBB\xBFQuantity;Item Name;Category;Unit;Type\n"
+            ."9; rice ;food;sack;Consumable\n";
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.imported', 1)
+            ->assertSessionHas('import_summary.created', 0)
+            ->assertSessionHas('import_summary.updated', 1);
+
+        $this->assertSame(1, Item::count());
+        $this->assertSame(15, (int) $item->fresh()->total_stock);
+        $this->assertDatabaseHas('stock_batches', [
+            'item_id' => $item->id,
+            'quantity' => 9,
+            'movement_type' => 'stock-in',
+            'storage_location' => 'Mambaling Storage',
+        ]);
+        $this->assertDatabaseHas('inventory', ['sku' => $item->sku, 'quantity' => 15]);
+    }
+
+    public function test_csv_import_matches_existing_item_by_sku_even_when_name_format_differs(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $item = Item::create([
+            'name' => 'Emergency Blanket',
+            'category' => 'MEDICAL',
+            'unit_type' => 'EACH',
+            'size_weight' => 'STANDARD',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'THERMAL',
+            'type' => 'consumable',
+            'storage_location' => 'Mambaling Storage',
+            'sku' => 'MEDBLANK01',
+            'min_stock' => 7,
+        ]);
+        \App\Models\StockBatch::create([
+            'item_id' => $item->id,
+            'quantity' => 20,
+            'supplier' => 'Opening stock',
+            'date_received' => now()->toDateString(),
+            'storage_location' => 'Mambaling Storage',
+        ]);
+        $csv = "SKU,Item Name,Category,Unit,Quantity,Supplier,Date Received\n"
+            ."medblank01, emergency   blanket ,medical,each,5,Relief Supplier,2026-04-15\n";
+
+        $this->actingAs($admin)
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.rows_processed', 1)
+            ->assertSessionHas('import_summary.created', 0)
+            ->assertSessionHas('import_summary.updated', 1)
+            ->assertSessionHas('import_summary.stock_added', 5);
+
+        $this->assertSame(1, Item::count());
+        $this->assertSame('Emergency Blanket', $item->fresh()->name);
+        $this->assertSame(7, (int) $item->fresh()->min_stock);
+        $this->assertSame(25, (int) Inventory::where('sku', $item->sku)->value('quantity'));
+        $this->assertDatabaseHas('stock_batches', [
+            'item_id' => $item->id,
+            'quantity' => 5,
+            'supplier' => 'Relief Supplier',
+            'date_received' => '2026-04-15',
+            'created_by_user_id' => $admin->id,
+            'movement_type' => 'stock-in',
+            'storage_location' => 'Mambaling Storage',
+        ]);
+    }
+
+    public function test_csv_import_handles_existing_and_new_items_and_repeated_rows_without_duplicates(): void
+    {
+        $existing = Item::create([
+            'name' => 'Flashlight',
+            'category' => 'RESCUE',
+            'unit_type' => 'EACH',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'NONE',
+            'type' => 'consumable',
+            'storage_location' => 'Mambaling Storage',
+            'sku' => 'RESFLASH01',
+        ]);
+        \App\Models\StockBatch::create([
+            'item_id' => $existing->id,
+            'quantity' => 10,
+            'supplier' => 'Opening stock',
+            'date_received' => now()->toDateString(),
+            'movement_type' => 'initial-import',
+            'storage_location' => 'Mambaling Storage',
+        ]);
+        $csv = "SKU,Item Name,Category,Unit,Quantity\n"
+            ."RESFLASH01,Flashlight,RESCUE,EACH,3\n"
+            ."RESFLASH01,Flashlight,RESCUE,EACH,2\n"
+            ."NEWKIT001,First Aid Kit,MEDICAL,BOX,4\n"
+            ."NEWKIT001,First Aid Kit,MEDICAL,BOX,6\n";
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.rows_processed', 4)
+            ->assertSessionHas('import_summary.imported', 4)
+            ->assertSessionHas('import_summary.created', 1)
+            ->assertSessionHas('import_summary.updated', 3)
+            ->assertSessionHas('import_summary.stock_added', 15);
+
+        $this->assertSame(2, Item::count());
+        $this->assertSame(15, (int) Inventory::where('sku', 'RESFLASH01')->value('quantity'));
+        $this->assertSame(10, (int) Inventory::where('sku', 'NEWKIT001')->value('quantity'));
+        $this->assertSame(2, \App\Models\StockBatch::where('item_id', $existing->id)->where('movement_type', 'stock-in')->count());
+        $this->assertSame(2, \App\Models\StockBatch::where('item_id', Item::where('sku', 'NEWKIT001')->value('id'))->count());
+        $this->assertDatabaseHas('activity_logs', [
+            'actor_id' => User::where('role', 'admin')->firstOrFail()->id,
+            'subject_type' => \App\Models\StockBatch::class,
+            'subject_id' => (string) \App\Models\StockBatch::where('item_id', $existing->id)->where('quantity', 3)->value('id'),
+            'event_type' => 'created',
+        ]);
+    }
+
+    public function test_csv_import_reports_matching_candidates_instead_of_choosing_ambiguous_item(): void
+    {
+        $first = Item::create([
+            'name' => 'Blanket',
+            'category' => 'MEDICAL',
+            'unit_type' => 'EACH',
+            'size_weight' => 'SINGLE',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'THERMAL',
+            'type' => 'consumable',
+            'storage_location' => 'Mambaling Storage',
+            'sku' => 'MEDBLANK11',
+        ]);
+        $second = Item::create([
+            'name' => 'Blanket',
+            'category' => 'MEDICAL',
+            'unit_type' => 'EACH',
+            'size_weight' => 'DOUBLE',
+            'target_beneficiary' => 'ALL',
+            'variant' => 'THERMAL',
+            'type' => 'consumable',
+            'storage_location' => 'Mambaling Storage',
+            'sku' => 'MEDBLANK12',
+        ]);
+        $csv = "Item Name,Category,Unit,Quantity\nBlanket,MEDICAL,EACH,8\n";
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.imported', 0)
+            ->assertSessionHas('import_summary.skipped', 1)
+            ->assertSessionHas('import_summary.errors', function (array $errors) use ($first, $second): bool {
+                $message = implode(' ', $errors);
+                return str_contains($message, "Candidates: #{$first->id} SKU {$first->sku}")
+                    && str_contains($message, "#{$second->id} SKU {$second->sku}");
+            });
+
+        $this->assertSame(2, Item::count());
+        $this->assertSame(0, \App\Models\StockBatch::whereIn('item_id', [$first->id, $second->id])->count());
+    }
+
+    public function test_csv_import_ignores_legacy_storage_column_and_uses_fixed_location(): void
+    {
+        $csv = implode("\n", [
+            'name,category,unit_type,size_weight,target_beneficiary,variant,type,storage_location,quantity,min_stock,expiration_date',
+            'Rice,FOOD,SACK,5KG,ALL,NONE,consumable,Unknown storage,10,10,',
+        ]);
+
+        $this->actingAs(User::factory()->create(['role' => 'admin']))
+            ->from(route('inventory.index'))
+            ->post(route('inventory.import'), ['csv_file' => UploadedFile::fake()->createWithContent('items.csv', $csv)])
+            ->assertRedirect(route('inventory.index'))
+            ->assertSessionHas('import_summary.imported', 1);
+
+        $this->assertDatabaseHas('items', [
+            'name' => 'Rice',
+            'storage_location' => 'Mambaling Storage',
+        ]);
     }
 
     private function itemPayload(array $overrides = []): array

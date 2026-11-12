@@ -7,6 +7,7 @@ use App\Models\Inventory;
 use App\Models\ReturnItem;
 use App\Models\StorageLocation;
 use App\Services\InventorySyncService;
+use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -18,7 +19,7 @@ class ReturnController extends Controller
         $inventorySync->syncAllItems();
 
         $returnableReleases = BorrowRelease::query()
-            ->with(['request', 'inventory.item'])
+            ->with(['request', 'forwardedRequest', 'inventory.item'])
             ->withSum('returns as returned_quantity', 'quantity')
             ->whereHas('inventory', fn ($query) => $query->where('type', 'Returnable'))
             ->whereRaw(
@@ -27,7 +28,7 @@ class ReturnController extends Controller
             ->latest('released_at')
             ->paginate(15);
         $verifiedLocationNames = StorageLocation::availableInMambaling()->pluck('name');
-        $recentReturns = ReturnItem::with(['inventory', 'borrowRelease.request', 'processedBy', 'receivedBy'])
+        $recentReturns = ReturnItem::with(['inventory', 'borrowRelease.request', 'borrowRelease.forwardedRequest', 'processedBy', 'receivedBy'])
             ->latest()
             ->take(5)
             ->get();
@@ -35,7 +36,7 @@ class ReturnController extends Controller
         return view('returns.create', compact('returnableReleases', 'recentReturns', 'verifiedLocationNames'));
     }
 
-    public function store(Request $request, InventorySyncService $inventorySync)
+    public function store(Request $request, InventorySyncService $inventorySync, NotificationService $notifications)
     {
         $validated = $request->validate([
             'borrow_release_id' => 'required|exists:borrow_releases,id',
@@ -46,7 +47,7 @@ class ReturnController extends Controller
             'notes' => 'nullable|string|max:2000',
         ]);
 
-        $wasCreated = DB::transaction(function () use ($validated, $inventorySync, $request): bool {
+        $wasCreated = DB::transaction(function () use ($validated, $inventorySync, $notifications, $request): bool {
             $release = BorrowRelease::query()
                 ->whereKey($validated['borrow_release_id'])
                 ->lockForUpdate()
@@ -111,6 +112,20 @@ class ReturnController extends Controller
             if ($validated['condition'] === 'Good') {
                 $inventorySync->receiveReturn($inventory, $validated['quantity'], $request->user()->id, $returnLocation->name);
             }
+
+            $release->loadMissing(['request', 'forwardedRequest']);
+            $requestCode = $release->request?->request_code
+                ?? $release->forwardedRequest?->tracking_reference
+                ?? 'Release #'.$release->id;
+            $notifications->notifyRoles(
+                ['admin', 'staff'],
+                'Items returned',
+                number_format((int) $validated['quantity'])." {$inventory->name} returned for request {$requestCode} ({$validated['condition']}).",
+                route('returns.create', [], false),
+                'items_returned',
+                $requestCode,
+                $inventory->name,
+            );
 
             return true;
         });

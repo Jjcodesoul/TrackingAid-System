@@ -105,13 +105,15 @@
                             @php
                                 $inventory = $approvedRequest->inventory;
                                 $item = $inventory?->item;
+                                $isForwarded = ! empty($approvedRequest->is_forwarded_request);
+                                $releaseKey = $isForwarded ? 'forwarded-'.$approvedRequest->id : (string) $approvedRequest->id;
                                 $releasedQuantity = (int) ($approvedRequest->released_quantity ?? 0);
                                 $approvedQuantity = (int) ($approvedRequest->approved_quantity ?? $approvedRequest->quantity);
                                 $remainingQuantity = max($approvedQuantity - $releasedQuantity, 0);
                                 $availableQuantity = max((int) ($inventory?->quantity ?? 0), 0);
-                                $availableAtLocations = $locationAvailability[$approvedRequest->id] ?? [];
+                                $availableAtLocations = $locationAvailability[$releaseKey] ?? [];
                                 $canReleaseApprovedQuantity = $remainingQuantity > 0 && collect($availableAtLocations)->contains(fn ($quantity) => $quantity >= $remainingQuantity);
-                                $isOldInput = old('request_id') == $approvedRequest->id;
+                                $isOldInput = old($isForwarded ? 'forwarded_request_id' : 'request_id') == $approvedRequest->id;
                             @endphp
                             <tr class="align-top">
                                 <td class="p-3 text-[13px] font-medium text-[#1e293b]">{{ $approvedRequest->request_code }}</td>
@@ -150,16 +152,20 @@
                                                 data-remaining="{{ $remainingQuantity }}"
                                                 data-available="{{ $availableQuantity }}">
                                                 @csrf
-                                                <input type="hidden" name="request_id" value="{{ $approvedRequest->id }}">
+                                                @if($isForwarded)
+                                                    <input type="hidden" name="forwarded_request_id" value="{{ $approvedRequest->id }}">
+                                                @else
+                                                    <input type="hidden" name="request_id" value="{{ $approvedRequest->id }}">
+                                                @endif
                                                 <input type="hidden" name="idempotency_key" value="{{ $isOldInput ? old('idempotency_key') : (string) \Illuminate\Support\Str::uuid() }}">
 
                                                 <div>
-                                                    <label class="form-label" for="quantity-{{ $approvedRequest->id }}">Approved quantity to release</label>
-                                                    <input id="quantity-{{ $approvedRequest->id }}" name="quantity" type="number" min="{{ $remainingQuantity }}" max="{{ $remainingQuantity }}" value="{{ $remainingQuantity }}" class="form-input" readonly aria-readonly="true" required>
+                                                    <label class="form-label" for="quantity-{{ $releaseKey }}">Approved quantity to release</label>
+                                                    <input id="quantity-{{ $releaseKey }}" name="quantity" type="number" min="{{ $remainingQuantity }}" max="{{ $remainingQuantity }}" value="{{ $remainingQuantity }}" class="form-input" readonly aria-readonly="true" required>
                                                 </div>
                                                 <div>
-                                                    <label class="form-label" for="delivery-{{ $approvedRequest->id }}">Delivery personnel</label>
-                                                    <select id="delivery-{{ $approvedRequest->id }}" name="delivery_personnel_id" class="form-select" required>
+                                                    <label class="form-label" for="delivery-{{ $releaseKey }}">Delivery personnel</label>
+                                                    <select id="delivery-{{ $releaseKey }}" name="delivery_personnel_id" class="form-select" required>
                                                         <option value="">Choose delivery personnel...</option>
                                                         @forelse($deliveryPersonnel as $person)
                                                             <option value="{{ $person->id }}" {{ $isOldInput && old('delivery_personnel_id') == $person->id ? 'selected' : '' }}>{{ $person->name }}</option>
@@ -169,8 +175,8 @@
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="form-label" for="source-location-{{ $approvedRequest->id }}">Source storage location</label>
-                                                    <select id="source-location-{{ $approvedRequest->id }}" name="source_storage_location" class="form-select" required>
+                                                    <label class="form-label" for="source-location-{{ $releaseKey }}">Source storage location</label>
+                                                    <select id="source-location-{{ $releaseKey }}" name="source_storage_location" class="form-select" required>
                                                         <option value="">Choose a source location...</option>
                                                         @foreach($storageLocations as $storageLocation)
                                                             @php($locationQuantity = $availableAtLocations[$storageLocation->id] ?? 0)
@@ -179,8 +185,8 @@
                                                     </select>
                                                 </div>
                                                 <div>
-                                                    <label class="form-label" for="location-{{ $approvedRequest->id }}">Destination</label>
-                                                    <input id="location-{{ $approvedRequest->id }}" name="location" type="text" value="{{ $isOldInput ? old('location') : '' }}" class="form-input" maxlength="255" required>
+                                                    <label class="form-label" for="location-{{ $releaseKey }}">Destination</label>
+                                                    <input id="location-{{ $releaseKey }}" name="location" type="text" value="{{ $isOldInput ? old('location') : '' }}" class="form-input" maxlength="255" required>
                                                 </div>
                                                 <button type="button" class="btn-main w-full review-release-button">Confirm release details</button>
                                             </form>
@@ -205,6 +211,7 @@
                 </table>
             </div>
             <div class="mt-4">{{ $approvedRequests->links() }}</div>
+            <div class="mt-4">{{ $approvedForwardedRequests->links() }}</div>
         </section>
     </div>
 
