@@ -18,6 +18,14 @@ use Illuminate\Support\Collection;
 
 class InventoryController extends Controller
 {
+        private function authorizeLogisticsAccess(Request $request): void
+    {
+        abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to perform this inventory operation.'
+        );
+    }
     public function index(Request $request)
     {
         $availableStorageLocations = StorageLocation::availableInMambaling()->orderBy('warehouse_name')->orderBy('name')->get();
@@ -84,7 +92,7 @@ class InventoryController extends Controller
     
 public function create(Request $request)
 {
-    abort_unless(in_array($request->user()?->role, ['admin', 'super_admin'], true), 403);
+    abort_unless(in_array($request->user()?->role, ['admin', 'staff', 'super_admin'], true), 403);
 
     $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
     $defaultUnits = ['BOX', 'PACK', 'PCS', 'SACK', 'BOTTLE'];
@@ -142,7 +150,7 @@ public function create(Request $request)
 }
     public function store(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
     {
-        abort_unless(in_array($request->user()?->role, ['admin', 'super_admin'], true), 403);
+        abort_unless(in_array($request->user()?->role, ['admin', 'staff', 'super_admin'], true), 403);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -199,8 +207,10 @@ public function create(Request $request)
         return redirect('/inventory')->with('success', 'Item added successfully.');
     }
 
-    public function edit($id)
+        public function edit(Request $request, $id)
     {
+        $this->authorizeLogisticsAccess($request);
+
         $item = Item::findOrFail($id);
 
         $defaultCategories = ['FOOD', 'MEDICAL', 'RESCUE', 'RELIEF'];
@@ -211,9 +221,12 @@ public function create(Request $request)
         return view('inventory.edit', compact('item', 'customCategories'));
     }
 
-    public function update(Request $request, InventorySyncService $inventorySync, $id)
+        public function update(Request $request, InventorySyncService $inventorySync, $id)
     {
+        $this->authorizeLogisticsAccess($request);
+
         $item = Item::findOrFail($id);
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'category' => 'required|string|max:100',
@@ -236,6 +249,7 @@ public function create(Request $request)
 
         // Existing assignments are historical text values and are retained until manually verified.
         $item->update($validated);
+
         $inventorySync->syncItem($item->fresh('stockBatches'));
 
         return redirect('/inventory')->with('success', 'Item updated successfully.');
@@ -315,6 +329,8 @@ public function create(Request $request)
 
     public function import(Request $request, InventorySyncService $inventorySync, SkuGenerator $skuGenerator)
     {
+        $this->authorizeLogisticsAccess($request);
+
         $request->validate(['csv_file' => 'required|file|mimes:csv,txt|max:5120']);
         $handle = fopen($request->file('csv_file')->getRealPath(), 'r');
         if (! $handle) return back()->withErrors(['csv_file' => 'The CSV file could not be read.']);
@@ -672,10 +688,14 @@ public function create(Request $request)
         )->implode('; ').($items->count() > 5 ? '; and '.($items->count() - 5).' more' : '');
     }
 
-    public function delete(InventorySyncService $inventorySync, $id)
+        public function delete(Request $request, InventorySyncService $inventorySync, $id)
     {
+        $this->authorizeLogisticsAccess($request);
+
         $item = Item::findOrFail($id);
+
         $item->delete();
+
         $inventorySync->deleteInventoryForItem($item);
 
         return redirect('/inventory')->with('success', 'Item deleted successfully.');

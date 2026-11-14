@@ -14,8 +14,14 @@ use Illuminate\Validation\ValidationException;
 
 class ReturnController extends Controller
 {
-    public function create(InventorySyncService $inventorySync)
+    public function create(Request $request, InventorySyncService $inventorySync)
     {
+        abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to access returns.'
+        );
+
         $inventorySync->syncAllItems();
 
         $returnableReleases = BorrowRelease::query()
@@ -38,6 +44,12 @@ class ReturnController extends Controller
 
     public function store(Request $request, InventorySyncService $inventorySync, NotificationService $notifications)
     {
+        abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to process returns.'
+    );
+
         $validated = $request->validate([
             'borrow_release_id' => 'required|exists:borrow_releases,id',
             'idempotency_key' => 'required|uuid',

@@ -20,6 +20,16 @@ The public overview is available at `/`. Use its **Login** link to reach the exi
 
 The seeders create sample/demo records. Confirm inventory, supplier, batch, request, and expiration details against operational records before using seeded data for decisions.
 
+## Defense demo (Windows)
+
+If the remote database is unavailable, start the isolated local demo with:
+
+```powershell
+.\start-demo.ps1
+```
+
+This uses `database/database.sqlite`, applies migrations and sample data, then serves the app at `http://127.0.0.1:7000`. It keeps the existing `.env` settings untouched and listens only on this PC. The seeded demo accounts use `test@example.com` / `password` and `admin@trackingaid.org` / `password`; use them only for this local demo.
+
 ## QA
 
 Run the automated suite with `php artisan test`. The report and data-integrity test cases, including expected values, are documented in [QA_TEST_CASES.md](QA_TEST_CASES.md).

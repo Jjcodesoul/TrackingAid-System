@@ -10,7 +10,7 @@ class InventoryRegistrationMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (in_array($request->user()?->role, ['admin', 'super_admin'], true)) {
+        if (in_array($request->user()?->role, ['admin', 'staff', 'super_admin'], true)) {
             return $next($request);
         }
 

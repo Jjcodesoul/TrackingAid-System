@@ -318,7 +318,7 @@
                         </a>
                     </li>
 
-                    @if(auth()->user()->role === 'admin')
+                    @if(in_array(auth()->user()->role, ['admin', 'staff'], true))
 
                     <li>
                         <a href="/stock-in" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('stock-in*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
@@ -366,7 +366,7 @@
                         </li>
                     @endif
 
-                    @if(auth()->user()->role === 'admin')
+                    @if(in_array(auth()->user()->role, ['admin', 'staff'], true))
                     <li>
                         <a href="/reports" class="flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-all {{ request()->is('reports*') ? 'bg-slate-800 text-emerald-400 font-semibold border-l-4 border-emerald-500' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200' }}">
                             <i class="fa-solid fa-chart-line w-5 text-center text-base"></i>

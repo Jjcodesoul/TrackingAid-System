@@ -17,6 +17,7 @@ use App\Http\Middleware\EnsureNotSuperAdmin;
 use App\Http\Middleware\EnsurePasswordUpdated;
 use App\Http\Middleware\InventoryRegistrationMiddleware;
 use App\Http\Middleware\SuperAdminMiddleware;
+use App\Http\Middleware\LogisticsAccessMiddleware;
 use Illuminate\Support\Facades\Route;
 
 // 1. Landing Root Route
@@ -55,18 +56,36 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
     });
 
 
-    // 3. 🛑 ADMIN-ONLY CONTROL PANEL ROUTES
+        // 3. ADMIN-ONLY CONTROL PANEL AND USER MANAGEMENT
     Route::middleware(AdminMiddleware::class)->group(function () {
-        
         Route::get('/admin/dashboard', function () {
             return app(DashboardController::class)->adminIndex();
         })->name('admin.dashboard');
 
-        // Logistics operations are reserved for the Logistics Administrator.
+        // User Management
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::get('/users/{id}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
+
+        // INVENTORY REGISTRATION: ADMIN, STAFF, AND SUPER ADMIN
+    Route::middleware(InventoryRegistrationMiddleware::class)->group(function () {
+        Route::get('/inventory/create', [InventoryController::class, 'create'])
+            ->name('inventory.create');
+
+        Route::post('/inventory/store', [InventoryController::class, 'store'])
+            ->name('inventory.store');
+    });
+
+    // LOGISTICS OPERATIONS: ADMIN AND STAFF
+    Route::middleware(LogisticsAccessMiddleware::class)->group(function () {
         Route::get('/inventory/edit/{id}', [InventoryController::class, 'edit'])->name('inventory.edit');
         Route::post('/inventory/update/{id}', [InventoryController::class, 'update'])->name('inventory.update');
         Route::post('/inventory/delete/{id}', [InventoryController::class, 'delete'])->name('inventory.delete');
         Route::post('/inventory/import', [InventoryController::class, 'import'])->name('inventory.import');
+
         Route::get('/stock-in', [StockController::class, 'create'])->name('stock.create');
         Route::post('/stock-in/store', [StockController::class, 'store'])->name('stock.store');
 
@@ -80,21 +99,6 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
         Route::get('/reports/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
     });
 
-    // Both administrators can manage regular user accounts; the controller
-    // enforces this role check independently of the navigation.
-    Route::get('/users', [UserController::class, 'index'])->name('users.index');
-    Route::post('/users', [UserController::class, 'store'])->name('users.store');
-    Route::get('/users/edit/{id}', [UserController::class, 'edit'])->name('users.edit');
-    Route::post('/users/update/{id}', [UserController::class, 'update'])->name('users.update');
-    Route::post('/users/delete/{id}', [UserController::class, 'destroy'])->name('users.destroy');
-
-    // Super Admin may register catalog items but does not receive stock or
-    // other logistics transaction permissions.
-    Route::middleware(InventoryRegistrationMiddleware::class)->group(function () {
-        Route::get('/inventory/create', [InventoryController::class, 'create'])->name('inventory.create');
-        Route::post('/inventory/store', [InventoryController::class, 'store'])->name('inventory.store');
-    });
-
 
     // 4. SHARED FEATURES (Both Admin and Staff can open these routes)
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory.index');
@@ -106,10 +110,12 @@ Route::middleware(['auth', EnsureActiveAccount::class, EnsurePasswordUpdated::cl
         Route::get('/returns', [ReturnController::class, 'create'])->name('returns.create');
         Route::post('/returns', [ReturnController::class, 'store'])->name('returns.store');
     });
+    Route::middleware(LogisticsAccessMiddleware::class)->group(function () {
     Route::get('/delivery-monitoring', [
-    BorrowReleaseController::class,
-    'monitoring'
-])->name('delivery-monitoring.index');
+        BorrowReleaseController::class,
+        'monitoring'
+    ])->name('delivery-monitoring.index');
+});
 
     // System Utilities
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

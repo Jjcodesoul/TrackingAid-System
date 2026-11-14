@@ -81,6 +81,12 @@ class RequestController extends Controller
 
     public function approve(Request $httpRequest, SupplyRequest $request, InventorySyncService $inventorySync, NotificationService $notifications)
     {
+        abort_unless(
+            in_array($httpRequest->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to approve requests.'
+    );
+
         $validated = $httpRequest->validate([
             'approved_quantity' => ['required', 'integer', 'min:1'],
             'approval_notes' => ['nullable', 'string', 'max:1000'],
@@ -155,6 +161,13 @@ class RequestController extends Controller
 
     public function reject(Request $httpRequest, SupplyRequest $request, NotificationService $notifications)
     {
+        abort_unless(
+            in_array($httpRequest->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to reject requests.'
+
+        );
+        
         $validated = $httpRequest->validate([
             'approval_notes' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -192,71 +205,121 @@ class RequestController extends Controller
         return back()->with('success', 'Request rejected.');
     }
 
+    
     public function approveForwarded(
+        Request $httpRequest,
         ResqoperationForwardedRequest $forwardedRequest,
         InventorySyncService $inventorySync,
         NotificationService $notifications,
-    )
-    {
-        $updated = DB::transaction(function () use ($forwardedRequest, $inventorySync): bool {
-            $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
-            if (! in_array(strtolower($lockedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {
-                return false;
+    ) {
+        abort_unless(
+            in_array($httpRequest->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to approve forwarded requests.'
+        );
+
+        $approvedQuantity = DB::transaction(function () use (
+            $forwardedRequest,
+            $inventorySync,
+            $httpRequest
+        ): int {
+            $lockedRequest = ResqoperationForwardedRequest::whereKey(
+                $forwardedRequest->id
+            )->lockForUpdate()->firstOrFail();
+
+            if (! in_array(
+                strtolower($lockedRequest->resqperation_status ?? 'forwarded'),
+                ['forwarded', 'pending'],
+                true
+            )) {
+                return 0;
             }
 
-            $inventory = $lockedRequest->inventory;
-            if (! $inventory) {
-                $inventory = $this->matchForwardedInventory(
-                    $lockedRequest->item_name ?: $lockedRequest->resource_type,
-                    $inventorySync,
-                );
-            }
+            $inventory = $this->matchForwardedInventory(
+                $lockedRequest->item_name ?: $lockedRequest->resource_type,
+                $inventorySync
+            );
+
             if (! $inventory) {
                 throw ValidationException::withMessages([
-                    'request_id' => 'Link this forwarded request to one unambiguous inventory item before approval.',
+                    'request_id' => 'This request cannot be approved because its item could not be matched to one unambiguous inventory item. Verify its item name or SKU first.',
                 ]);
             }
 
-            $inventory = Inventory::whereKey($inventory->id)->lockForUpdate()->firstOrFail();
+            $inventory = Inventory::whereKey($inventory->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $inventory = $inventorySync->syncInventory($inventory);
-            $approvedQuantity = (int) $lockedRequest->quantity;
-            $availableQuantity = $this->availableToAllocateForForwarded($inventory, (int) $lockedRequest->id);
-            if ($approvedQuantity > $availableQuantity) {
+
+            $requestedQuantity = (int) $lockedRequest->quantity;
+
+            if ($requestedQuantity <= 0) {
                 throw ValidationException::withMessages([
-                    'request_id' => "Only {$availableQuantity} units are available for this request.",
+                    'request_id' => 'The requested quantity must be greater than zero.',
                 ]);
             }
+
+            $availableQuantity = $this->availableToAllocateForForwarded(
+                $inventory,
+                (int) $lockedRequest->id
+            );
+
+            if ($availableQuantity <= 0) {
+                throw ValidationException::withMessages([
+                    'request_id' => 'No stock is currently available for this request.',
+                ]);
+            }
+
+            // Approve only the available quantity.
+            $approvedQuantity = min($requestedQuantity, $availableQuantity);
 
             $lockedRequest->inventory_id = $inventory->id;
             $lockedRequest->approved_quantity = $approvedQuantity;
-            $lockedRequest->approved_by_user_id = auth()->id();
+            $lockedRequest->approved_by_user_id = $httpRequest->user()->id;
             $lockedRequest->approved_at = now();
             $lockedRequest->rejected_by_user_id = null;
             $lockedRequest->rejected_at = null;
             $lockedRequest->resqperation_status = 'approved';
             $lockedRequest->save();
-            return true;
+
+            return $approvedQuantity;
         });
 
-        if (! $updated) {
+        if ($approvedQuantity === 0) {
             return back()->with('error', 'This forwarded request has already been reviewed.');
         }
 
+        $requestedQuantity = (int) $forwardedRequest->quantity;
+        $isPartial = $approvedQuantity < $requestedQuantity;
+
         $notifications->notifyRoles(
             ['admin', 'staff'],
-            'Forwarded request approved',
-            "Forwarded request {$forwardedRequest->tracking_reference} was approved and is ready for release.",
+            $isPartial ? 'Forwarded request partially approved' : 'Forwarded request approved',
+            "Forwarded request {$forwardedRequest->tracking_reference}: {$approvedQuantity} of {$requestedQuantity} units approved.",
             route('borrow-release.create', [], false),
             'request_approved',
             $forwardedRequest->tracking_reference,
             $forwardedRequest->item_name ?: $forwardedRequest->resource_type,
         );
 
-        return back()->with('success', 'Forwarded request marked approved in TrackingAid. No external status sync is configured.');
+        return back()->with(
+            'success',
+            $isPartial
+                ? "Request partially approved: {$approvedQuantity} of {$requestedQuantity} units approved."
+                : "Forwarded request approved: {$approvedQuantity} units. It is ready for release."
+        );
     }
 
-    public function rejectForwarded(ResqoperationForwardedRequest $forwardedRequest, NotificationService $notifications)
+
+        public function rejectForwarded(Request $httpRequest, ResqoperationForwardedRequest $forwardedRequest, NotificationService $notifications)
     {
+        abort_unless(
+            in_array($httpRequest->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to reject forwarded requests.'
+        );
+
         $updated = DB::transaction(function () use ($forwardedRequest): bool {
             $lockedRequest = ResqoperationForwardedRequest::whereKey($forwardedRequest->id)->lockForUpdate()->firstOrFail();
             if (! in_array(strtolower($lockedRequest->resqperation_status ?? 'forwarded'), ['forwarded', 'pending'], true)) {

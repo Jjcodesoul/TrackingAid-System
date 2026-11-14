@@ -224,7 +224,7 @@
         <p class="page-subtitle">{{ $selectedLocation ? $selectedLocation->name.' · '.$selectedLocation->warehouse_name : 'All Mambaling storage locations' }}</p>
     </div>
 
-    @if(in_array(auth()->user()->role, ['admin', 'super_admin'], true))
+    @if(in_array(auth()->user()->role, ['admin', 'staff', 'super_admin'], true))
         <a href="{{ route('inventory.create') }}" class="btn-main">
             <i class="fa-solid fa-plus"></i> Add Item
         </a>
@@ -287,15 +287,36 @@
     </div>
 @endif
 
+
+
 <?php if ($summary = session('import_summary')): ?>
-    <div class="alert-box <?= $summary['failed'] ? 'alert-error' : 'alert-success' ?>">
-        CSV import: <?= number_format((int) ($summary['rows_processed'] ?? $summary['imported'])) ?> rows processed,
-        <?= $summary['imported'] ?> imported,
-        <?= $summary['created'] ?? 0 ?> new items,
-        <?= $summary['updated'] ?? 0 ?> existing items updated,
-        <?= number_format((int) ($summary['stock_added'] ?? 0)) ?> stock added,
-        <?= $summary['skipped'] ?> skipped,
-        <?= $summary['failed'] ?> failed.
+    <?php
+        $imported = (int) ($summary['imported'] ?? 0);
+        $skipped = (int) ($summary['skipped'] ?? 0);
+        $failed = (int) ($summary['failed'] ?? 0);
+        $stockAdded = (int) ($summary['stock_added'] ?? 0);
+
+        $hasIssues = $skipped > 0 || $failed > 0;
+    ?>
+
+    <div class="alert-box <?= $imported > 0 && ! $hasIssues ? 'alert-success' : 'alert-error' ?>"
+         style="margin-bottom:16px;">
+
+        <?php if ($imported > 0 && ! $hasIssues): ?>
+            <strong>CSV imported successfully!</strong>
+            <?= $imported ?> inventory item(s) imported and
+            <?= number_format($stockAdded) ?> stock units added.
+
+        <?php elseif ($imported > 0): ?>
+            <strong>CSV imported with some issues.</strong>
+            <?= $imported ?> item(s) imported.
+            <?= $skipped ?> row(s) skipped and <?= $failed ?> failed.
+            Please review the import details.
+
+        <?php else: ?>
+            <strong>CSV import failed.</strong>
+            No inventory items were imported. Please review the import details.
+        <?php endif; ?>
 
         <?php if (! empty($summary['errors'])): ?>
             <ul style="margin:8px 0 0; padding-left:20px;">
@@ -304,8 +325,10 @@
                 <?php endforeach; ?>
             </ul>
         <?php endif; ?>
+
     </div>
 <?php endif; ?>
+
 
 @if($errors->any())
     <div class="alert-box alert-error">
@@ -314,7 +337,7 @@
 @endif
 
 {{-- ADMIN INVENTORY IMPORT --}}
-@if(auth()->user()->role === 'admin')
+@if(in_array(auth()->user()->role, ['admin', 'staff'], true))
     <div class="card-ui" style="margin:16px 0; padding:16px 20px;">
         <h3 style="margin:0 0 10px; font-size:15px;">Import inventory</h3>
 
@@ -659,7 +682,7 @@
                                         History
                                     </a>
 
-                                    @if(auth()->user()->role === 'admin')
+                                    @if(in_array(auth()->user()->role, ['admin', 'staff'], true))
                                         <a
                                             href="{{ route('inventory.edit', $item->id) }}"
                                             class="btn-soft btn-compact"

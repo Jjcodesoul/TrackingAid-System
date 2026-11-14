@@ -11,12 +11,9 @@ class AdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $role = $request->user()?->role;
-        if ($role === 'admin') {
-            return $next($request);
-        }
 
-        if ($role === 'super_admin') {
-            abort(403, 'Super Admin accounts do not have Logistics Administrator access.');
+        if (in_array($role, ['admin', 'super_admin'], true)) {
+            return $next($request);
         }
 
         return redirect('dashboard')->with('error', 'You do not have admin access.');

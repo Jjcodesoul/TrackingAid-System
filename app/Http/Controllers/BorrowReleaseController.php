@@ -20,6 +20,12 @@ class BorrowReleaseController extends Controller
 {
     public function create(InventorySyncService $inventorySync, HttpRequest $httpRequest)
     {
+        abort_unless(
+            in_array($httpRequest->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to create borrow releases.'
+        );
+
         $inventorySync->syncAllItems();
 
         $deliveryPersonnel = User::where('role', 'delivery_personnel')
@@ -129,7 +135,11 @@ class BorrowReleaseController extends Controller
         InventorySyncService $inventorySync,
         NotificationService $notifications,
     ) {
-        abort_unless(in_array($request->user()->role, ['admin', 'staff', 'delivery_personnel'], true), 403);
+        abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to release stock.'
+        );
 
         $validated = $request->validate([
             'request_id' => 'nullable|required_without:forwarded_request_id|exists:requests,id',
@@ -305,9 +315,15 @@ class BorrowReleaseController extends Controller
         });
     }
 
-    public function monitoring()
+    public function monitoring(HttpRequest $httpRequest)
     {
-        $deliveries = BorrowRelease::with([
+        abort_unless(
+        in_array($httpRequest->user()?->role, ['super_admin','admin', 'staff'], true),
+        403,
+        'You do not have permission to monitor deliveries.'
+    );
+
+    $deliveries = BorrowRelease::with([
             'request',
             'forwardedRequest',
             'inventory',

@@ -41,6 +41,12 @@ class ReportController extends Controller
 
     public function index(HttpRequest $request)
     {
+            abort_unless(
+                in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to view reports.'
+        );
+
         $activeReport = $this->activeReport($request);
         $filters = $this->validatedFilters($request);
         $report = $this->buildReport($activeReport, $filters);
@@ -72,7 +78,13 @@ class ReportController extends Controller
     }
 
     public function exportCsv(HttpRequest $request)
-    {
+        {
+                abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to export reports.'
+        );
+
         $activeReport = $this->activeReport($request);
         $filters = $this->validatedFilters($request);
         $report = $this->buildReport($activeReport, $filters);
@@ -95,6 +107,12 @@ class ReportController extends Controller
 
     public function exportPdf(HttpRequest $request)
     {
+        abort_unless(
+            in_array($request->user()?->role, ['admin', 'staff'], true),
+            403,
+            'You do not have permission to export reports.'
+        );
+        
         $activeReport = $this->activeReport($request);
         $filters = $this->validatedFilters($request);
         $report = $this->buildReport($activeReport, $filters);
